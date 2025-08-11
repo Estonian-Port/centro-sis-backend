@@ -11,12 +11,12 @@ config = AutoConfig(search_path=BASE_DIR)
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-58-p-)j%!b6l(hubt3#^u%t1k#s$)x70tl_1#fxfb1-ui=!mzm'
+SECRET_KEY = config('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ["192.168.0.8", "localhost", "181.47.199.50", "backend", "nginx"]
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='*', cast=Csv())
 
 
 # Application definition
@@ -81,7 +81,7 @@ DATABASES = {
         'USER': config('POSTGRES_USER'),
         'PASSWORD': config('POSTGRES_PASSWORD'),
         'HOST': config('POSTGRES_HOST'),
-        'PORT': config('POSTGRES_PORT', default='5432'),
+        'PORT': config('POSTGRES_PORT', default='5433'),
     }
 }
 
