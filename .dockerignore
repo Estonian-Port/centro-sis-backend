@@ -1,0 +1,44 @@
+# VCS
+.git
+.gitignore
+
+# Secrets/env
+.env
+*.env
+
+# Python artefacts
+**/__pycache__/
+**/*.py[cod]
+*.so
+.venv/
+venv/
+env/
+ENV/
+__pypackages__/
+
+# Caches/tests
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Django runtime
+staticfiles/
+media/
+logs/
+*.log
+*.sqlite3
+
+# Frontend sobrantes (si existen)
+node_modules/
+dist/
+build/
+
+# IDE/OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
