@@ -16,7 +16,6 @@ urlpatterns = [
     path('nested_admin/', include("nested_admin.urls")),
     path('admin/', admin.site.urls),
     path('api/csrf/', csrf),
-    path("api/csrf/", csrf.as_view(), name="csrf"),
     path("api/auth/me", me, name="auth-me"),  # no slash
     path("api/auth/me/", me, name="auth-me-slash"),
     path("api/me/", me, name="me-compat"),  # optional, for current frontend
