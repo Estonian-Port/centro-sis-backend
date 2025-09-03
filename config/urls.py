@@ -19,8 +19,8 @@ urlpatterns = [
     path("api/auth/me", me, name="auth-me"),  # no slash
     path("api/auth/me/", me, name="auth-me-slash"),
     path("api/me/", me, name="me-compat"),  # optional, for current frontend
-    path("api/auth/login/", login_view.as_view(), name="login"),
-    path("api/auth/logout/", logout_view.as_view(), name="logout"),
+    path("api/auth/login/", login_view, name="login"),
+    path("api/auth/logout/", logout_view, name="logout"),
     path('api/', include(router.urls)),
     path('api/auth/', obtain_auth_token),
 ]
