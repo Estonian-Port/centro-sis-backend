@@ -128,6 +128,9 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
 
+CSRF_COOKIE_HTTPONLY = False
+
+
 CSRF_COOKIE_NAME = 'csrftoken'
 
 # Internationalization
