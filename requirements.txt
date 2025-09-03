@@ -1,6 +1,7 @@
 asgiref==3.9.1
 certifi==2025.7.14
 charset-normalizer==3.4.2
+django-cors-headers==4.7.0
 Django==5.2.4
 django-browser-reload==1.18.0
 django-environ==0.12.0
