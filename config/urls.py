@@ -1,8 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path
-from core.views import csrf, StudentViewSet, ClassViewSet, ClassOptionViewSet, EnrollmentViewSet, PaymentViewSet, PaymentListViewSet
+from core.views import csrf, StudentViewSet, ClassViewSet, ClassOptionViewSet, EnrollmentViewSet, PaymentViewSet, PaymentListViewSet, me, login_view, logout_view
 from rest_framework.routers import DefaultRouter
-from core.views_auth import CsrfView, MeView, LoginView, LogoutView
 from rest_framework.authtoken.views import obtain_auth_token
 
 router = DefaultRouter()
@@ -17,12 +16,12 @@ urlpatterns = [
     path('nested_admin/', include("nested_admin.urls")),
     path('admin/', admin.site.urls),
     path('api/csrf/', csrf),
-    path("api/csrf/", CsrfView.as_view(), name="csrf"),
-    path("api/auth/me", MeView.as_view(), name="auth-me"),  # no slash
-    path("api/auth/me/", MeView.as_view(), name="auth-me-slash"),
-    path("api/me/", MeView.as_view(), name="me-compat"),  # optional, for current frontend
-    path("api/auth/login/", LoginView.as_view(), name="login"),
-    path("api/auth/logout/", LogoutView.as_view(), name="logout"),
+    path("api/csrf/", csrf.as_view(), name="csrf"),
+    path("api/auth/me", me, name="auth-me"),  # no slash
+    path("api/auth/me/", me, name="auth-me-slash"),
+    path("api/me/", me, name="me-compat"),  # optional, for current frontend
+    path("api/auth/login/", login_view.as_view(), name="login"),
+    path("api/auth/logout/", logout_view.as_view(), name="logout"),
     path('api/', include(router.urls)),
     path('api/auth/', obtain_auth_token),
 ]
