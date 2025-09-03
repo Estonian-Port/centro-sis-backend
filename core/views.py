@@ -1,4 +1,5 @@
 from django.shortcuts import render
+import json
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
@@ -6,6 +7,11 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters import rest_framework as filters
 from django.db.models import F, Value, BooleanField, Case, When, Q
 from datetime import date
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
+from django.views.decorators.http import require_POST
+from django.contrib.auth import authenticate, login, logout
+from django.middleware.csrf import get_token
+from django.http import JsonResponse
 
 from .serializers import StudentSerializer, StudentCreateSerializer, ClassOptionSerializer, ClassSerializer, EnrollmentSerializer, PaymentSerializer, PaymentListSerializer
 from .querysets import student_with_finance
@@ -136,3 +142,43 @@ class PaymentListViewSet(ReadOnlyModelViewSet):
             )
             .order_by('-paid_on', '-id')
         )
+
+@ensure_csrf_cookie
+def csrf(request):
+    return JsonResponse({"csrfToken": get_token(request)})
+
+def me(request):
+    if request.user.is_authenticated:
+        return JsonResponse({'authenticated': True, 'username': request.user.username})
+    return JsonResponse({'authenticated': False}, status=401)
+
+@require_POST
+@csrf_protect
+def login_view(request):
+    try:
+        data = json.loads(request.body.decode())
+    except Exception:
+        return JsonResponse({'detail': 'Invalid JSON'}, status=400)
+
+    username = data.get('username', '')
+    password = data.get('password', '')
+    remember = bool(data.get('remember', True))
+
+    user = authenticate(request, username=username, password=password)
+    if not user:
+        return JsonResponse({'detail': 'Invalid credentials'}, status=400)
+
+    login(request, user)
+
+    if remember:
+        request.session.set_expiry(None)
+    else:
+        request.session.set_expiry(0)
+
+    return JsonResponse({'detail': 'Login successful'})
+
+@require_POST
+@csrf_protect
+def logout_view(request):
+    logout(request)
+    return JsonResponse({'detail': 'Logout successful'})
