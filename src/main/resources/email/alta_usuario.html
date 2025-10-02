@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenido a UNIQUE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            font-family: 'Work Sans', sans-serif;
+        }
+        table.main-container {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 600px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .header {
+            text-align: center;
+            padding: 30px;
+        }
+        .logo {
+            max-width: 120px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: #333;
+        }
+        .divider {
+            width: 60px;
+            height: 3px;
+            background: #5caad2;
+            margin: 15px auto;
+        }
+        .content {
+            padding: 20px 30px;
+            font-size: 15px;
+            color: #555;
+            line-height: 22px;
+        }
+        .highlight {
+            color: #5caad2;
+            font-weight: bold;
+        }
+        .credentials {
+            background-color: #f4f9fc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .credentials div {
+            margin-bottom: 8px;
+        }
+        .footer {
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+        .social-icons a {
+            margin: 0 6px;
+            display: inline-block;
+        }
+        .social-icons img {
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <table class="main-container">
+        <tr>
+            <td>
+                <div class="header">
+                    <img src="{{empresa_logo}}" alt="UNIQUE Logo" class="logo">
+                    <h1>¡Bienvenido a <span class="highlight">UNIQUE</span>!</h1>
+                    <div class="divider"></div>
+                    <p>Gracias por confiar en nosotros. Tu cuenta ha sido creada exitosamente.</p>
+                </div>
+
+                <div class="content">
+                    <p>A continuación encontrarás tus datos de acceso:</p>
+                    <div class="credentials">
+                        <div><strong>Usuario:</strong> <span class="highlight">{{usuario}}</span></div>
+                        <div><strong>Contraseña:</strong> <span class="highlight">{{password}}</span></div>
+                    </div>
+                    <p>Te pediremos cambiar tu contraseña en el primer inicio de sesión.</p>
+                </div>
+
+                <div class="footer">
+                    <p>© 2025 UNIQUE. Todos los derechos reservados.</p>
+                    <div class="social-icons">
+                        <a href="{{url_instagram}}" target="_blank"><img src="{{imagen_ig}}" alt="Instagram"></a>
+                        <a href="{{url_web}}" target="_blank"><img src="{{imagen_web}}" alt="Web"></a>
+                        <a href="{{url_linkedin}}" target="_blank"><img src="{{imagen_linkedin}}" alt="LinkedIn"></a>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
