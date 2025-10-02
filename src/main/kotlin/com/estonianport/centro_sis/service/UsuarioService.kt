@@ -2,11 +2,11 @@ package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.common.codeGeneratorUtil.CodeGeneratorUtil
+import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.repository.UsuarioRepository
-import com.estonianport.unique.dto.request.UsuarioCambioPasswordRequestDto
-import com.estonianport.unique.dto.request.UsuarioRegistroRequestDto
-import com.estonianport.unique.model.Usuario
-import com.estonianport.unique.model.enums.EstadoType
+import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
+import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
+import com.estonianport.centro_sis.model.enums.EstadoType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder

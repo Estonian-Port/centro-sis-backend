@@ -3,10 +3,10 @@ package com.estonianport.centro_sis.mapper
 import com.estonianport.centro_sis.dto.response.UsuarioPendienteResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioRegistradoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
-import com.estonianport.unique.dto.request.UsuarioAltaRequestDto
-import com.estonianport.unique.dto.request.UsuarioRequestDto
-import com.estonianport.unique.model.Usuario
-import com.estonianport.unique.model.enums.EstadoType
+import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
+import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.model.Usuario
+import com.estonianport.centro_sis.model.enums.EstadoType
 import java.time.format.DateTimeFormatter
 
 object UsuarioMapper {

@@ -1,7 +1,7 @@
 package com.estonianport.centro_sis.common.emailService
 
 import com.estonianport.centro_sis.common.errors.BusinessException
-import com.estonianport.unique.model.Usuario
+import com.estonianport.centro_sis.model.Usuario
 import jakarta.mail.MessagingException
 import jakarta.mail.internet.MimeMessage
 import org.springframework.beans.factory.annotation.Autowired

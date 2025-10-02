@@ -1,4 +1,4 @@
-package com.estonianport.unique.model.enums
+package com.estonianport.centro_sis.model.enums
 
 enum class EstadoType {
     ACTIVO,

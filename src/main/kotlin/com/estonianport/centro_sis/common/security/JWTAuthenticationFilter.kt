@@ -1,7 +1,8 @@
-package com.estonianport.unique.common.security
+package com.estonianport.centro_sis.common.security
 
 import com.estonianport.centro_sis.common.security.AuthCredentials
-import com.estonianport.unique.service.UsuarioService
+import com.estonianport.centro_sis.common.security.UserDetailImpl
+import com.estonianport.centro_sis.service.UsuarioService
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest

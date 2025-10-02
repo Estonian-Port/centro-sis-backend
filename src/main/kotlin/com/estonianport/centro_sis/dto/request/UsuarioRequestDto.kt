@@ -1,4 +1,4 @@
-package com.estonianport.unique.dto.request
+package com.estonianport.centro_sis.dto.request
 
 data class UsuarioRequestDto (
     val id: Long,

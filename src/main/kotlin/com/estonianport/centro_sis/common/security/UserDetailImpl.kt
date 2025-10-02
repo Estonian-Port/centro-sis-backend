@@ -1,6 +1,6 @@
-package com.estonianport.unique.common.security
+package com.estonianport.centro_sis.common.security
 
-import com.estonianport.unique.model.Usuario
+import com.estonianport.centro_sis.model.Usuario
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import java.util.*

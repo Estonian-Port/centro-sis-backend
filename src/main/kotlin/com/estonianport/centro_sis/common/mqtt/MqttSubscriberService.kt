@@ -1,11 +1,5 @@
 package com.estonianport.centro_sis.common.mqtt
 
-import com.estonianport.unique.model.*
-import com.estonianport.unique.model.enums.EstadoType
-import com.estonianport.unique.repository.*
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener
-import org.eclipse.paho.client.mqttv3.MqttClient
 import org.springframework.stereotype.Service
 
 @Service

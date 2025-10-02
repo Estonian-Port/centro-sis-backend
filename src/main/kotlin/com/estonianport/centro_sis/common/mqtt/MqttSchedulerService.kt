@@ -1,10 +1,6 @@
 package com.estonianport.centro_sis.common.mqtt
 
-import com.estonianport.unique.model.ErrorLectura
-import com.estonianport.unique.model.enums.EstadoType
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import java.time.LocalDateTime
 
 @Service
 class MqttSchedulerService(

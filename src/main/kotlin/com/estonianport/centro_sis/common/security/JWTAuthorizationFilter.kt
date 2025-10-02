@@ -1,4 +1,4 @@
-package com.estonianport.unique.common.security
+package com.estonianport.centro_sis.common.security
 
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest

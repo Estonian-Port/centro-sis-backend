@@ -1,7 +1,7 @@
-package com.estonianport.unique.model
+package com.estonianport.centro_sis.model
 
-import com.estonianport.unique.dto.UsuarioAbmDTO
-import com.estonianport.unique.model.enums.EstadoType
+import com.estonianport.centro_sis.dto.UsuarioAbmDTO
+import com.estonianport.centro_sis.model.enums.EstadoType
 import jakarta.persistence.*
 import java.time.LocalDate
 

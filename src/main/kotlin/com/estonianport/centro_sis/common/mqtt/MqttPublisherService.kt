@@ -5,7 +5,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.stereotype.Service
 
 @Service
-class MqttPublisherService(private val mqttClient: MqttClient) {
+class MqttPublisherService(/*private val mqttClient: MqttClient*/) {
 
     /*fun sendCommand(patente: String, accion: String) {
         val topic = "plaquetas/comando"

@@ -5,10 +5,10 @@ import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.service.AdministracionService
 import com.estonianport.centro_sis.service.UsuarioService
-import com.estonianport.unique.dto.request.UsuarioAltaRequestDto
-import com.estonianport.unique.dto.request.UsuarioCambioPasswordRequestDto
-import com.estonianport.unique.dto.request.UsuarioRegistroRequestDto
-import com.estonianport.unique.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
+import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
+import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
+import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
