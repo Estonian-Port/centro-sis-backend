@@ -2,13 +2,16 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
-import com.estonianport.centro_sis.model.Usuario
 import jakarta.persistence.*
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 @Entity
 @Table(name = "cursos")
 data class Curso(
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
@@ -24,11 +27,10 @@ data class Curso(
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "curso_horarios", joinColumns = [JoinColumn(name = "curso_id")])
     @Column(name = "horario")
-    val horarios: Set<String> = emptySet(), // Could be LocalTime or string representation
+    val horarios: Set<LocalTime> = emptySet(),
 
     val arancel: Double,
 
-    // TODO Tipos de pago que acepta?
     @Enumerated(EnumType.STRING)
     val tipoPago: PagoType,
 
@@ -43,6 +45,9 @@ data class Curso(
     val alumnosInscriptosBaja: Set<Usuario> = emptySet(),
 
     @Enumerated(EnumType.STRING)
-    var estado: EstadoType = EstadoType.ACTIVO
+    var estado: EstadoType = EstadoType.ACTIVO,
+
+    @Column
+    var fechaBaja: LocalDate
 )
 

@@ -1,13 +1,13 @@
 package com.estonianport.centro_sis.common
 
-import org.springframework.data.repository.CrudRepository
+import com.estonianport.centro_sis.repository.CursoRepository
 import org.springframework.stereotype.Service
 import java.io.Serializable
 
 @Service
 abstract class GenericServiceImpl<T : Any, ID : Serializable> : GenericService<T, ID> {
 
-    abstract val dao : CrudRepository<T, ID>
+    abstract val dao : CursoRepository
 
     override fun save(entity: T): T {
         return dao.save(entity)
