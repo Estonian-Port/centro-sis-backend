@@ -2,14 +2,13 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Entity
-@Table(name = "cursos")
 data class Curso(
 
     @Id
@@ -20,9 +19,13 @@ data class Curso(
     val nombre: String,
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "curso_dias", joinColumns = [JoinColumn(name = "curso_id")])
+    @CollectionTable(
+        name = "curso_dias",
+        joinColumns = [JoinColumn(name = "curso_id")]
+    )
+    @Enumerated(EnumType.STRING)
     @Column(name = "dia")
-    val dias: Set<DayOfWeek> = emptySet(),
+    var dias: MutableList<DayOfWeek> = mutableListOf(),
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "curso_horarios", joinColumns = [JoinColumn(name = "curso_id")])
@@ -34,15 +37,9 @@ data class Curso(
     @Enumerated(EnumType.STRING)
     val tipoPago: PagoType,
 
-    @ManyToOne
-    @JoinColumn(name = "profesor_id")
-    var profesorAsignado: Usuario? = null,
-
-    @ManyToMany(mappedBy = "cursosActivos")
-    val alumnosInscriptosActivos: Set<Usuario> = emptySet(),
-
-    @ManyToMany(mappedBy = "cursosDadosDeBaja")
-    val alumnosInscriptosBaja: Set<Usuario> = emptySet(),
+    @JsonIgnore
+    @OneToMany(mappedBy = "curso", fetch = FetchType.LAZY)
+    var listaUsuarios: MutableSet<Rol> = mutableSetOf(),
 
     @Enumerated(EnumType.STRING)
     var estado: EstadoType = EstadoType.ACTIVO,

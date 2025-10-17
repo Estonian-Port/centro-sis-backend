@@ -6,7 +6,7 @@ import java.time.LocalTime
 data class CursoResponseDto (
     val id: Long,
     val nombre: String,
-    val dias: Set<DayOfWeek>,
+    val dias: MutableList<DayOfWeek>,
     val horarios: Set<LocalTime>,
     val arancel: Double
 )

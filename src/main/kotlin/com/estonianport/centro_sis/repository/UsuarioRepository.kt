@@ -15,44 +15,45 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     // o "usuario", al poner "usuarios" seria como decir "all usuario" o "lista usuario" me da igual usar cualquiera de los dos
 
     // TODO Creo que ahi estaria, tiene q ser fecha ultimo ingreso not null, fecha baja null y tener asignada
+    //TODO Ajustar IS ADMIN con ROL
     @Query(
         """
         SELECT COUNT(DISTINCT u)  
         FROM Usuario u
         WHERE u.ultimoIngreso IS NOT NULL
         AND u.fechaBaja IS NULL
-        AND u.esAdministrador = false
+
     """
     )
     fun countUsuariosActivos(): Int
 
+    //TODO Ajustar IS ADMIN con ROL
     @Query(
         """
     SELECT COUNT(DISTINCT u)
     FROM Usuario u
     WHERE u.ultimoIngreso IS NOT NULL
     AND u.fechaBaja IS NULL
-    AND u.esAdministrador = false
 """
     )
     fun countUsuariosInactivos(): Int
 
+    //TODO Ajustar IS ADMIN con ROL
     @Query(
         """
     SELECT COUNT(u)
     FROM Usuario u
     WHERE u.fechaBaja IS NULL
     AND u.ultimoIngreso IS NULL
-    AND u.esAdministrador = false
 """
     )
     fun countUsuariosPendientes(): Int
 
+    //TODO Ajustar IS ADMIN con ROL
     @Query(
         """
         SELECT COUNT(u) 
         FROM Usuario u
-        WHERE u.esAdministrador IS FALSE
     """
     )
     fun totalUsuarios(): Int

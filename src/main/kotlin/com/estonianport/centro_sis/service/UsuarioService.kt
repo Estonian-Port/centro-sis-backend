@@ -70,7 +70,8 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     }
 
     fun getUsuariosRegistrados(): List<Usuario> {
-        return getAll()!!.filter { !it.esAdministrador && it.estado.name != "PENDIENTE" && it.estado.name != "BAJA" }
+        //TODO ajustar usuario.rol. (ADMIN)
+        return getAll()!!.filter { true && it.estado.name != "PENDIENTE" && it.estado.name != "BAJA" }
     }
 
     fun getUsuariosPendientes(): List<Usuario> {

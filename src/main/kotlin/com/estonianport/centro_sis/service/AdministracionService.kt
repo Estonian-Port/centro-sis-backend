@@ -13,7 +13,8 @@ class AdministracionService(
         val usuario = usuarioService.findById(usuarioId)
             ?: throw NotFoundException("Usuario no encontrado con ID: $usuarioId")
 
-        if (!usuario.esAdministrador) {
+        //TODO Ajustar con ROL usuario.rol.
+        if (true) {
             throw IllegalAccessException("El usuario no tiene permisos de administrador")
         }
     }

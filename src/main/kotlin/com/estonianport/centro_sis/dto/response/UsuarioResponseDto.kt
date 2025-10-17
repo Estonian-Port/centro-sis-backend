@@ -6,6 +6,5 @@ data class UsuarioResponseDto (
     val apellido: String,
     val email: String,
     val celular: Long,
-    val isAdmin: Boolean,
     val primerLogin: Boolean
 )
