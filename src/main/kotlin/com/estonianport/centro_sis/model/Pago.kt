@@ -12,17 +12,9 @@ import java.time.LocalDate
 
 @Entity
 class Pago(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
-    var alumno: RolAlumno,
-
-    @Column(nullable = false)
-    var monto: Double,
-
-    @Column(nullable = false)
-    var fecha: LocalDate = LocalDate.now()
+        @Id @GeneratedValue(strategy = GenerationType.IDENTITY) val id: Long = 0,
+        @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(nullable = false) var alumno: RolAlumno,
+        @Column(nullable = false) var monto: Double,
+        @Column(nullable = false) var fecha: LocalDate = LocalDate.now(),
+        @Column(nullable = false) val retraso: Boolean = false
 )
