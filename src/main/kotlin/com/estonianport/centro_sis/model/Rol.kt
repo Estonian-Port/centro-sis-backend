@@ -1,18 +1,12 @@
 package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.BeneficioType
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.ManyToOne
-
 import jakarta.persistence.*
 import java.time.LocalDate
 
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED)
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "rol_type", discriminatorType = DiscriminatorType.STRING)
 abstract class Rol(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,8 +51,8 @@ class RolAlumno(
     @Enumerated(EnumType.STRING)
     @Column(nullable = true)
     var beneficioType: BeneficioType? = null
-    ) : Rol(usuario = usuario) {
-
+) : Rol(usuario = usuario) {
+    
     fun calcularArancelFinal(arancelBase: Double, beneficioFactory: BeneficioFactory): Double {
         val beneficio = beneficioType?.let { beneficioFactory.getStrategy(it) }
         return beneficio?.aplicarBeneficio(arancelBase, usuario, curso) ?: arancelBase

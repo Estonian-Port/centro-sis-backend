@@ -36,7 +36,7 @@ data class Curso(
 
     @Enumerated(EnumType.STRING)
     val tipoPago: PagoType,
-    
+
     @Enumerated(EnumType.STRING)
     var estado: EstadoType = EstadoType.ACTIVO,
 
