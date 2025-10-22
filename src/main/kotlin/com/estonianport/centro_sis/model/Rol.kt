@@ -51,11 +51,10 @@ class RolAlumno(
     @ManyToOne(fetch = FetchType.LAZY)
     var curso: Curso,
 
-
     @OneToMany(mappedBy = "alumno", cascade = [CascadeType.ALL], orphanRemoval = true)
     var pagos: MutableList<Pago> = mutableListOf(),
-    @Enumerated(EnumType.STRING)
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = true)
     var beneficioType: BeneficioType? = null
     ) : Rol(usuario = usuario) {

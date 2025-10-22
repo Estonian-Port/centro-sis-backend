@@ -36,11 +36,7 @@ data class Curso(
 
     @Enumerated(EnumType.STRING)
     val tipoPago: PagoType,
-
-    @JsonIgnore
-    @OneToMany(mappedBy = "curso", fetch = FetchType.LAZY)
-    var listaUsuarios: MutableSet<Rol> = mutableSetOf(),
-
+    
     @Enumerated(EnumType.STRING)
     var estado: EstadoType = EstadoType.ACTIVO,
 
