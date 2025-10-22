@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.BeneficioType
 import com.estonianport.centro_sis.model.enums.EstadoType
+import com.estonianport.centro_sis.model.enums.RolType
 import jakarta.persistence.*
 import java.time.LocalDate
 
@@ -56,4 +57,14 @@ class Usuario(
             estado = EstadoType.INACTIVO
         }
     }
+
+    fun getRolTypes(): MutableSet<RolType> =
+        listaRol.map {
+            when (it) {
+                is RolAdmin -> RolType.ADMINISTRADOR
+                is RolProfesor -> RolType.PROFESOR
+                is RolAlumno -> RolType.ALUMNO
+                else -> throw IllegalArgumentException("Rol desconocido")
+            }
+        }.toMutableSet()
 }

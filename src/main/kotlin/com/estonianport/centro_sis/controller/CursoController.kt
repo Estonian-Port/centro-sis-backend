@@ -26,4 +26,16 @@ class CursoController(private val cursoService: CursoService) {
             )
         )
     }
+    @GetMapping("getByUsuarioId/{id}")
+    fun getByUsuarioId(@PathVariable id: Long): ResponseEntity<CustomResponse> {
+        //val curso = cursoService.getByUsuarioId(id)!!
+        val curso = cursoService.get(id)!!
+
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Curso obtenido correctamente",
+                data = CursoMapper.buildCursoResponseDto(curso)
+            )
+        )
+    }
 }

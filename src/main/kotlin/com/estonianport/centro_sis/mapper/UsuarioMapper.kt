@@ -18,7 +18,8 @@ object UsuarioMapper {
             apellido = usuario.apellido,
             email = usuario.email,
             celular = usuario.celular,
-            primerLogin = usuario.estado == EstadoType.PENDIENTE
+            primerLogin = usuario.estado == EstadoType.PENDIENTE,
+            listaRol = usuario.getRolTypes()
         )
     }
 

@@ -21,4 +21,6 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         curso.fechaBaja = LocalDate.now()
         cursoRepository.save(curso)
     }
+
+    //cursoRepository.getCursosByUsuario
 }
