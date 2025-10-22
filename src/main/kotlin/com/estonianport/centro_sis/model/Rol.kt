@@ -1,39 +1,67 @@
 package com.estonianport.centro_sis.model
 
-import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.model.enums.BeneficioType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.ManyToOne
-import jakarta.persistence.PrimaryKeyJoinColumn
+
+import jakarta.persistence.*
 import java.time.LocalDate
 
 @Entity
-class Rol(
-
+@Inheritance(strategy = InheritanceType.JOINED)
+abstract class Rol(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column
-    @Enumerated(EnumType.STRING)
-    val rol: RolType,
-
-    @ManyToOne
-    @PrimaryKeyJoinColumn
+    @ManyToOne(fetch = FetchType.LAZY)
     var usuario: Usuario,
 
-    @ManyToOne
-    @PrimaryKeyJoinColumn
-    var curso: Curso){
-
     @Column
-    var fechaAlta: LocalDate = LocalDate.now()
+    var fechaAlta: LocalDate = LocalDate.now(),
 
     @Column
     var fechaBaja: LocalDate? = null
+)
+
+@Entity
+@DiscriminatorValue("ADMIN")
+class RolAdmin(
+    usuario: Usuario
+) : Rol(usuario = usuario)
+
+@Entity
+@DiscriminatorValue("PROFESOR")
+class RolProfesor(
+    usuario: Usuario,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    var curso: Curso
+) : Rol(usuario = usuario)
+
+@Entity
+@DiscriminatorValue("ALUMNO")
+class RolAlumno(
+    usuario: Usuario,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    var curso: Curso,
+
+
+    @OneToMany(mappedBy = "alumno", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var pagos: MutableList<Pago> = mutableListOf(),
+    @Enumerated(EnumType.STRING)
+
+    @Column(nullable = true)
+    var beneficioType: BeneficioType? = null
+    ) : Rol(usuario = usuario) {
+
+    fun calcularArancelFinal(arancelBase: Double, beneficioFactory: BeneficioFactory): Double {
+        val beneficio = beneficioType?.let { beneficioFactory.getStrategy(it) }
+        return beneficio?.aplicarBeneficio(arancelBase, usuario, curso) ?: arancelBase
+    }
 }

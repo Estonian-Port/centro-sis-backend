@@ -1,7 +1,5 @@
 package com.estonianport.centro_sis.model
 
-import com.estonianport.centro_sis.model.Usuario
-
 interface BeneficioStrategy {
     fun aplicarBeneficio(arancelBase: Double, usuario: Usuario, curso: Curso): Double
 }
