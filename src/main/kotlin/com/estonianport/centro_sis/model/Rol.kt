@@ -52,7 +52,7 @@ class RolAlumno(
     @Column(nullable = true)
     var beneficioType: BeneficioType? = null
 ) : Rol(usuario = usuario) {
-    
+
     fun calcularArancelFinal(arancelBase: Double, beneficioFactory: BeneficioFactory): Double {
         val beneficio = beneficioType?.let { beneficioFactory.getStrategy(it) }
         return beneficio?.aplicarBeneficio(arancelBase, usuario, curso) ?: arancelBase
