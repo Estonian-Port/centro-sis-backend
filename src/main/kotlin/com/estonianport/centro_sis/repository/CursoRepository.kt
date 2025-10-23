@@ -7,14 +7,16 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface CursoRepository : CrudRepository<Curso, Long> {
-/*
     @Query(
         """
-    SELECT COUNT(DISTINCT u)
-    FROM Curso c
-    WHERE u.ultimoIngreso IS NOT NULL
-    AND u.fechaBaja IS NULL
-"""
+        SELECT r.curso
+        FROM Usuario u
+        INNER JOIN u.listaRol r
+        WHERE u.id = :id 
+        AND r.fechaBaja IS NULL
+        """
     )
-    fun getCursosByUsuario(): Int*/
+
+    fun getAllByUsuarioId(id: Long): List<Curso>
+
 }

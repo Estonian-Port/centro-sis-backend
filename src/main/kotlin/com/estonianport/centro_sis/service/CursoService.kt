@@ -22,5 +22,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         cursoRepository.save(curso)
     }
 
-    //cursoRepository.getCursosByUsuario
+    fun getAllByUsuarioId(id: Long): List<Curso> {
+        return cursoRepository.getAllByUsuarioId(id)
+    }
 }
