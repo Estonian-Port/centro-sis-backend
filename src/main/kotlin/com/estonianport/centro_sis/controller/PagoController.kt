@@ -26,4 +26,17 @@ class PagoController(private val pagoService: PagoService) {
             )
         )
     }
+    @GetMapping("/getAllByUsuarioId/{id}")
+    fun getAllByUsuarioId(@PathVariable id: Long): ResponseEntity<CustomResponse> {
+        val listaPago = pagoService.getAllByUsuarioId(id)!!
+
+        val listaPagoDto = listaPago.map{ PagoMapper.buildPagoResponseDto(it) }
+
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Pago obtenido correctamente",
+                data = listaPagoDto
+            )
+        )
+    }
 }
