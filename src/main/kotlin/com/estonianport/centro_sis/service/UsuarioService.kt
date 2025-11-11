@@ -7,6 +7,7 @@ import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.model.enums.EstadoType
+import com.estonianport.centro_sis.repository.RolRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -18,6 +19,9 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
 
     @Autowired
     lateinit var usuarioRepository: UsuarioRepository
+
+    @Autowired
+    lateinit var rolRepository: RolRepository
 
     override val dao: CrudRepository<Usuario, Long>
         get() = usuarioRepository
@@ -143,6 +147,14 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         usuario.password = encriptarPassword(usuarioDto.nuevoPassword)
         save(usuario)
         return usuario
+    }
+
+    fun countAlumnosActivos(): Long {
+        return rolRepository.countDistinctUsuariosAlumnoByEstado(EstadoType.ACTIVO)
+    }
+
+    fun countProfesores(): Long {
+        return rolRepository.countDistinctUsuariosProfesorByEstado(EstadoType.ACTIVO)
     }
 
 }

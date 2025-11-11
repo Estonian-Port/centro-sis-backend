@@ -41,6 +41,6 @@ data class Curso(
     var estado: EstadoType = EstadoType.ACTIVO,
 
     @Column
-    var fechaBaja: LocalDate
+    var fechaBaja: LocalDate? = null,
 )
 

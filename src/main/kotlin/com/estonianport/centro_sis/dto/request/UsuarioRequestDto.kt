@@ -11,6 +11,7 @@ data class UsuarioRequestDto (
 
 data class UsuarioAltaRequestDto (
     val email: String,
+    val rol: String
 )
 
 data class UsuarioCambioPasswordRequestDto (

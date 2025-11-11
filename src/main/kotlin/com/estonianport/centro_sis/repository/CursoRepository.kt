@@ -19,4 +19,6 @@ interface CursoRepository : CrudRepository<Curso, Long> {
 
     fun getAllByUsuarioId(id: Long): List<Curso>
 
+    fun countByFechaBajaIsNull(): Long
+
 }

@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.repository
 
 import com.estonianport.centro_sis.model.Usuario
+import com.estonianport.centro_sis.model.enums.EstadoType
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository

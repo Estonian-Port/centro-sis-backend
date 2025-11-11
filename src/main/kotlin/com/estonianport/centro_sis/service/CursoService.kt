@@ -25,4 +25,8 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     fun getAllByUsuarioId(id: Long): List<Curso> {
         return cursoRepository.getAllByUsuarioId(id)
     }
+
+    fun countCursos(): Long {
+        return cursoRepository.countByFechaBajaIsNull()
+    }
 }

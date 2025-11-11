@@ -34,7 +34,7 @@ class RolProfesor(
     usuario: Usuario,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    var curso: Curso
+    var curso: Curso? = null
 ) : Rol(usuario = usuario)
 
 @Entity
@@ -43,7 +43,7 @@ class RolAlumno(
     usuario: Usuario,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    var curso: Curso,
+    var curso: Curso? = null,
 
     @OneToMany(mappedBy = "alumno", cascade = [CascadeType.ALL], orphanRemoval = true)
     var pagos: MutableList<Pago> = mutableListOf(),

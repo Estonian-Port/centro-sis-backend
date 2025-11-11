@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service
 @Service
 class AdministracionService(
     private val usuarioService: UsuarioService,
+    private val cursoService: CursoService,
+    private val pagoService: PagoService
 ) {
 
     fun verificarRol(usuarioId: Long) {
@@ -20,11 +22,16 @@ class AdministracionService(
     }
 
     fun getEstadisticas(): EstadisticasResponseDto {
+        val totalAlumnosActivos = usuarioService.countAlumnosActivos()
+        val totalCursos = cursoService.countCursos()
+        val totalProfesores = usuarioService.countProfesores()
+        val ingresosMes = pagoService.calcularIngresosMensuales()
+
         return EstadisticasResponseDto(
-            totalUsuarios = usuarioService.totalUsuarios(),
-            usuariosActivos = usuarioService.countUsuariosActivos(),
-            usuariosPendientes = usuarioService.countUsuariosPendientes(),
-            usuariosInactivos = usuarioService.countUsuariosInactivos(),
+            alumnosActivos = totalAlumnosActivos,
+            cursos = totalCursos,
+            profesores = totalProfesores,
+            ingresosMensuales = ingresosMes
         )
     }
 

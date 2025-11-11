@@ -67,4 +67,12 @@ class Usuario(
                 else -> throw IllegalArgumentException("Rol desconocido")
             }
         }.toMutableSet()
+
+    fun asignarRol(rol: Rol) {
+        listaRol.add(rol)
+    }
+
+    fun quitarRol(rol: Rol) {
+        listaRol.remove(rol)
+    }
 }

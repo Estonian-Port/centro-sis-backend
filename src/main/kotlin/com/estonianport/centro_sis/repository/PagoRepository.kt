@@ -3,7 +3,9 @@ package com.estonianport.centro_sis.repository
 import com.estonianport.centro_sis.model.Pago
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDate
 
 @Repository
 interface PagoRepository : CrudRepository<Pago, Long> {
@@ -16,4 +18,7 @@ interface PagoRepository : CrudRepository<Pago, Long> {
         """
     )
     fun getAllByUsuarioId(id: Long): List<Pago>
+
+    fun findByFechaBetweenAndFechaBajaIsNull(desde: LocalDate, hasta: LocalDate): List<Pago>
+
 }

@@ -28,7 +28,7 @@ class PagoController(private val pagoService: PagoService) {
     }
     @GetMapping("/getAllByUsuarioId/{id}")
     fun getAllByUsuarioId(@PathVariable id: Long): ResponseEntity<CustomResponse> {
-        val listaPago = pagoService.getAllByUsuarioId(id)!!
+        val listaPago = pagoService.getAllByUsuarioId(id)
 
         val listaPagoDto = listaPago.map{ PagoMapper.buildPagoResponseDto(it) }
 
