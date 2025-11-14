@@ -23,7 +23,7 @@ abstract class Rol(
 )
 
 @Entity
-@DiscriminatorValue("ADMIN")
+@DiscriminatorValue("ADMINISTRADOR")
 class RolAdmin(
     usuario: Usuario
 ) : Rol(usuario = usuario)

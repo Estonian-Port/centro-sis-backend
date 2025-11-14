@@ -17,11 +17,17 @@ object UsuarioMapper {
             id = usuario.id,
             nombre = usuario.nombre,
             apellido = usuario.apellido,
+            dni = usuario.dni,
             email = usuario.email,
             celular = usuario.celular,
+            estado = usuario.estado.name,
             primerLogin = usuario.estado == EstadoType.PENDIENTE,
             listaRol = usuario.getRolTypes()
         )
+    }
+
+    fun buildNombreCompleto(usuario: Usuario): String {
+        return "${usuario.nombre} ${usuario.apellido}"
     }
 
     fun buildUsuarioRegistradoResponseDto(usuario: Usuario): UsuarioRegistradoResponseDto {
@@ -49,6 +55,7 @@ object UsuarioMapper {
             id = usuarioDto.id,
             nombre = usuarioDto.nombre,
             apellido = usuarioDto.apellido,
+            dni = usuarioDto.dni,
             celular = usuarioDto.celular,
             email = usuarioDto.email
         )
@@ -59,6 +66,7 @@ object UsuarioMapper {
             id = 0,
             nombre = "",
             apellido = "",
+            dni = "",
             celular = 0,
             email = usuarioDto.email
         )

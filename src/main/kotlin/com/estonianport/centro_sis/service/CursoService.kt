@@ -29,4 +29,16 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     fun countCursos(): Long {
         return cursoRepository.countByFechaBajaIsNull()
     }
+
+    fun getById(id: Long): Curso {
+        return cursoRepository.findById(id).orElseThrow { Exception("Curso no encontrado") }
+    }
+
+    fun getAllCursos(): List<Curso> {
+        return cursoRepository.findAll().filter { it.fechaBaja == null }
+    }
+
+    fun alta (nuevoCurso : Curso) : Curso {
+        return cursoRepository.save(nuevoCurso)
+    }
 }

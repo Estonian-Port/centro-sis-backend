@@ -20,22 +20,21 @@ data class Curso(
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
-        name = "curso_dias",
+        name = "curso_horarios",
         joinColumns = [JoinColumn(name = "curso_id")]
     )
-    @Enumerated(EnumType.STRING)
-    @Column(name = "dia")
-    var dias: MutableList<DayOfWeek> = mutableListOf(),
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "curso_horarios", joinColumns = [JoinColumn(name = "curso_id")])
-    @Column(name = "horario")
-    val horarios: Set<LocalTime> = emptySet(),
+    val horarios: MutableList<Horario> = mutableListOf(),
 
     val arancel: Double,
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+        name = "curso_tipos_pago",
+        joinColumns = [JoinColumn(name = "curso_id")]
+    )
     @Enumerated(EnumType.STRING)
-    val tipoPago: PagoType,
+    @Column(name = "tipo_pago")
+    val tiposPago: MutableSet<PagoType> = mutableSetOf(),
 
     @Enumerated(EnumType.STRING)
     var estado: EstadoType = EstadoType.ACTIVO,

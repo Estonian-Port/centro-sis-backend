@@ -147,4 +147,18 @@ class UsuarioController (
         )
     }
 
+    //Endpoint para obtener todos los usuarios menos el que realiza la peticion, se usa en la vista
+    //de gestion de usuarios en la vista del administrador
+    @GetMapping("/all/{userId}")
+    fun getAllUsuarios(@PathVariable userId : Long): ResponseEntity<CustomResponse> {
+        val usuarios = usuarioService.getAllUsuarios()
+        val usuariosDto = usuarios.filter { it.id != userId }.map { UsuarioMapper.buildUsuarioResponseDto(it) }
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Usuarios obtenidos correctamente",
+                data = usuariosDto
+            )
+        )
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.repository
 
 import com.estonianport.centro_sis.model.Rol
+import com.estonianport.centro_sis.model.RolProfesor
 import com.estonianport.centro_sis.model.enums.EstadoType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -29,7 +30,6 @@ interface RolRepository : JpaRepository<Rol, Long> {
     )
     fun countDistinctUsuariosProfesorByEstado(estado: EstadoType): Long
 
-    // Si añades un campo persistente `rolType: RolType` en la entidad Rol,
-    // puedes usar una query derivada más simple:
-    // fun countDistinctUsuariosByListaRol_RolTypeAndUsuario_Estado(rolType: RolType, estado: EstadoType): Long
+    fun findRolProfesorByCurso_Id(cursoId: Long): List<RolProfesor>
+
 }
