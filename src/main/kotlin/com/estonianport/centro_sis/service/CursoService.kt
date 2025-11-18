@@ -3,6 +3,7 @@ package com.estonianport.centro_sis.service
 import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.repository.CursoRepository
+import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -13,6 +14,9 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     @Autowired
     lateinit var cursoRepository: CursoRepository
 
+    @Autowired
+    lateinit var inscripcionRepository: InscripcionRepository
+
     override val dao: CursoRepository
         get() = cursoRepository
 
@@ -22,8 +26,9 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         cursoRepository.save(curso)
     }
 
-    fun getAllByUsuarioId(id: Long): List<Curso> {
-        return cursoRepository.getAllByUsuarioId(id)
+    fun getAllCursosByUsuarioId(id: Long): List<Curso> {
+        return inscripcionRepository.getAllInscripcionesByUsuarioId(id)
+            .map { it.curso }
     }
 
     fun countCursos(): Long {

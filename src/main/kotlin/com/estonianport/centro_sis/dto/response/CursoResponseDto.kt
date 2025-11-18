@@ -12,3 +12,14 @@ data class CursoResponseDto (
     val tiposPago: Set<String>,
     val profesores: Set<String>,
 )
+
+data class CursoAlumnoResponseDto (
+    val id: Long,
+    val nombre: String,
+    val horarios: Set<HorarioDto>,
+    val arancel: Double,
+    val tiposPago: Set<String>,
+    val profesores: Set<String>,
+    val beneficios: Set<String>,
+    val estadoPago: String,
+)

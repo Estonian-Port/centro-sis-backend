@@ -3,10 +3,10 @@ package com.estonianport.centro_sis.controller
 import com.estonianport.centro_sis.dto.request.CursoRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
-import com.estonianport.centro_sis.model.Rol
 import com.estonianport.centro_sis.model.RolFactory
-import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.service.BeneficioService
 import com.estonianport.centro_sis.service.CursoService
+import com.estonianport.centro_sis.service.PagoService
 import com.estonianport.centro_sis.service.RolService
 import com.estonianport.centro_sis.service.UsuarioService
 import org.springframework.http.ResponseEntity
@@ -25,7 +25,8 @@ class CursoController(
     private val cursoService: CursoService,
     private val usuarioService: UsuarioService,
     private val rolService: RolService,
-    private val rolFactory: RolFactory
+    private val rolFactory: RolFactory,
+    private val pagoService: PagoService
 ) {
 
     @GetMapping("/{id}")
@@ -41,12 +42,21 @@ class CursoController(
         )
     }
 
-    @GetMapping("/getAllByUsuarioId/{id}")
-    fun getAllByUsuarioId(@PathVariable id: Long): ResponseEntity<CustomResponse> {
-        val listaCurso = cursoService.getAllByUsuarioId(id)
-        val profesores = rolService.getProfesorByCursoId(id)
+    @GetMapping("/getAllByUsuarioId/{idUsuario}")
+    fun getAllByUsuarioId(@PathVariable idUsuario: Long): ResponseEntity<CustomResponse> {
+        val listaCurso = cursoService.getAllCursosByUsuarioId(idUsuario)
+        val usuario = usuarioService.getById(idUsuario)
+        val beneficios = usuario.beneficios
+        val rolAlumno = usuario.getRolAlumno()
 
-        val listaCursoDto = listaCurso.map { CursoMapper.buildCursoResponseDto(it, profesores) }
+        val listaCursoDto = listaCurso.map {
+            CursoMapper.buildCursoAlumnoResponseDto(
+                it,
+                rolService.getProfesorByCursoId(it.id),
+                beneficios,
+                rolAlumno.getInscripcionPorCurso(it).estadoPago
+            )
+        }
 
         return ResponseEntity.status(200).body(
             CustomResponse(

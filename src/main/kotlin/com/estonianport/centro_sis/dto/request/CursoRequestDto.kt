@@ -8,5 +8,7 @@ data class CursoRequestDto (
     val horarios: Set<HorarioDto>,
     val arancel: Double,
     val tipoPago: Set<String>,
-    val profesoresId : Set<Long>
+    val profesoresId : Set<Long>,
+    val fechaInicio: String,
+    val fechaFin: String
 )

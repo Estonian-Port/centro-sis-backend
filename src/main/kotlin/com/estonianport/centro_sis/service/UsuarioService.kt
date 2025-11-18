@@ -6,6 +6,7 @@ import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
+import com.estonianport.centro_sis.model.enums.BeneficioType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.repository.RolRepository
 import org.springframework.beans.factory.annotation.Autowired

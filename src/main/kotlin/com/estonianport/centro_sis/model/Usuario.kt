@@ -78,4 +78,19 @@ class Usuario(
     fun quitarRol(rol: Rol) {
         listaRol.remove(rol)
     }
+
+    fun getRolAlumno(): RolAlumno {
+        return listaRol.filterIsInstance<RolAlumno>().firstOrNull()
+            ?: throw NoSuchElementException("El usuario no tiene el rol de alumno")
+    }
+
+    fun getRolProfesor(): RolProfesor {
+        return listaRol.filterIsInstance<RolProfesor>().firstOrNull()
+            ?: throw NoSuchElementException("El usuario no tiene el rol de profesor")
+    }
+
+    fun getRolAdmin(): RolAdmin {
+        return listaRol.filterIsInstance<RolAdmin>().firstOrNull()
+            ?: throw NoSuchElementException("El usuario no tiene el rol de administrador")
+    }
 }
