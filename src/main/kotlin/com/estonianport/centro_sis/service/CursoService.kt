@@ -26,9 +26,13 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         cursoRepository.save(curso)
     }
 
-    fun getAllCursosByUsuarioId(id: Long): List<Curso> {
+    fun getAllCursosByAlumnoId(id: Long): List<Curso> {
         return inscripcionRepository.getAllInscripcionesByUsuarioId(id)
             .map { it.curso }
+    }
+
+    fun cantAlumnosInscritos(cursoId: Long): Int {
+        return inscripcionRepository.countByCursoIdAndFechaBajaIsNull(cursoId)
     }
 
     fun countCursos(): Long {

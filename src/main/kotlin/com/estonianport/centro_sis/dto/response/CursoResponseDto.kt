@@ -23,3 +23,13 @@ data class CursoAlumnoResponseDto (
     val beneficios: Set<String>,
     val estadoPago: String,
 )
+
+data class CursoProfesorResponseDto (
+    val id: Long,
+    val nombre: String,
+    val horarios: Set<HorarioDto>,
+    val alumnosInscriptos: Int,
+    val fechaIncio: String,
+    val fechaFin: String,
+    val estado: String,
+)

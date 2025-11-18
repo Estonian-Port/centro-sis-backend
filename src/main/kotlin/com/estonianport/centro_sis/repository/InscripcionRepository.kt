@@ -23,4 +23,6 @@ interface InscripcionRepository : CrudRepository<Inscripcion, Long> {
     )
     fun getAllInscripcionesByUsuarioId(id: Long): List<Inscripcion>
 
+    fun countByCursoIdAndFechaBajaIsNull(cursoId: Long): Int
+
 }

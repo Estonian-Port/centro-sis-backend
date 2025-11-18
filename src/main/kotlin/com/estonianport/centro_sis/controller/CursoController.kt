@@ -42,10 +42,10 @@ class CursoController(
         )
     }
 
-    @GetMapping("/getAllByUsuarioId/{idUsuario}")
-    fun getAllByUsuarioId(@PathVariable idUsuario: Long): ResponseEntity<CustomResponse> {
-        val listaCurso = cursoService.getAllCursosByUsuarioId(idUsuario)
-        val usuario = usuarioService.getById(idUsuario)
+    @GetMapping("/getAllByAlumnoId/{idAlumno}")
+    fun getAllByAlumnoId(@PathVariable idAlumno: Long): ResponseEntity<CustomResponse> {
+        val listaCurso = cursoService.getAllCursosByAlumnoId(idAlumno)
+        val usuario = usuarioService.getById(idAlumno)
         val beneficios = usuario.beneficios
         val rolAlumno = usuario.getRolAlumno()
 
@@ -55,6 +55,25 @@ class CursoController(
                 rolService.getProfesorByCursoId(it.id),
                 beneficios,
                 rolAlumno.getInscripcionPorCurso(it).estadoPago
+            )
+        }
+
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Curso obtenido correctamente",
+                data = listaCursoDto
+            )
+        )
+    }
+
+    @GetMapping("/getAllByProfesorId/{idProfesor}")
+    fun getAllByProfesorId(@PathVariable idProfesor: Long): ResponseEntity<CustomResponse> {
+        val listaCurso = rolService.getCursosByProfesorId(idProfesor)
+
+        val listaCursoDto = listaCurso.map {
+            CursoMapper.buildCursoProfesorResponseDto(
+                it,
+                cursoService.cantAlumnosInscritos(it.id)
             )
         }
 

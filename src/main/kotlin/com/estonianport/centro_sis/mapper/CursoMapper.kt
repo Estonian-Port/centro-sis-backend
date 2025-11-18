@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.mapper
 
 import com.estonianport.centro_sis.dto.request.CursoRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
+import com.estonianport.centro_sis.dto.response.CursoProfesorResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Usuario
@@ -33,6 +34,18 @@ object CursoMapper {
             profesores = profesores.map { UsuarioMapper.buildNombreCompleto(it) }.toSet(),
             beneficios = beneficiosAlumno.map { it.name }.toSet(),
             estadoPago = estadoPago.name
+        )
+    }
+
+    fun buildCursoProfesorResponseDto(curso: Curso, cantAlumnos : Int): CursoProfesorResponseDto {
+        return CursoProfesorResponseDto(
+            id = curso.id,
+            nombre = curso.nombre,
+            horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
+            alumnosInscriptos = cantAlumnos,
+            fechaIncio = curso.fechaInicio.toString(),
+            fechaFin = curso.fechaFin.toString(),
+            estado = curso.estado.name,
         )
     }
 
