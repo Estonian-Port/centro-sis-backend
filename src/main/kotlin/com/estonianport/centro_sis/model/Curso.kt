@@ -1,23 +1,18 @@
 package com.estonianport.centro_sis.model
 
-import com.estonianport.centro_sis.model.enums.EstadoCursoType
-import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
-import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
 
 @Entity
-data class Curso(
-
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = "tipo_curso")
+sealed class Curso(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column
+    @Column(nullable = false)
     val nombre: String,
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -27,36 +22,64 @@ data class Curso(
     )
     val horarios: MutableList<Horario> = mutableListOf(),
 
-    val arancel: Double,
-
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "curso_tipos_pago",
         joinColumns = [JoinColumn(name = "curso_id")]
     )
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_pago")
-    val tiposPago: MutableSet<PagoType> = mutableSetOf(),
-
-    @Column
-    var fechaBaja: LocalDate? = null,
+    val tiposPago: MutableSet<TipoPago> = mutableSetOf(),
 
     @Column
     var fechaInicio: LocalDate,
 
     @Column
-    var fechaFin: LocalDate,
+    var fechaFin: LocalDate
 ) {
-    @Enumerated(EnumType.STRING)
-    var estado: EstadoCursoType = actualizarEstadoCurso()
+    abstract fun definirPrecio(tipo: PagoType, monto: Double)
+    abstract fun calcularPagoProfesor(recaudado: Double): Double
+}
 
-    fun actualizarEstadoCurso(): EstadoCursoType {
-        val hoy = LocalDate.now()
-        return when {
-            hoy.isBefore(fechaInicio) -> EstadoCursoType.POR_COMENZAR
-            hoy.isAfter(fechaFin) -> EstadoCursoType.FINALIZADO
-            else -> EstadoCursoType.EN_CURSO
-        }
+@Entity
+@DiscriminatorValue("ALQUILER")
+class CursoAlquiler(
+    id: Long,
+    nombre: String,
+    horarios: MutableList<Horario>,
+    tiposPago: MutableSet<TipoPago>,
+    fechaInicio: LocalDate,
+    fechaFin: LocalDate,
+    val precioAlquiler: Double
+) : Curso(id, nombre, horarios, tiposPago, fechaInicio, fechaFin) {
+
+    override fun definirPrecio(tipo: PagoType, monto: Double) {
+        tiposPago.removeIf { it.tipoPago == tipo }
+        tiposPago.add(TipoPago(tipo, monto))
+    }
+
+    override fun calcularPagoProfesor(recaudado: Double): Double {
+        return precioAlquiler
+    }
+}
+
+@Entity
+@DiscriminatorValue("COMISION")
+class CursoComision(
+    id: Long,
+    nombre: String,
+    horarios: MutableList<Horario>,
+    tiposPago: MutableSet<TipoPago>,
+    fechaInicio: LocalDate,
+    fechaFin: LocalDate,
+    val porcentajeComision: Double = 0.5
+) : Curso(id, nombre, horarios, tiposPago, fechaInicio, fechaFin) {
+
+    override fun definirPrecio(tipo: PagoType, monto: Double) {
+        throw IllegalStateException("En cursos por comisión solo el instituto puede modificar precios")
+    }
+
+    override fun calcularPagoProfesor(recaudado: Double): Double {
+        return recaudado * porcentajeComision
     }
 }
 

@@ -51,6 +51,8 @@ class RolAlumno(
     var beneficioType: BeneficioType? = null
 ) : Rol(usuario = usuario) {
 
+    var puntos: Int = 0
+
     fun calcularArancelFinal(arancelBase: Double, beneficioFactory: BeneficioFactory): Double {
         val beneficio = beneficioType?.let { beneficioFactory.getStrategy(it) }
         return beneficio?.aplicarBeneficio(arancelBase, usuario, null) ?: arancelBase
@@ -59,7 +61,7 @@ class RolAlumno(
      //Inscribe al alumno en un curso con un tipo de pago específico
     fun inscribirEnCurso(curso: Curso, tipoPago: PagoType): Inscripcion {
         // Verificar que el curso acepte ese tipo de pago
-        if (!curso.tiposPago.contains(tipoPago)) {
+        if (!curso.tiposPago.any { it.tipoPago == tipoPago }) {
             throw IllegalArgumentException("El curso ${curso.nombre} no acepta el tipo de pago $tipoPago")
         }
 
