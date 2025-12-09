@@ -6,7 +6,9 @@ import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
+import com.estonianport.centro_sis.model.enums.BeneficioType
 import com.estonianport.centro_sis.model.enums.EstadoType
+import com.estonianport.centro_sis.repository.RolRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -19,54 +21,28 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     @Autowired
     lateinit var usuarioRepository: UsuarioRepository
 
+    @Autowired
+    lateinit var rolRepository: RolRepository
+
     override val dao: CrudRepository<Usuario, Long>
         get() = usuarioRepository
 
-    /*
-        fun getAllUsuario(id : Long, pageNumber : Int): List<UsuarioAbmDTO> {
-            return usuarioRepository.getAllUsuario(id, PageRequest.of(pageNumber,10)).content
-        }
+    fun getById(id: Long): Usuario {
+        return usuarioRepository.findById(id)
+            .orElseThrow { NoSuchElementException("No se encontró un usuario con el ID proporcionado") }
+    }
 
-        fun getAllUsuarioFiltrados(id : Long, pageNumber : Int, buscar: String): List<UsuarioAbmDTO>{
-            return usuarioRepository.getAllUsuarioFiltrados(id, buscar, PageRequest.of(pageNumber,10)).content
-        }
+    fun getAllUsuarios(): List<Usuario> {
+        return usuarioRepository.findAll().toList()
+    }
 
-        fun getCantidadUsuario(id : Long): Int {
-            return usuarioRepository.getCantidadUsuario(id)
-        }
-
-        fun getCantidadUsuarioFiltrados(id : Long, buscar : String): Int {
-            return usuarioRepository.getCantidadUsuarioFiltrados(id,buscar)
-        }
-
-    */
     fun getUsuarioByEmail(email: String): Usuario {
         return usuarioRepository.getUsuarioByEmail(email)
             ?: throw NoSuchElementException("No se encontró un usuario con el email proporcionado")
     }
 
-    fun getUsuarioByCelular(celular: Long): Usuario? {
-        return usuarioRepository.getUsuarioByCelular(celular)
-    }
-
     fun findById(id: Long): Usuario? {
         return usuarioRepository.findById(id).get()
-    }
-
-    fun totalUsuarios(): Int {
-        return usuarioRepository.totalUsuarios()
-    }
-
-    fun countUsuariosActivos(): Int {
-        return usuarioRepository.countUsuariosActivos()
-    }
-
-    fun countUsuariosInactivos(): Int {
-        return usuarioRepository.countUsuariosInactivos()
-    }
-
-    fun countUsuariosPendientes(): Int {
-        return usuarioRepository.countUsuariosPendientes()
     }
 
     fun getUsuariosRegistrados(): List<Usuario> {
@@ -143,6 +119,14 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         usuario.password = encriptarPassword(usuarioDto.nuevoPassword)
         save(usuario)
         return usuario
+    }
+
+    fun countAlumnosActivos(): Long {
+        return rolRepository.countDistinctUsuariosAlumnoByEstado(EstadoType.ACTIVO)
+    }
+
+    fun countProfesores(): Long {
+        return rolRepository.countDistinctUsuariosProfesorByEstado(EstadoType.ACTIVO)
     }
 
 }

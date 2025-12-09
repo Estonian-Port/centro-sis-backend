@@ -25,6 +25,9 @@ class Usuario(
     @Column
     var email: String,
 
+    @Column
+    val dni: String,
+
     @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var listaRol: MutableSet<Rol> = mutableSetOf(),
 
@@ -67,4 +70,27 @@ class Usuario(
                 else -> throw IllegalArgumentException("Rol desconocido")
             }
         }.toMutableSet()
+
+    fun asignarRol(rol: Rol) {
+        listaRol.add(rol)
+    }
+
+    fun quitarRol(rol: Rol) {
+        listaRol.remove(rol)
+    }
+
+    fun getRolAlumno(): RolAlumno {
+        return listaRol.filterIsInstance<RolAlumno>().firstOrNull()
+            ?: throw NoSuchElementException("El usuario no tiene el rol de alumno")
+    }
+
+    fun getRolProfesor(): RolProfesor {
+        return listaRol.filterIsInstance<RolProfesor>().firstOrNull()
+            ?: throw NoSuchElementException("El usuario no tiene el rol de profesor")
+    }
+
+    fun getRolAdmin(): RolAdmin {
+        return listaRol.filterIsInstance<RolAdmin>().firstOrNull()
+            ?: throw NoSuchElementException("El usuario no tiene el rol de administrador")
+    }
 }

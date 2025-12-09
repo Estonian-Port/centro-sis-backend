@@ -9,7 +9,7 @@ object PagoMapper {
     fun buildPagoResponseDto(pago: Pago): PagoResponseDto {
         return PagoResponseDto(
             id = pago.id,
-            alumnoId = pago.alumno.id,
+            alumnoId = pago.inscripcion.alumno.id,
             monto = pago.monto,
             fecha = pago.fecha,
             retraso = pago.retraso,

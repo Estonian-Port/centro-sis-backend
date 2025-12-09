@@ -1,11 +1,13 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.model.enums.EstadoCursoType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Entity
@@ -20,27 +22,41 @@ data class Curso(
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
-        name = "curso_dias",
+        name = "curso_horarios",
         joinColumns = [JoinColumn(name = "curso_id")]
     )
-    @Enumerated(EnumType.STRING)
-    @Column(name = "dia")
-    var dias: MutableList<DayOfWeek> = mutableListOf(),
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "curso_horarios", joinColumns = [JoinColumn(name = "curso_id")])
-    @Column(name = "horario")
-    val horarios: Set<LocalTime> = emptySet(),
+    val horarios: MutableList<Horario> = mutableListOf(),
 
     val arancel: Double,
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+        name = "curso_tipos_pago",
+        joinColumns = [JoinColumn(name = "curso_id")]
+    )
     @Enumerated(EnumType.STRING)
-    val tipoPago: PagoType,
-
-    @Enumerated(EnumType.STRING)
-    var estado: EstadoType = EstadoType.ACTIVO,
+    @Column(name = "tipo_pago")
+    val tiposPago: MutableSet<PagoType> = mutableSetOf(),
 
     @Column
-    var fechaBaja: LocalDate
-)
+    var fechaBaja: LocalDate? = null,
+
+    @Column
+    var fechaInicio: LocalDate,
+
+    @Column
+    var fechaFin: LocalDate,
+) {
+    @Enumerated(EnumType.STRING)
+    var estado: EstadoCursoType = actualizarEstadoCurso()
+
+    fun actualizarEstadoCurso(): EstadoCursoType {
+        val hoy = LocalDate.now()
+        return when {
+            hoy.isBefore(fechaInicio) -> EstadoCursoType.POR_COMENZAR
+            hoy.isAfter(fechaFin) -> EstadoCursoType.FINALIZADO
+            else -> EstadoCursoType.EN_CURSO
+        }
+    }
+}
 

@@ -4,6 +4,7 @@ data class UsuarioRequestDto (
     val id: Long,
     val nombre: String,
     val apellido: String,
+    val dni: String,
     val celular: Long,
     val email: String,
     val password: String
@@ -11,6 +12,7 @@ data class UsuarioRequestDto (
 
 data class UsuarioAltaRequestDto (
     val email: String,
+    val rol: String
 )
 
 data class UsuarioCambioPasswordRequestDto (
