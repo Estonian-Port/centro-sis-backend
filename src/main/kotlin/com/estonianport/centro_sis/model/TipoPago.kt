@@ -5,6 +5,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import java.math.BigDecimal
 
 @Embeddable
 data class TipoPago(
@@ -12,5 +13,5 @@ data class TipoPago(
     val tipoPago: PagoType,
 
     @Column(nullable = false)
-    val monto: Double
+    val monto: BigDecimal
 )

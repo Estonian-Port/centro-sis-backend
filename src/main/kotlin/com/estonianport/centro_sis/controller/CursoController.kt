@@ -4,7 +4,6 @@ import com.estonianport.centro_sis.dto.request.CursoRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.model.RolFactory
-import com.estonianport.centro_sis.service.BeneficioService
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.PagoService
 import com.estonianport.centro_sis.service.RolService
