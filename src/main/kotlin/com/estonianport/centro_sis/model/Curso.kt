@@ -1,14 +1,18 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.model.enums.EstadoCursoType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
-import com.estonianport.centro_sis.model.Usuario
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 @Entity
-@Table(name = "cursos")
 data class Curso(
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
@@ -17,32 +21,42 @@ data class Curso(
     val nombre: String,
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "curso_dias", joinColumns = [JoinColumn(name = "curso_id")])
-    @Column(name = "dia")
-    val dias: Set<DayOfWeek> = emptySet(),
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "curso_horarios", joinColumns = [JoinColumn(name = "curso_id")])
-    @Column(name = "horario")
-    val horarios: Set<String> = emptySet(), // Could be LocalTime or string representation
+    @CollectionTable(
+        name = "curso_horarios",
+        joinColumns = [JoinColumn(name = "curso_id")]
+    )
+    val horarios: MutableList<Horario> = mutableListOf(),
 
     val arancel: Double,
 
-    // TODO Tipos de pago que acepta?
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+        name = "curso_tipos_pago",
+        joinColumns = [JoinColumn(name = "curso_id")]
+    )
     @Enumerated(EnumType.STRING)
-    val tipoPago: PagoType,
+    @Column(name = "tipo_pago")
+    val tiposPago: MutableSet<PagoType> = mutableSetOf(),
 
-    @ManyToOne
-    @JoinColumn(name = "profesor_id")
-    var profesorAsignado: Usuario? = null,
+    @Column
+    var fechaBaja: LocalDate? = null,
 
-    @ManyToMany(mappedBy = "cursosActivos")
-    val alumnosInscriptosActivos: Set<Usuario> = emptySet(),
+    @Column
+    var fechaInicio: LocalDate,
 
-    @ManyToMany(mappedBy = "cursosDadosDeBaja")
-    val alumnosInscriptosBaja: Set<Usuario> = emptySet(),
-
+    @Column
+    var fechaFin: LocalDate,
+) {
     @Enumerated(EnumType.STRING)
-    var estado: EstadoType = EstadoType.ACTIVO
-)
+    var estado: EstadoCursoType = actualizarEstadoCurso()
+
+    fun actualizarEstadoCurso(): EstadoCursoType {
+        val hoy = LocalDate.now()
+        return when {
+            hoy.isBefore(fechaInicio) -> EstadoCursoType.POR_COMENZAR
+            hoy.isAfter(fechaFin) -> EstadoCursoType.FINALIZADO
+            else -> EstadoCursoType.EN_CURSO
+        }
+    }
+}
 

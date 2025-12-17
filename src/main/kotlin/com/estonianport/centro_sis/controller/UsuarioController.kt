@@ -9,6 +9,7 @@ import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.model.RolFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
@@ -26,7 +27,9 @@ import java.time.LocalDate
 @RestController
 @RequestMapping("/usuario")
 @CrossOrigin("*")
-class UsuarioController {
+class UsuarioController (
+    private val rolFactory: RolFactory,
+) {
 
     @Autowired
     private lateinit var emailService: EmailService
@@ -62,6 +65,7 @@ class UsuarioController {
         )
     }
 
+    //Endpoint para las altas de usuarios por parte del administrador
     @PostMapping("/altaUsuario")
     fun altaUsuario(@RequestBody usuarioDto: UsuarioAltaRequestDto): ResponseEntity<CustomResponse> {
         usuarioService.verificarEmailNoExiste(usuarioDto.email)
@@ -70,11 +74,13 @@ class UsuarioController {
         val password = usuarioService.generarPassword()
         usuario.password = usuarioService.encriptarPassword(password)
         usuario.fechaAlta = LocalDate.now()
+        val rol = rolFactory.build(usuarioDto.rol, usuario)
+        usuario.asignarRol(rol)
 
         usuarioService.save(usuario)
 
         try {
-            emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a UNIQUE", password);
+            emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password);
         } catch (_: Exception) {
             // TODO enviar notificacion de fallo al enviar el mail
         }
@@ -137,6 +143,20 @@ class UsuarioController {
             CustomResponse(
                 message = "Perfil actualizado correctamente",
                 data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePerfil(usuario))
+            )
+        )
+    }
+
+    //Endpoint para obtener todos los usuarios menos el que realiza la peticion, se usa en la vista
+    //de gestion de usuarios en la vista del administrador
+    @GetMapping("/all/{userId}")
+    fun getAllUsuarios(@PathVariable userId : Long): ResponseEntity<CustomResponse> {
+        val usuarios = usuarioService.getAllUsuarios()
+        val usuariosDto = usuarios.filter { it.id != userId }.map { UsuarioMapper.buildUsuarioResponseDto(it) }
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Usuarios obtenidos correctamente",
+                data = usuariosDto
             )
         )
     }

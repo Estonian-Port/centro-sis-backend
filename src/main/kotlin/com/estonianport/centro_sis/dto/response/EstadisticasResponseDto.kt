@@ -1,8 +1,8 @@
 package com.estonianport.centro_sis.dto.response
 
 data class EstadisticasResponseDto (
-    val totalUsuarios: Int,
-    val usuariosActivos: Int,
-    val usuariosInactivos: Int,
-    val usuariosPendientes: Int,
+    val alumnosActivos: Long,
+    val cursos: Long,
+    val profesores: Long,
+    val ingresosMensuales: Double
 )
