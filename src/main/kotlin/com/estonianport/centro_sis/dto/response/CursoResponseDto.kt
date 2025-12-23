@@ -8,8 +8,7 @@ data class CursoResponseDto (
     val id: Long,
     val nombre: String,
     val horarios: Set<HorarioDto>,
-    val arancel: Double,
-    val tiposPago: Set<String>,
+    val tiposPago: Set<TipoPagoResponseDto>,
     val profesores: Set<String>,
 )
 
@@ -18,9 +17,9 @@ data class CursoAlumnoResponseDto (
     val nombre: String,
     val horarios: Set<HorarioDto>,
     val arancel: Double,
-    val tiposPago: Set<String>,
+    val tipoPagoElegido: String,
     val profesores: Set<String>,
-    val beneficios: Set<String>,
+    val beneficio: Int,
     val estadoPago: String,
 )
 

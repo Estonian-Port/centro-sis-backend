@@ -16,6 +16,14 @@ abstract class Curso(
     @Column(nullable = false)
     val nombre: String,
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "curso_profesores",
+        joinColumns = [JoinColumn(name = "curso_id")],
+        inverseJoinColumns = [JoinColumn(name = "profesor_id")]
+    )
+    val profesores: MutableSet<RolProfesor> = mutableSetOf(),
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "curso_horarios",
@@ -35,6 +43,9 @@ abstract class Curso(
 
     @Column(nullable = false)
     var fechaFin: LocalDate,
+
+    @Column
+    var fechaBaja: LocalDate? = null,
 
     @Column(nullable = false, precision = 5, scale = 2)
     var recargoAtraso: BigDecimal = BigDecimal.ONE,
@@ -101,10 +112,12 @@ abstract class Curso(
 class CursoAlquiler(
     id: Long = 0,
     nombre: String,
+    profesores: MutableSet<RolProfesor> = mutableSetOf(),
     horarios: MutableList<Horario> = mutableListOf(),
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,
     fechaFin: LocalDate,
+    fechaBaja: LocalDate? = null,
     recargoAtraso: BigDecimal = BigDecimal.ONE,
 
     @Column(nullable = false, precision = 10, scale = 2)
@@ -112,8 +125,11 @@ class CursoAlquiler(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profesor_id")
-    var profesor: RolProfesor? = null
-) : Curso(id, nombre, horarios, tiposPago, fechaInicio, fechaFin, recargoAtraso) {
+    var profesor: RolProfesor? = null,
+
+    @OneToMany(mappedBy = "curso", cascade = [CascadeType.ALL])
+    val pagosAlquiler: MutableList<PagoAlquiler> = mutableListOf()
+) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso) {
 
     init {
         require(precioAlquiler > BigDecimal.ZERO) {
@@ -127,12 +143,22 @@ class CursoAlquiler(
     }
 
     fun registrarPagoAlquiler(): PagoAlquiler {
-        return PagoAlquiler(
+        val pago = PagoAlquiler(
             curso = this,
             monto = precioAlquiler,
             fecha = LocalDate.now(),
             profesor = profesor ?: throw IllegalStateException("El curso no tiene profesor asignado")
         )
+        pagosAlquiler.add(pago)
+        return pago
+    }
+
+    fun obtenerPagosActivos(): List<PagoAlquiler> {
+        return pagosAlquiler.filter { it.estaActivo() }
+    }
+
+    fun calcularTotalPagado(): BigDecimal {
+        return obtenerPagosActivos().sumOf { it.monto }
     }
 }
 
@@ -141,15 +167,20 @@ class CursoAlquiler(
 class CursoComision(
     id: Long = 0,
     nombre: String,
+    profesores: MutableSet<RolProfesor> = mutableSetOf(),
     horarios: MutableList<Horario> = mutableListOf(),
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,
     fechaFin: LocalDate,
+    fechaBaja: LocalDate? = null,
     recargoAtraso: BigDecimal = BigDecimal.ONE,
 
     @Column(nullable = false, precision = 3, scale = 2)
-    var porcentajeComision: BigDecimal = BigDecimal("0.50")
-) : Curso(id, nombre, horarios, tiposPago, fechaInicio, fechaFin, recargoAtraso) {
+    var porcentajeComision: BigDecimal = BigDecimal("0.50"),
+
+    @OneToMany(mappedBy = "curso", cascade = [CascadeType.ALL])
+    val pagosComision: MutableList<PagoComision> = mutableListOf()
+) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso) {
 
     init {
         require(porcentajeComision >= BigDecimal.ZERO && porcentajeComision <= BigDecimal.ONE) {
@@ -160,5 +191,20 @@ class CursoComision(
     override fun calcularPagoProfesor(): BigDecimal {
         val recaudado = calcularRecaudacionTotal()
         return recaudado * porcentajeComision
+    }
+
+    fun registrarPagoComision(profesor: RolProfesor): PagoComision {
+        val pago = PagoComision(
+            curso = this,
+            monto = calcularPagoProfesor(),
+            fecha = LocalDate.now(),
+            profesor = profesor
+        )
+        pagosComision.add(pago)
+        return pago
+    }
+
+    fun obtenerPagosActivos(): List<PagoComision> {
+        return pagosComision.filter { it.estaActivo() }
     }
 }

@@ -6,11 +6,15 @@ import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
-import com.estonianport.centro_sis.model.enums.BeneficioType
+import com.estonianport.centro_sis.dto.response.CustomResponse
+import com.estonianport.centro_sis.model.Curso
+import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.enums.EstadoType
+import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.repository.RolRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
+import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -127,6 +131,22 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
 
     fun countProfesores(): Long {
         return rolRepository.countDistinctUsuariosProfesorByEstado(EstadoType.ACTIVO)
+    }
+
+    fun obtenerInscripcionesPorAlumno(idAlumno : Long) : List<Inscripcion> {
+        val usuario = getById(idAlumno)
+        if (!usuario.tieneRol(RolType.ALUMNO)) {
+            throw IllegalArgumentException("El usuario con ID $idAlumno no es un alumno.")
+        }
+        return usuario.getRolAlumno().getInscripcionesActivas()
+    }
+
+    fun obtenerCursosProfesor(idProfe : Long) : List<Curso> {
+        val usuario = getById(idProfe)
+        if (!usuario.tieneRol(RolType.PROFESOR)) {
+            throw IllegalArgumentException("El usuario con ID $idProfe no es un profesor.")
+        }
+        return usuario.getRolProfesor().cursosActivos()
     }
 
 }

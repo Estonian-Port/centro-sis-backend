@@ -58,7 +58,7 @@ class Usuario(
         }
     }
 
-    fun getNombreCompleto(): String = "$nombre $apellido"
+    fun nombreCompleto(): String = "$nombre $apellido"
 
     fun getRolTypes(): Set<RolType> =
         listaRol.map {

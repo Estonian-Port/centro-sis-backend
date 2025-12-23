@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.EstadoPagoType
+import com.estonianport.centro_sis.model.enums.RolType
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -26,34 +27,34 @@ class Inscripcion(
         AttributeOverride(name = "tipoPago", column = Column(name = "tipo_pago")),
         AttributeOverride(name = "monto", column = Column(name = "monto_tipo_pago"))
     )
-    var tipoPago: TipoPago,
+    var tipoPagoSeleccionado: TipoPago,
 
     @Column(nullable = false)
-    var fechaInicioCurso: LocalDate = curso.fechaInicio,
+    var fechaInscripcion: LocalDate = LocalDate.now(),
 
     @Column
     var fechaBaja: LocalDate? = null,
 
     @OneToMany(mappedBy = "inscripcion", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var pagos: MutableList<Pago> = mutableListOf(),
+    var pagos: MutableList<PagoCurso> = mutableListOf(),
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var estadoPago: EstadoPagoType = EstadoPagoType.PENDIENTE,
 
-    @Column(nullable = false, precision = 5, scale = 2)
-    var beneficio: BigDecimal = BigDecimal.ONE
+    @Column(nullable = false)
+    var beneficio: Int = 0
 ) {
 
     init {
-        require(beneficio >= BigDecimal.ZERO && beneficio <= BigDecimal.ONE) {
-            "El beneficio debe estar entre 0 y 1"
+        require(beneficio in 0..100) {
+            "El porcentaje de descuento debe estar entre 0 y 100"
         }
     }
 
     // Monto normal sin recargo
     fun calcularMontoBase(): BigDecimal {
-        return tipoPago.monto * beneficio
+        return tipoPagoSeleccionado.monto * convertirBeneficio()
     }
 
     // Monto con recargo si está atrasado
@@ -62,7 +63,7 @@ class Inscripcion(
     }
 
     fun estaAlDia(): Boolean {
-        return when (tipoPago.tipoPago) {
+        return when (tipoPagoSeleccionado.tipoPago) {
             PagoType.MENSUAL -> estaAlDiaMensual()
             PagoType.TOTAL -> estaAlDiaAnual()
         }
@@ -80,7 +81,7 @@ class Inscripcion(
     }
 
     private fun calcularMesesDesdeInscripcion(): Int {
-        val inicio = YearMonth.from(fechaInicioCurso)
+        val inicio = YearMonth.from(curso.fechaInicio)
         val actual = YearMonth.now()
 
         // Si la fecha de inicio es futura, retorna 0
@@ -97,13 +98,13 @@ class Inscripcion(
         return meses
     }
 
-    fun registrarPago(): Pago {
-
-        val pago = Pago(
+    fun registrarPago(): PagoCurso {
+        val pago = PagoCurso(
             inscripcion = this,
             monto = calcularArancelFinal(),
             fecha = LocalDate.now(),
             retraso = esDeudor(),
+            beneficioAplicado = beneficio
         )
 
         pagos.add(pago)
@@ -132,7 +133,7 @@ class Inscripcion(
         }
     }
 
-    private fun esDeudor() : Boolean {
+    private fun esDeudor(): Boolean {
         val mesesDesdeInscripcion = calcularMesesDesdeInscripcion()
         val pagosRealizados = pagos.count { it.fechaBaja == null }
         val pagosAdeudados = mesesDesdeInscripcion - pagosRealizados
@@ -150,7 +151,7 @@ class Inscripcion(
     }
 
     fun calcularDeudaPendiente(): BigDecimal {
-        val pagosEsperados = when (tipoPago.tipoPago) {
+        val pagosEsperados = when (tipoPagoSeleccionado.tipoPago) {
             PagoType.MENSUAL -> calcularMesesDesdeInscripcion()
             PagoType.TOTAL -> 1
         }
@@ -161,21 +162,31 @@ class Inscripcion(
         return BigDecimal(pagosPendientes) * calcularArancelFinal()
     }
 
-    fun aplicarBeneficio(porcentajeDescuento: Int) {
-        require(porcentajeDescuento in 0..100) {
-            "El porcentaje de descuento debe estar entre 0 y 100"
-        }
-
+    fun convertirBeneficio(): BigDecimal {
         // Convertir porcentaje a multiplicador
         // Ej: 20% descuento = 0.80 (paga el 80%)
-        beneficio = BigDecimal.ONE - (BigDecimal(porcentajeDescuento) / BigDecimal(100))
+        val beneficioAplicado = BigDecimal.ONE - (BigDecimal(beneficio) / BigDecimal(100))
+        return beneficioAplicado
+    }
+
+    fun aplicarBeneficio(nuevoBeneficio: Int) {
+        require(nuevoBeneficio in 0..100) {
+            "El porcentaje de descuento debe estar entre 0 y 100"
+        }
+        beneficio = nuevoBeneficio
     }
 
     fun quitarBeneficio() {
-        beneficio = BigDecimal.ONE
+        beneficio = 0
     }
 
     fun darDeBaja(fecha: LocalDate = LocalDate.now()) {
         this.fechaBaja = fecha
+    }
+
+    fun puedeEditar(usuario: Usuario) {
+        if (!usuario.tieneRol(RolType.ADMINISTRADOR) || usuario.tieneRol(RolType.PROFESOR)) {
+            throw IllegalAccessException("El usuario con id ${usuario.id} no tiene permiso para editar esta inscripción")
+        }
     }
 }

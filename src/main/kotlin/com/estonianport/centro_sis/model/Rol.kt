@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import jakarta.persistence.*
 import java.math.BigDecimal
@@ -61,25 +62,51 @@ class RolOficina(
 class RolProfesor(
     usuario: Usuario,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    var curso: Curso? = null
+    @ManyToMany(mappedBy = "profesores", fetch = FetchType.LAZY)
+    var cursos: MutableSet<Curso> = mutableSetOf(),
+
+    // Pagos DE alquiler (profesor PAGA al instituto)
+    @OneToMany(mappedBy = "profesor", cascade = [CascadeType.ALL])
+    val pagosAlquilerRealizados: MutableList<PagoAlquiler> = mutableListOf(),
+
+    // Pagos DE comisión (profesor RECIBE del instituto)
+    @OneToMany(mappedBy = "profesor", cascade = [CascadeType.ALL])
+    val pagosComisionRecibidos: MutableList<PagoComision> = mutableListOf()
 ) : Rol(usuario = usuario) {
 
     override fun puedeGestionarCurso(curso: Curso): Boolean {
-        // Solo puede gestionar cursos de alquiler donde él es el profesor
-        return curso is CursoAlquiler && this.curso?.id == curso.id
+        return curso is CursoAlquiler && cursos.contains(curso)
     }
 
     override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean {
-        // Solo puede registrar pagos en sus cursos de alquiler
         return inscripcion.curso is CursoAlquiler &&
-                this.curso?.id == inscripcion.curso.id
+                cursos.contains(inscripcion.curso)
     }
 
     override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean {
-        // Solo puede asignar beneficios en sus cursos de alquiler
         return inscripcion.curso is CursoAlquiler &&
-                this.curso?.id == inscripcion.curso.id
+                cursos.contains(inscripcion.curso)
+    }
+
+    fun cursosActivos(): List<Curso> {
+        return cursos.filter { it.fechaBaja == null }
+    }
+
+    // Pagos que el profesor REALIZÓ al instituto (alquileres)
+    fun obtenerPagosRealizados(): List<PagoAlquiler> {
+        return pagosAlquilerRealizados.filter { it.estaActivo() }
+    }
+
+    // Pagos que el profesor RECIBIÓ del instituto (comisiones)
+    fun obtenerPagosRecibidos(): List<PagoComision> {
+        return pagosComisionRecibidos.filter { it.estaActivo() }
+    }
+
+    // Balance del profesor (comisiones recibidas - alquileres pagados)
+    fun calcularBalance(): BigDecimal {
+        val totalRecibido = obtenerPagosRecibidos().sumOf { it.monto }
+        val totalPagado = obtenerPagosRealizados().sumOf { it.monto }
+        return totalRecibido - totalPagado
     }
 }
 
@@ -100,20 +127,8 @@ class RolAlumno(
 
     override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean = false
 
-    fun inscribirEnCurso(curso: Curso, tipoPago: PagoType, beneficio: BigDecimal = BigDecimal.ONE): Inscripcion {
-        // Verificar que el curso acepte ese tipo de pago
-        val tipoPagoDisponible = curso.tiposPago.firstOrNull { it.tipoPago == tipoPago }
-            ?: throw IllegalArgumentException("El curso ${curso.nombre} no acepta el tipo de pago $tipoPago")
-
-        val inscripcion = Inscripcion(
-            alumno = this,
-            curso = curso,
-            tipoPago = tipoPagoDisponible,
-            beneficio = beneficio
-        )
-
+    fun inscribirEnCurso(inscripcion: Inscripcion) {
         inscripciones.add(inscripcion)
-        return inscripcion
     }
 
     fun getInscripcionPorCurso(curso: Curso): Inscripcion {

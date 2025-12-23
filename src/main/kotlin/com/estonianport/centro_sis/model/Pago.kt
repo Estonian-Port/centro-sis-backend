@@ -5,27 +5,18 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 @Entity
-@Table(name = "pagos")
-class Pago(
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = "tipo_pago")
+abstract class Pago(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
-    var inscripcion: Inscripcion,
-
     @Column(nullable = false, precision = 10, scale = 2)
-    var monto: BigDecimal,
+    val monto: BigDecimal,
 
     @Column(nullable = false)
-    var fecha: LocalDate = LocalDate.now(),
-
-    @Column(nullable = false)
-    val retraso: Boolean = false,
-
-    @Column(nullable = false, precision = 5, scale = 2)
-    val beneficioAplicado: BigDecimal = inscripcion.beneficio,
+    val fecha: LocalDate = LocalDate.now(),
 
     @Column
     var fechaBaja: LocalDate? = null,
@@ -33,33 +24,68 @@ class Pago(
     @Column(length = 500)
     var observaciones: String? = null
 ) {
-
-    init {
-        require(monto > BigDecimal.ZERO) {
-            "El monto debe ser mayor a cero"
-        }
-        require(beneficioAplicado >= BigDecimal.ZERO && beneficioAplicado <= BigDecimal.ONE) {
-            "El beneficio aplicado debe estar entre 0 y 1"
-        }
-    }
-
-    fun getAlumno(): RolAlumno = inscripcion.alumno
-
-    fun getCurso(): Curso = inscripcion.curso
-
     fun anular(motivo: String) {
         this.fechaBaja = LocalDate.now()
         this.observaciones = "ANULADO: $motivo"
     }
 
     fun estaActivo(): Boolean = fechaBaja == null
+}
+
+// Pago de alumno por inscripción
+@Entity
+@DiscriminatorValue("CURSO")
+class PagoCurso(
+    monto: BigDecimal,
+    fecha: LocalDate = LocalDate.now(),
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
+    val inscripcion: Inscripcion,
+
+    @Column(nullable = false)
+    val retraso: Boolean = false,
+
+    @Column(nullable = false)
+    val beneficioAplicado: Int = 0
+) : Pago(monto = monto, fecha = fecha) {
+
+    fun getAlumno(): RolAlumno = inscripcion.alumno
+    fun getCurso(): Curso = inscripcion.curso
 
     fun calcularDescuentoAplicado(): BigDecimal {
-        return inscripcion.tipoPago.monto * beneficioAplicado
-    }
-
-    fun getPorcentajeDescuento(): Int {
-        val descuento = BigDecimal.ONE - beneficioAplicado
-        return (descuento * BigDecimal(100)).toInt()
+        return inscripcion.tipoPagoSeleccionado.monto * (BigDecimal(beneficioAplicado) / BigDecimal(100))
     }
 }
+
+// Pago de profesor al instituto (alquiler)
+@Entity
+@DiscriminatorValue("ALQUILER")
+class PagoAlquiler(
+    monto: BigDecimal,
+    fecha: LocalDate = LocalDate.now(),
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
+    val curso: CursoAlquiler,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
+    val profesor: RolProfesor
+) : Pago(monto = monto, fecha = fecha)
+
+// Pago del instituto a profesor (comisión)
+@Entity
+@DiscriminatorValue("COMISION")
+class PagoComision(
+    monto: BigDecimal,
+    fecha: LocalDate = LocalDate.now(),
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
+    val curso: CursoComision,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
+    val profesor: RolProfesor
+) : Pago(monto = monto, fecha = fecha)
