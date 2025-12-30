@@ -16,7 +16,7 @@ interface PagoRepository : JpaRepository<Pago, Long> {
 
     fun findByFechaBetweenAndFechaBajaIsNull(desde: LocalDate, hasta: LocalDate): List<Pago>
 
-    fun findByFechaAnulacionIsNull(): List<Pago>
+    fun findByFechaBajaIsNull(): List<Pago>
 
 }
 

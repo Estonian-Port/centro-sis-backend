@@ -1,8 +1,6 @@
 package com.estonianport.centro_sis.dto.response
 
 import com.estonianport.centro_sis.dto.HorarioDto
-import java.time.DayOfWeek
-import java.time.LocalTime
 
 data class CursoResponseDto (
     val id: Long,
@@ -28,7 +26,7 @@ data class CursoProfesorResponseDto (
     val nombre: String,
     val horarios: Set<HorarioDto>,
     val alumnosInscriptos: Int,
-    val fechaIncio: String,
+    val fechaInicio: String,
     val fechaFin: String,
     val estado: String,
 )

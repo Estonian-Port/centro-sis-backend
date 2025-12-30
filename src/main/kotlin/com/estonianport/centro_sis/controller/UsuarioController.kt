@@ -210,7 +210,7 @@ class UsuarioController(
     }
 
     // Obtener pagos recibidos por un profesor
-    @GetMapping("/usuarios/{usuarioId}/pagos-como-profesor")
+    @GetMapping("/usuarios/{usuarioId}/pagos-recibidos-profesor")
     fun obtenerPagosRecibidosComoProfesor(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
         val usuario = usuarioService.getById(usuarioId)
         val profesor = usuario.getRolProfesor()
@@ -225,7 +225,7 @@ class UsuarioController(
     }
 
     // Obtener pagos realizados por un profesor
-    @GetMapping("/usuarios/{usuarioId}/pagos-como-profesor")
+    @GetMapping("/usuarios/{usuarioId}/pagos-realizados-profesor")
     fun obtenerPagosRealizadosComoProfesor(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
         val usuario = usuarioService.getById(usuarioId)
         val profesor = usuario.getRolProfesor()

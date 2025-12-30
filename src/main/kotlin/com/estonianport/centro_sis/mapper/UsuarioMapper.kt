@@ -22,7 +22,7 @@ object UsuarioMapper {
             celular = usuario.celular,
             estado = usuario.estado.name,
             primerLogin = usuario.estado == EstadoType.PENDIENTE,
-            listaRol = usuario.getRolTypes()
+            listaRol = usuario.getRolTypes().toMutableSet()
         )
     }
 

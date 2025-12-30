@@ -5,6 +5,8 @@ import com.estonianport.centro_sis.dto.response.CursoProfesorResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
+import java.time.format.DateTimeFormatter
+import kotlin.text.format
 
 object CursoMapper {
 
@@ -32,13 +34,15 @@ object CursoMapper {
     }
 
     fun buildCursoProfesorResponseDto(curso: Curso, cantAlumnos: Int): CursoProfesorResponseDto {
+        val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+
         return CursoProfesorResponseDto(
             id = curso.id,
             nombre = curso.nombre,
             horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
             alumnosInscriptos = cantAlumnos,
-            fechaIncio = curso.fechaInicio.toString(),
-            fechaFin = curso.fechaFin.toString(),
+            fechaInicio = curso.fechaInicio.format(formatter),
+            fechaFin = curso.fechaFin.format(formatter),
             estado = curso.estado.name,
         )
     }

@@ -38,15 +38,15 @@ class PagoService : GenericServiceImpl<Pago, Long>() {
         pagoRepository.save(pago)
     }
 
-    /*
+
         fun calcularIngresosMensuales(): Double {
             val desde = LocalDate.now().withDayOfMonth(1)
             val hasta = desde.plusMonths(1).minusDays(1)
 
             return pagoRepository.findByFechaBetweenAndFechaBajaIsNull(desde, hasta)
-                .sumOf { it.monto }
+                .sumOf { it.monto }.toDouble()
         }
-    */
+
 
     fun registrarPagoAlumno(inscripcion: Inscripcion, usuario: Usuario): PagoResponseDto {
         // 1. Registrar el pago en la inscripción (como ya lo tienes)
