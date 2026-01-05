@@ -2,8 +2,10 @@ package com.estonianport.centro_sis.repository
 
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.EstadoType
+import com.estonianport.centro_sis.model.enums.RolType
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.util.*
 
@@ -92,7 +94,34 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 
     fun getUsuarioByEmail(email: String): Usuario?
 
-    fun getUsuarioByCelular(celular: Long): Usuario?
+    @Query("""
+    SELECT DISTINCT u FROM Usuario u
+    INNER JOIN u.listaRol r
+    WHERE TYPE(r) = com.estonianport.centro_sis.model.RolProfesor
+""")
+    fun findProfesores(): List<Usuario>
+
+    @Query("""
+    SELECT DISTINCT u FROM Usuario u
+    INNER JOIN u.listaRol r
+    WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAlumno
+""")
+    fun findAlumnos(): List<Usuario>
+
+    @Query("""
+    SELECT DISTINCT u FROM Usuario u
+    INNER JOIN u.listaRol r
+    WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAdmin
+""")
+    fun findAdministradores(): List<Usuario>
+
+    @Query("""
+    SELECT DISTINCT u FROM Usuario u
+    INNER JOIN u.listaRol r
+    WHERE TYPE(r) = com.estonianport.centro_sis.model.RolOficina
+""")
+    fun findOficina(): List<Usuario>
+
 
     override fun findById(id: Long): Optional<Usuario>
 }

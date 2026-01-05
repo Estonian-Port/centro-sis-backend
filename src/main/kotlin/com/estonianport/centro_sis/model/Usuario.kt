@@ -24,7 +24,7 @@ class Usuario(
     @Column(nullable = false, unique = true)
     var email: String,
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     val dni: String,
 
     @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)

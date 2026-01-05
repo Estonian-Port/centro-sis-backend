@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.mapper
 
+import com.estonianport.centro_sis.dto.ProfesorListaResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioPendienteResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioRegistradoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
@@ -69,6 +70,14 @@ object UsuarioMapper {
             dni = "",
             celular = 0,
             email = usuarioDto.email
+        )
+    }
+
+    fun buildProfesoresListaResponseDto(usuario: Usuario): ProfesorListaResponseDto {
+        return ProfesorListaResponseDto(
+            id = usuario.id,
+            nombre = usuario.nombre,
+            apellido = usuario.apellido,
         )
     }
 

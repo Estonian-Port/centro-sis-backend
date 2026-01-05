@@ -1,6 +1,6 @@
 package com.estonianport.centro_sis.dto.response
 
-data class TipoPagoResponseDto (
+data class TipoPagoDto (
     val tipo: String,
     val monto: Double
 )

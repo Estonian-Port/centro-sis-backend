@@ -12,7 +12,7 @@ data class UsuarioRequestDto (
 
 data class UsuarioAltaRequestDto (
     val email: String,
-    val rol: String
+    val roles: List<String>
 )
 
 data class UsuarioCambioPasswordRequestDto (

@@ -87,14 +87,19 @@ class UsuarioController(
         val password = usuarioService.generarPassword()
         usuario.password = usuarioService.encriptarPassword(password)
         usuario.fechaAlta = LocalDate.now()
-        val rol = rolFactory.build(usuarioDto.rol, usuario)
-        usuario.asignarRol(rol)
+        usuarioDto.roles.forEach {
+            val rol = rolFactory.build(it, usuario)
+            usuario.asignarRol(rol)
+        }
 
         usuarioService.save(usuario)
 
         try {
-            emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password);
-        } catch (_: Exception) {
+            emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password)
+        } catch (e: Exception) {
+            println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            println("Error al enviar email: ${e.message}")
+            e.printStackTrace()
             // TODO enviar notificacion de fallo al enviar el mail
         }
 
@@ -200,7 +205,7 @@ class UsuarioController(
             CustomResponse(
                 message = "Curso obtenido correctamente",
                 data = listaCursosProfesor.map {
-                    CursoMapper.buildCursoProfesorResponseDto(
+                    CursoMapper.buildCursoInformacionResponseDto(
                         it,
                         cursoService.cantAlumnosInscriptos(it.id)
                     )
@@ -261,6 +266,18 @@ class UsuarioController(
                 message = "Pagos obtenidos correctamente",
                 data = inscripcionService.obtenerTodosLosPagosAlumno(usuarioId)
                     .map { PagoMapper.buildPagoResponseDto(it) }
+            )
+        )
+    }
+
+    // Obtener la lista de profesores para mostrar a la hora de dar de alta un curso
+    @GetMapping("/profesores")
+    fun obtenerProfesores(): ResponseEntity<CustomResponse> {
+        val profesores = usuarioService.getUsuariosPorRol(RolType.PROFESOR)
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Profesores obtenidos correctamente",
+                data = profesores.map { UsuarioMapper.buildProfesoresListaResponseDto(it) }
             )
         )
     }

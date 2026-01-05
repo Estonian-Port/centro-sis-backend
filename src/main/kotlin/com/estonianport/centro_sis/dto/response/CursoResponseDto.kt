@@ -6,7 +6,7 @@ data class CursoResponseDto (
     val id: Long,
     val nombre: String,
     val horarios: Set<HorarioDto>,
-    val tiposPago: Set<TipoPagoResponseDto>,
+    val tiposPago: Set<TipoPagoDto>,
     val profesores: Set<String>,
 )
 
@@ -21,7 +21,7 @@ data class CursoAlumnoResponseDto (
     val estadoPago: String,
 )
 
-data class CursoProfesorResponseDto (
+data class CursoInformacionResponseDto (
     val id: Long,
     val nombre: String,
     val horarios: Set<HorarioDto>,
@@ -29,4 +29,5 @@ data class CursoProfesorResponseDto (
     val fechaInicio: String,
     val fechaFin: String,
     val estado: String,
+    val profesores: Set<String>,
 )

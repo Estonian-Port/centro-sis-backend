@@ -1,9 +1,11 @@
 package com.estonianport.centro_sis.controller
 
-import com.estonianport.centro_sis.dto.request.CursoRequestDto
+import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
+import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.service.CursoService
+import com.estonianport.centro_sis.service.UsuarioService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.GetMapping
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController
 @CrossOrigin("*")
 class CursoController(
     private val cursoService: CursoService,
+    private val usuarioService: UsuarioService,
 ) {
 
     //Obtener un curso por id
@@ -41,36 +44,60 @@ class CursoController(
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso obtenido correctamente",
-                data = cursos.map { CursoMapper.buildCursoResponseDto(it) }
+                data = cursos.map {
+                    CursoMapper.buildCursoInformacionResponseDto(
+                        it,
+                        cursoService.cantAlumnosInscriptos(it.id)
+                    )
+                }
+            )
+        )
+    }
+
+    //Crear un nuevo curso alquiler
+    @PostMapping("/alta-alquiler")
+    fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerRequestDto): ResponseEntity<CustomResponse> {
+        val nuevoCursoAlquiler = CursoMapper.buildCursoAlquiler(cursoRequestDto)
+        val cursoAgregado = cursoService.alta(nuevoCursoAlquiler)
+
+        cursoRequestDto.profesoresId.forEach { usuarioId ->
+            val usuario = usuarioService.getById(usuarioId)
+            val rol = usuario.getRolProfesor()
+            rol.asignarCurso(nuevoCursoAlquiler)
+            usuarioService.save(usuario)
+        }
+
+        return ResponseEntity.status(201).body(
+            CustomResponse(
+                message = "Curso creado correctamente",
+                data = cursoAgregado
+            )
+        )
+    }
+
+    //Crear un nuevo curso comision
+    @PostMapping("/alta-comision")
+    fun altaComision(@RequestBody cursoRequestDto: CursoComisionRequestDto): ResponseEntity<CustomResponse> {
+        val nuevoCursoComision = CursoMapper.buildCursoComision(cursoRequestDto)
+        val cursoAgregado = cursoService.alta(nuevoCursoComision)
+
+        cursoRequestDto.profesoresId.forEach { usuarioId ->
+            val usuario = usuarioService.getById(usuarioId)
+            val rol = usuario.getRolProfesor()
+            rol.asignarCurso(nuevoCursoComision)
+            usuarioService.save(usuario)
+        }
+
+        return ResponseEntity.status(201).body(
+            CustomResponse(
+                message = "Curso creado correctamente",
+                data = cursoAgregado
             )
         )
     }
 
     /*
-        REVISAR ESTOS TRES ENDPOINTS DE ABAJO
-
-        //Crear un nuevo curso
-        @PostMapping("/alta")
-        fun alta(@RequestBody cursoRequestDto: CursoRequestDto): ResponseEntity<CustomResponse> {
-            val nuevoCurso = CursoMapper.buildCurso(cursoRequestDto)
-            val cursoAgregado = cursoService.alta(nuevoCurso)
-
-            //Una vez que el curso se creo correctamente, osea no ya esta persistido,
-            //le asigno rol de profesor a los usuarios seleccionados
-            cursoRequestDto.profesoresId.forEach { usuarioId ->
-                val usuario = usuarioService.getById(usuarioId)
-                val rol = rolFactory.build("PROFESOR", usuario)
-                usuario.asignarRol(rol)
-                usuarioService.save(usuario)
-            }
-
-            return ResponseEntity.status(201).body(
-                CustomResponse(
-                    message = "Curso creado correctamente",
-                    data = cursoAgregado
-                )
-            )
-        }
+        REVISAR ESTOS DOS ENDPOINTS DE ABAJO
 
         //Dar de baja un curso
         @PostMapping("/baja/{id}")

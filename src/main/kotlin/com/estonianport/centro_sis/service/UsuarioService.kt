@@ -149,4 +149,14 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return usuario.getRolProfesor().cursosActivos()
     }
 
+    fun getUsuariosPorRol(rolTipo: RolType): List<Usuario> {
+        return when (rolTipo) {
+            RolType.PROFESOR -> usuarioRepository.findProfesores()
+            RolType.ALUMNO -> usuarioRepository.findAlumnos()
+            RolType.ADMINISTRADOR -> usuarioRepository.findAdministradores()
+            RolType.OFICINA -> usuarioRepository.findOficina()
+        }
+    }
+
+
 }
