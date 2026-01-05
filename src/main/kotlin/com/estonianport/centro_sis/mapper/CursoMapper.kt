@@ -1,64 +1,78 @@
 package com.estonianport.centro_sis.mapper
 
-import com.estonianport.centro_sis.dto.request.CursoRequestDto
+import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
+import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
-import com.estonianport.centro_sis.dto.response.CursoProfesorResponseDto
+import com.estonianport.centro_sis.dto.response.CursoInformacionResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.model.Curso
-import com.estonianport.centro_sis.model.Usuario
-import com.estonianport.centro_sis.model.enums.BeneficioType
-import com.estonianport.centro_sis.model.enums.EstadoPagoType
-import com.estonianport.centro_sis.model.enums.PagoType
+import com.estonianport.centro_sis.model.CursoAlquiler
+import com.estonianport.centro_sis.model.CursoComision
+import com.estonianport.centro_sis.model.Inscripcion
+import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 object CursoMapper {
 
-    fun buildCursoResponseDto(curso: Curso, profesores : List<Usuario>): CursoResponseDto {
+    fun buildCursoResponseDto(curso: Curso): CursoResponseDto {
         return CursoResponseDto(
             id = curso.id,
             nombre = curso.nombre,
-            horarios = curso.horarios.map{ HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
-            arancel = curso.arancel,
-            tiposPago = curso.tiposPago.map { it.name }.toSet(),
-            profesores = profesores.map { UsuarioMapper.buildNombreCompleto(it) }.toSet()
+            horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
+            tiposPago = curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) }.toSet(),
+            profesores = curso.profesores.map { UsuarioMapper.buildNombreCompleto(it.usuario) }.toSet()
         )
     }
 
-    fun buildCursoAlumnoResponseDto(curso: Curso, profesores : List<Usuario>, beneficiosAlumno : MutableSet<BeneficioType>, estadoPago : EstadoPagoType ) : CursoAlumnoResponseDto {
+    fun buildCursoAlumnoResponseDto(inscripcion: Inscripcion): CursoAlumnoResponseDto {
         return CursoAlumnoResponseDto(
-            id = curso.id,
-            nombre = curso.nombre,
-            horarios = curso.horarios.map{ HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
-            arancel = curso.arancel,
-            tiposPago = curso.tiposPago.map { it.name }.toSet(),
-            profesores = profesores.map { UsuarioMapper.buildNombreCompleto(it) }.toSet(),
-            beneficios = beneficiosAlumno.map { it.name }.toSet(),
-            estadoPago = estadoPago.name
+            id = inscripcion.curso.id,
+            nombre = inscripcion.curso.nombre,
+            horarios = inscripcion.curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
+            arancel = inscripcion.tipoPagoSeleccionado.monto.toDouble(),
+            tipoPagoElegido = inscripcion.tipoPagoSeleccionado.tipoPago.name,
+            profesores = inscripcion.curso.profesores.map { UsuarioMapper.buildNombreCompleto(it.usuario) }.toSet(),
+            beneficio = inscripcion.beneficio,
+            estadoPago = inscripcion.estadoPago.name
         )
     }
 
-    fun buildCursoProfesorResponseDto(curso: Curso, cantAlumnos : Int): CursoProfesorResponseDto {
-        return CursoProfesorResponseDto(
+    fun buildCursoInformacionResponseDto(curso: Curso, cantAlumnos: Int): CursoInformacionResponseDto {
+        val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+
+        return CursoInformacionResponseDto(
             id = curso.id,
             nombre = curso.nombre,
             horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
             alumnosInscriptos = cantAlumnos,
-            fechaIncio = curso.fechaInicio.toString(),
-            fechaFin = curso.fechaFin.toString(),
+            fechaInicio = curso.fechaInicio.format(formatter),
+            fechaFin = curso.fechaFin.format(formatter),
             estado = curso.estado.name,
+            profesores = curso.profesores.map { UsuarioMapper.buildNombreCompleto(it.usuario) }.toSet()
         )
     }
 
-    fun buildCurso(cursoDto: CursoRequestDto): Curso {
-        return Curso(
+    fun buildCursoAlquiler(cursoDto: CursoAlquilerRequestDto): CursoAlquiler {
+        return CursoAlquiler(
             id = cursoDto.id,
             nombre = cursoDto.nombre,
-            horarios = cursoDto.horarios.map { HorarioMapper.buildHorario(it) }.toMutableList(),
-            arancel = cursoDto.arancel,
-            tiposPago = cursoDto.tipoPago.map { PagoType.valueOf(it) }.toMutableSet(),
+            precioAlquiler = cursoDto.montoAlquiler.toBigDecimal(),
             fechaInicio = LocalDate.parse(cursoDto.fechaInicio),
             fechaFin = LocalDate.parse(cursoDto.fechaFin),
         )
     }
 
+    fun buildCursoComision(cursoDto: CursoComisionRequestDto): CursoComision {
+        return CursoComision(
+            id = cursoDto.id,
+            nombre = cursoDto.nombre,
+            horarios = cursoDto.horarios.map { HorarioMapper.buildHorario(it) }.toMutableList(),
+            tiposPago = cursoDto.tipoPago.map { TipoPagoMapper.buildTipoPago(it) }.toMutableSet(),
+            recargoAtraso = cursoDto.recargo?.toBigDecimal() ?: BigDecimal.ONE,
+            porcentajeComision = cursoDto.comisionProfesor?.toBigDecimal() ?: 0.5.toBigDecimal(),
+            fechaInicio = LocalDate.parse(cursoDto.fechaInicio),
+            fechaFin = LocalDate.parse(cursoDto.fechaFin),
+        )
+    }
 }

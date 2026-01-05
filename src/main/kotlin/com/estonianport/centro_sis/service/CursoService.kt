@@ -20,21 +20,6 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     override val dao: CursoRepository
         get() = cursoRepository
 
-    override fun delete(id: Long) {
-        val curso : Curso = cursoRepository.findById(id).get()
-        curso.fechaBaja = LocalDate.now()
-        cursoRepository.save(curso)
-    }
-
-    fun getAllCursosByAlumnoId(id: Long): List<Curso> {
-        return inscripcionRepository.getAllInscripcionesByUsuarioId(id)
-            .map { it.curso }
-    }
-
-    fun cantAlumnosInscritos(cursoId: Long): Int {
-        return inscripcionRepository.countByCursoIdAndFechaBajaIsNull(cursoId)
-    }
-
     fun countCursos(): Long {
         return cursoRepository.countByFechaBajaIsNull()
     }
@@ -49,5 +34,15 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     fun alta (nuevoCurso : Curso) : Curso {
         return cursoRepository.save(nuevoCurso)
+    }
+
+    override fun delete(id: Long) {
+        val curso : Curso = cursoRepository.findById(id).get()
+        curso.fechaBaja = LocalDate.now()
+        cursoRepository.save(curso)
+    }
+
+    fun cantAlumnosInscriptos(cursoId: Long): Int {
+        return inscripcionRepository.countByCursoIdAndFechaBajaIsNull(cursoId)
     }
 }

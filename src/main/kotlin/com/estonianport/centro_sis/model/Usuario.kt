@@ -1,44 +1,44 @@
 package com.estonianport.centro_sis.model
 
-import com.estonianport.centro_sis.model.enums.BeneficioType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import jakarta.persistence.*
 import java.time.LocalDate
 
 @Entity
+@Table(name = "usuario")
 class Usuario(
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long,
+    val id: Long = 0,
 
-    @Column
+    @Column(nullable = false)
     var nombre: String,
 
-    @Column
+    @Column(nullable = false)
     var apellido: String,
 
-    @Column
+    @Column(nullable = false)
     var celular: Long,
 
-    @Column
+    @Column(nullable = false, unique = true)
     var email: String,
 
-    @Column
+    @Column(nullable = false)
     val dni: String,
 
     @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var listaRol: MutableSet<Rol> = mutableSetOf(),
 
     @Enumerated(EnumType.STRING)
-    var estado: EstadoType = EstadoType.PENDIENTE,
+    @Column(nullable = false)
+    var estado: EstadoType = EstadoType.PENDIENTE
 ) {
 
     @Column
     var password: String? = null
 
-    @Column
+    @Column(nullable = false)
     var fechaAlta: LocalDate = LocalDate.now()
 
     @Column
@@ -47,50 +47,81 @@ class Usuario(
     @Column
     var ultimoIngreso: LocalDate? = null
 
-    @ElementCollection(targetClass = BeneficioType::class, fetch = FetchType.EAGER)
-    @CollectionTable(
-        name = "usuario_beneficios",
-        joinColumns = [JoinColumn(name = "usuario_id")]
-    )
-    @Enumerated(EnumType.STRING)
-    val beneficios: MutableSet<BeneficioType> = mutableSetOf()
+    fun registrarIngreso() {
+        ultimoIngreso = LocalDate.now()
+    }
 
     fun confirmarPrimerLogin() {
+        registrarIngreso()
         if (ultimoIngreso != null) {
             estado = EstadoType.INACTIVO
         }
     }
 
-    fun getRolTypes(): MutableSet<RolType> =
+    fun nombreCompleto(): String = "$nombre $apellido"
+
+    fun getRolTypes(): Set<RolType> =
         listaRol.map {
             when (it) {
                 is RolAdmin -> RolType.ADMINISTRADOR
+                is RolOficina -> RolType.OFICINA
                 is RolProfesor -> RolType.PROFESOR
                 is RolAlumno -> RolType.ALUMNO
                 else -> throw IllegalArgumentException("Rol desconocido")
             }
-        }.toMutableSet()
+        }.toSet()
 
     fun asignarRol(rol: Rol) {
         listaRol.add(rol)
     }
 
     fun quitarRol(rol: Rol) {
-        listaRol.remove(rol)
+        rol.fechaBaja = LocalDate.now()
+    }
+
+    fun tieneRol(rolType: RolType): Boolean {
+        return getRolTypes().contains(rolType)
     }
 
     fun getRolAlumno(): RolAlumno {
-        return listaRol.filterIsInstance<RolAlumno>().firstOrNull()
-            ?: throw NoSuchElementException("El usuario no tiene el rol de alumno")
+        return listaRol
+            .filterIsInstance<RolAlumno>()
+            .firstOrNull { it.fechaBaja == null }
+            ?: throw NoSuchElementException("El usuario no tiene el rol de alumno activo")
     }
 
     fun getRolProfesor(): RolProfesor {
-        return listaRol.filterIsInstance<RolProfesor>().firstOrNull()
-            ?: throw NoSuchElementException("El usuario no tiene el rol de profesor")
+        return listaRol
+            .filterIsInstance<RolProfesor>()
+            .firstOrNull { it.fechaBaja == null }
+            ?: throw NoSuchElementException("El usuario no tiene el rol de profesor activo")
     }
 
     fun getRolAdmin(): RolAdmin {
-        return listaRol.filterIsInstance<RolAdmin>().firstOrNull()
-            ?: throw NoSuchElementException("El usuario no tiene el rol de administrador")
+        return listaRol
+            .filterIsInstance<RolAdmin>()
+            .firstOrNull { it.fechaBaja == null }
+            ?: throw NoSuchElementException("El usuario no tiene el rol de administrador activo")
+    }
+
+    fun getRolOficina(): RolOficina {
+        return listaRol
+            .filterIsInstance<RolOficina>()
+            .firstOrNull { it.fechaBaja == null }
+            ?: throw NoSuchElementException("El usuario no tiene el rol de oficina activo")
+    }
+
+    fun darDeBaja(fecha: LocalDate = LocalDate.now()) {
+        this.fechaBaja = fecha
+        this.estado = EstadoType.BAJA
+        listaRol.forEach { it.fechaBaja = fecha }
+    }
+
+    fun reactivar() {
+        require(estado == EstadoType.BAJA) {
+            "Solo se pueden reactivar usuarios dados de baja"
+        }
+        this.fechaBaja = null
+        this.estado = EstadoType.ACTIVO
     }
 }
