@@ -10,7 +10,7 @@ object InscripcionMapper {
             id = inscripcion.id,
             nombreAlumno = inscripcion.alumno.usuario.nombreCompleto(),
             nombreCurso = inscripcion.curso.nombre,
-            tipoPagoSeleccionado = inscripcion.tipoPagoSeleccionado.tipoPago.name,
+            tipoPagoSeleccionado = inscripcion.tipoPagoSeleccionado.tipo.name,
             beneficio = inscripcion.beneficio,
             fechaInscripcion = inscripcion.fechaInscripcion.toString(),
             estadoPago = inscripcion.estadoPago.name

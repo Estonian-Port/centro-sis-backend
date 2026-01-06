@@ -25,7 +25,7 @@ class InscripcionService() {
         val alumno = usuario.getRolAlumno()
         // Verificar que el curso acepte ese tipo de pago
         val tipoPagoDisponible =
-            curso.tiposPago.firstOrNull { it.tipoPago == PagoType.valueOf(inscripcion.tipoPagoSeleccionado) }
+            curso.tiposPago.firstOrNull { it.tipo == PagoType.valueOf(inscripcion.tipoPagoSeleccionado) }
                 ?: throw IllegalArgumentException("El curso ${curso.nombre} no acepta el tipo de pago $inscripcion.tipoPagoSeleccionado")
 
         val inscripcion = Inscripcion(

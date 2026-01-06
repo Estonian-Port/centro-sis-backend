@@ -4,6 +4,8 @@ import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
+import com.estonianport.centro_sis.mapper.TipoPagoMapper
+import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.UsuarioService
 import org.springframework.http.ResponseEntity
@@ -31,7 +33,9 @@ class CursoController(
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso obtenido correctamente",
-                data = CursoMapper.buildCursoResponseDto(curso)
+                data = CursoMapper.buildCursoResponseDto(
+                    curso,
+                    cursoService.cantAlumnosInscriptos(curso.id))
             )
         )
     }
@@ -45,7 +49,7 @@ class CursoController(
             CustomResponse(
                 message = "Curso obtenido correctamente",
                 data = cursos.map {
-                    CursoMapper.buildCursoInformacionResponseDto(
+                    CursoMapper.buildCursoResponseDto(
                         it,
                         cursoService.cantAlumnosInscriptos(it.id)
                     )
@@ -57,15 +61,12 @@ class CursoController(
     //Crear un nuevo curso alquiler
     @PostMapping("/alta-alquiler")
     fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerRequestDto): ResponseEntity<CustomResponse> {
-        val nuevoCursoAlquiler = CursoMapper.buildCursoAlquiler(cursoRequestDto)
-        val cursoAgregado = cursoService.alta(nuevoCursoAlquiler)
+        val profesores = cursoRequestDto.profesoresId
+            .map { usuarioService.getById(it).getRolProfesor() }
+            .toMutableSet()
 
-        cursoRequestDto.profesoresId.forEach { usuarioId ->
-            val usuario = usuarioService.getById(usuarioId)
-            val rol = usuario.getRolProfesor()
-            rol.asignarCurso(nuevoCursoAlquiler)
-            usuarioService.save(usuario)
-        }
+        val nuevoCursoAlquiler = CursoMapper.buildCursoAlquiler(cursoRequestDto, profesores)
+        val cursoAgregado = cursoService.alta(nuevoCursoAlquiler)
 
         return ResponseEntity.status(201).body(
             CustomResponse(
@@ -78,15 +79,14 @@ class CursoController(
     //Crear un nuevo curso comision
     @PostMapping("/alta-comision")
     fun altaComision(@RequestBody cursoRequestDto: CursoComisionRequestDto): ResponseEntity<CustomResponse> {
-        val nuevoCursoComision = CursoMapper.buildCursoComision(cursoRequestDto)
-        val cursoAgregado = cursoService.alta(nuevoCursoComision)
+        val profesores = cursoRequestDto.profesoresId
+            .map { usuarioService.getById(it).getRolProfesor() }
+            .toMutableSet()
 
-        cursoRequestDto.profesoresId.forEach { usuarioId ->
-            val usuario = usuarioService.getById(usuarioId)
-            val rol = usuario.getRolProfesor()
-            rol.asignarCurso(nuevoCursoComision)
-            usuarioService.save(usuario)
-        }
+        val nuevoCursoComision = CursoMapper.buildCursoComision(cursoRequestDto, profesores)
+        nuevoCursoComision.activo = EstadoType.ACTIVO
+
+        val cursoAgregado = cursoService.alta(nuevoCursoComision)
 
         return ResponseEntity.status(201).body(
             CustomResponse(

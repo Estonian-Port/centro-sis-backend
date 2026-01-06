@@ -14,3 +14,18 @@ data class UsuarioResponseDto (
     val primerLogin: Boolean,
     val listaRol: MutableSet<RolType>
 )
+
+data class UsuarioDetailResponseDto (
+    val id: Long,
+    val nombre: String,
+    val apellido: String,
+    val dni: String,
+    val email: String,
+    val celular: Long,
+    val estado: String,
+    val primerLogin: Boolean,
+    val listaRol: MutableSet<RolType>,
+    val cursosInscriptos: List<CursoResponseDto>,
+    val cursosDictados: List<CursoResponseDto>,
+    //val pagos: List<PagoResponseDto>?
+)

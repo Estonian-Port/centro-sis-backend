@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.EstadoCursoType
+import com.estonianport.centro_sis.model.enums.EstadoType
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -51,12 +52,25 @@ abstract class Curso(
     var recargoAtraso: BigDecimal = BigDecimal.ONE,
 
     @OneToMany(mappedBy = "curso")
-    val inscripciones: MutableList<Inscripcion> = mutableListOf()
-) {
+    val inscripciones: MutableList<Inscripcion> = mutableListOf(),
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var estado: EstadoCursoType = EstadoCursoType.POR_COMENZAR
+    var activo : EstadoType = EstadoType.PENDIENTE
+) {
+
+    @get:Transient
+    val estado: EstadoCursoType
+        get() = calcularEstado()
+
+    private fun calcularEstado(): EstadoCursoType {
+        val hoy = LocalDate.now()
+        return when {
+            hoy.isBefore(fechaInicio) -> EstadoCursoType.POR_COMENZAR
+            hoy.isAfter(fechaFin) -> EstadoCursoType.FINALIZADO
+            else -> EstadoCursoType.EN_CURSO
+        }
+    }
 
     init {
         require(fechaFin.isAfter(fechaInicio)) {
@@ -72,7 +86,7 @@ abstract class Curso(
             "El monto debe ser mayor a cero"
         }
 
-        tiposPago.removeIf { it.tipoPago == tipo }
+        tiposPago.removeIf { it.tipo == tipo }
         tiposPago.add(TipoPago(tipo, monto))
     }
 
@@ -80,16 +94,7 @@ abstract class Curso(
         require(tiposPago.size > 1) {
             "El curso debe tener al menos un tipo de pago disponible"
         }
-        tiposPago.removeIf { it.tipoPago == tipo }
-    }
-
-    fun actualizarEstado() {
-        val hoy = LocalDate.now()
-        estado = when {
-            hoy.isBefore(fechaInicio) -> EstadoCursoType.POR_COMENZAR
-            hoy.isAfter(fechaFin) -> EstadoCursoType.FINALIZADO
-            else -> EstadoCursoType.EN_CURSO
-        }
+        tiposPago.removeIf { it.tipo == tipo }
     }
 
     fun getInscripcionesActivas(): List<Inscripcion> {
@@ -102,6 +107,16 @@ abstract class Curso(
             .filter { it.fechaBaja == null }
             .map { it.monto }
             .fold(BigDecimal.ZERO) { acc, monto -> acc + monto }
+    }
+
+    fun agregarProfesor(profesor: RolProfesor) {
+        profesores.add(profesor)
+        profesor.cursos.add(this)
+    }
+
+    fun removerProfesor(profesor: RolProfesor) {
+        profesores.remove(profesor)
+        profesor.cursos.remove(this)
     }
 
     abstract fun calcularPagoProfesor(): BigDecimal

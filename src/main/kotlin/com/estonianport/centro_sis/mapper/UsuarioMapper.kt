@@ -6,6 +6,8 @@ import com.estonianport.centro_sis.dto.response.UsuarioRegistradoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
 import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.dto.response.CursoResponseDto
+import com.estonianport.centro_sis.dto.response.UsuarioDetailResponseDto
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
@@ -51,8 +53,8 @@ object UsuarioMapper {
     }
 
 
-    fun buildUsuario(usuarioDto: UsuarioRequestDto) : Usuario {
-        return Usuario (
+    fun buildUsuario(usuarioDto: UsuarioRequestDto): Usuario {
+        return Usuario(
             id = usuarioDto.id,
             nombre = usuarioDto.nombre,
             apellido = usuarioDto.apellido,
@@ -62,8 +64,8 @@ object UsuarioMapper {
         )
     }
 
-    fun buildAltaUsuario(usuarioDto: UsuarioAltaRequestDto) : Usuario {
-        return Usuario (
+    fun buildAltaUsuario(usuarioDto: UsuarioAltaRequestDto): Usuario {
+        return Usuario(
             id = 0,
             nombre = "",
             apellido = "",
@@ -78,6 +80,26 @@ object UsuarioMapper {
             id = usuario.id,
             nombre = usuario.nombre,
             apellido = usuario.apellido,
+        )
+    }
+
+    fun buildUsuarioDetailDto(
+        usuario: Usuario,
+        cursosInscriptos: List<CursoResponseDto>?,
+        cursosDictados: List<CursoResponseDto>?
+    ): UsuarioDetailResponseDto {
+        return UsuarioDetailResponseDto(
+            id = usuario.id,
+            nombre = usuario.nombre,
+            apellido = usuario.apellido,
+            dni = usuario.dni,
+            email = usuario.email,
+            celular = usuario.celular,
+            estado = usuario.estado.name,
+            primerLogin = usuario.estado == EstadoType.PENDIENTE,
+            listaRol = usuario.getRolTypes().toMutableSet(),
+            cursosInscriptos = cursosInscriptos.orEmpty(),
+            cursosDictados = cursosDictados.orEmpty(),
         )
     }
 

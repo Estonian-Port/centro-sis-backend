@@ -88,14 +88,6 @@ class RolProfesor(
                 cursos.contains(inscripcion.curso)
     }
 
-    fun asignarCurso(curso: Curso) {
-        cursos.add(curso)
-    }
-
-    fun eliminarCurso(curso: Curso) {
-        cursos.remove(curso)
-    }
-
     fun cursosActivos(): List<Curso> {
         return cursos.filter { it.fechaBaja == null }
     }

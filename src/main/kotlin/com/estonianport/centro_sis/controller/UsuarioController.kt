@@ -9,6 +9,7 @@ import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.PagoMapper
 import com.estonianport.centro_sis.model.RolFactory
@@ -205,7 +206,7 @@ class UsuarioController(
             CustomResponse(
                 message = "Curso obtenido correctamente",
                 data = listaCursosProfesor.map {
-                    CursoMapper.buildCursoInformacionResponseDto(
+                    CursoMapper.buildCursoResponseDto(
                         it,
                         cursoService.cantAlumnosInscriptos(it.id)
                     )
@@ -278,6 +279,40 @@ class UsuarioController(
             CustomResponse(
                 message = "Profesores obtenidos correctamente",
                 data = profesores.map { UsuarioMapper.buildProfesoresListaResponseDto(it) }
+            )
+        )
+    }
+
+    //Obtener informacion completa de un usuario por su ID
+    @GetMapping("/detalle/{usuarioId}")
+    fun getUsuarioById(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
+        val usuario = usuarioService.findById(usuarioId) ?: throw NoSuchElementException("Usuario no encontrado")
+        val cursosDictados = mutableListOf<CursoResponseDto>()
+        val cursosInscriptos = mutableListOf<CursoResponseDto>()
+        if (usuario.tieneRol(RolType.PROFESOR)) {
+            val cursos = usuarioService.obtenerCursosProfesor(usuarioId)
+                .map {
+                    CursoMapper.buildCursoResponseDto(
+                        it,
+                        cursoService.cantAlumnosInscriptos(it.id)
+                    )
+                }
+            cursosDictados.addAll(cursos)
+        }
+        if (usuario.tieneRol(RolType.ALUMNO)) {
+            val inscripciones = usuarioService.obtenerInscripcionesPorAlumno(usuarioId)
+            val cursos = inscripciones.map {
+                CursoMapper.buildCursoResponseDto(
+                    it.curso,
+                    cursoService.cantAlumnosInscriptos(it.curso.id)
+                )
+            }
+            cursosInscriptos.addAll(cursos)
+        }
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Usuario obtenido correctamente",
+                data = UsuarioMapper.buildUsuarioDetailDto(usuario, cursosInscriptos, cursosDictados)
             )
         )
     }

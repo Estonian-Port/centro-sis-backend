@@ -63,7 +63,7 @@ class Inscripcion(
     }
 
     fun estaAlDia(): Boolean {
-        return when (tipoPagoSeleccionado.tipoPago) {
+        return when (tipoPagoSeleccionado.tipo) {
             PagoType.MENSUAL -> estaAlDiaMensual()
             PagoType.TOTAL -> estaAlDiaAnual()
         }
@@ -151,7 +151,7 @@ class Inscripcion(
     }
 
     fun calcularDeudaPendiente(): BigDecimal {
-        val pagosEsperados = when (tipoPagoSeleccionado.tipoPago) {
+        val pagosEsperados = when (tipoPagoSeleccionado.tipo) {
             PagoType.MENSUAL -> calcularMesesDesdeInscripcion()
             PagoType.TOTAL -> 1
         }
