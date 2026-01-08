@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.mapper
 
 import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
+import com.estonianport.centro_sis.dto.response.AlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.model.Curso
@@ -15,14 +16,14 @@ import java.time.format.DateTimeFormatter
 
 object CursoMapper {
 
-    fun buildCursoResponseDto(curso: Curso, cantAlumnos: Int): CursoResponseDto {
+    fun buildCursoResponseDto(curso: Curso, alumnos: List<AlumnoResponseDto>): CursoResponseDto {
         val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
         return CursoResponseDto(
             id = curso.id,
             nombre = curso.nombre,
             horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
-            alumnosInscriptos = cantAlumnos,
+            alumnosInscriptos = alumnos,
             fechaInicio = curso.fechaInicio.format(formatter),
             fechaFin = curso.fechaFin.format(formatter),
             estado = curso.estado.name,

@@ -9,6 +9,7 @@ import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.PagoMapper
@@ -98,8 +99,6 @@ class UsuarioController(
         try {
             emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password)
         } catch (e: Exception) {
-            println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-            println("Error al enviar email: ${e.message}")
             e.printStackTrace()
             // TODO enviar notificacion de fallo al enviar el mail
         }
@@ -205,10 +204,10 @@ class UsuarioController(
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso obtenido correctamente",
-                data = listaCursosProfesor.map {
+                data = listaCursosProfesor.map { curso ->
                     CursoMapper.buildCursoResponseDto(
-                        it,
-                        cursoService.cantAlumnosInscriptos(it.id)
+                        curso,
+                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
                     )
                 }
             )
@@ -288,13 +287,13 @@ class UsuarioController(
     fun getUsuarioById(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
         val usuario = usuarioService.findById(usuarioId) ?: throw NoSuchElementException("Usuario no encontrado")
         val cursosDictados = mutableListOf<CursoResponseDto>()
-        val cursosInscriptos = mutableListOf<CursoResponseDto>()
+        val cursosInscriptos = mutableListOf<CursoAlumnoResponseDto>()
         if (usuario.tieneRol(RolType.PROFESOR)) {
             val cursos = usuarioService.obtenerCursosProfesor(usuarioId)
-                .map {
+                .map { curso ->
                     CursoMapper.buildCursoResponseDto(
-                        it,
-                        cursoService.cantAlumnosInscriptos(it.id)
+                        curso,
+                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
                     )
                 }
             cursosDictados.addAll(cursos)
@@ -302,10 +301,7 @@ class UsuarioController(
         if (usuario.tieneRol(RolType.ALUMNO)) {
             val inscripciones = usuarioService.obtenerInscripcionesPorAlumno(usuarioId)
             val cursos = inscripciones.map {
-                CursoMapper.buildCursoResponseDto(
-                    it.curso,
-                    cursoService.cantAlumnosInscriptos(it.curso.id)
-                )
+                CursoMapper.buildCursoAlumnoResponseDto(it)
             }
             cursosInscriptos.addAll(cursos)
         }

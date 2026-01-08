@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.model.Curso
+import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.repository.CursoRepository
 import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
@@ -45,4 +46,5 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     fun cantAlumnosInscriptos(cursoId: Long): Int {
         return inscripcionRepository.countByCursoIdAndFechaBajaIsNull(cursoId)
     }
+
 }

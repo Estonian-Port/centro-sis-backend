@@ -5,6 +5,7 @@ import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.TipoPagoMapper
+import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.UsuarioService
@@ -29,13 +30,14 @@ class CursoController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> {
         val curso = cursoService.getById(id)
+        val alumnosInscriptos = curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
 
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso obtenido correctamente",
                 data = CursoMapper.buildCursoResponseDto(
-                    curso,
-                    cursoService.cantAlumnosInscriptos(curso.id))
+                    curso, alumnosInscriptos
+                )
             )
         )
     }
@@ -48,10 +50,10 @@ class CursoController(
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso obtenido correctamente",
-                data = cursos.map {
+                data = cursos.map { curso ->
                     CursoMapper.buildCursoResponseDto(
-                        it,
-                        cursoService.cantAlumnosInscriptos(it.id)
+                        curso,
+                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
                     )
                 }
             )

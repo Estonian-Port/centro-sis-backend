@@ -119,8 +119,6 @@ class RolAlumno(
     var inscripciones: MutableList<Inscripcion> = mutableListOf()
 ) : Rol(usuario = usuario) {
 
-    var puntos: Int = 0
-
     override fun puedeGestionarCurso(curso: Curso): Boolean = false
 
     override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean = false

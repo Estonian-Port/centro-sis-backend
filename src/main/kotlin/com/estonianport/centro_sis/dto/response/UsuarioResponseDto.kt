@@ -25,7 +25,7 @@ data class UsuarioDetailResponseDto (
     val estado: String,
     val primerLogin: Boolean,
     val listaRol: MutableSet<RolType>,
-    val cursosInscriptos: List<CursoResponseDto>,
+    val cursosInscriptos: List<CursoAlumnoResponseDto>,
     val cursosDictados: List<CursoResponseDto>,
     //val pagos: List<PagoResponseDto>?
 )

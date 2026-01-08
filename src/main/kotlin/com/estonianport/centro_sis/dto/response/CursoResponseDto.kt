@@ -6,7 +6,7 @@ data class CursoResponseDto (
     val id: Long,
     val nombre: String,
     val horarios: Set<HorarioDto>,
-    val alumnosInscriptos: Int,
+    val alumnosInscriptos: List<AlumnoResponseDto>,
     val fechaInicio: String,
     val fechaFin: String,
     val estado: String,

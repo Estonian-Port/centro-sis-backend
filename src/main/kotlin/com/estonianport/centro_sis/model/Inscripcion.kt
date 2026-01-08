@@ -43,7 +43,10 @@ class Inscripcion(
     var estadoPago: EstadoPagoType = EstadoPagoType.PENDIENTE,
 
     @Column(nullable = false)
-    var beneficio: Int = 0
+    var beneficio: Int = 0,
+
+    @Column(nullable = false)
+    var puntos: Int = 0
 ) {
 
     init {
@@ -188,5 +191,10 @@ class Inscripcion(
         if (!usuario.tieneRol(RolType.ADMINISTRADOR) || usuario.tieneRol(RolType.PROFESOR)) {
             throw IllegalAccessException("El usuario con id ${usuario.id} no tiene permiso para editar esta inscripción")
         }
+    }
+
+    fun darPuntos(profesor : Usuario, puntosAGanar: Int) {
+        puedeEditar(profesor)
+        puntos += puntosAGanar
     }
 }

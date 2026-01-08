@@ -6,8 +6,12 @@ import com.estonianport.centro_sis.dto.response.UsuarioRegistradoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
 import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.dto.response.AlumnoResponseDto
+import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioDetailResponseDto
+import com.estonianport.centro_sis.model.Inscripcion
+import com.estonianport.centro_sis.model.RolAlumno
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
@@ -32,26 +36,6 @@ object UsuarioMapper {
     fun buildNombreCompleto(usuario: Usuario): String {
         return "${usuario.nombre} ${usuario.apellido}"
     }
-
-    fun buildUsuarioRegistradoResponseDto(usuario: Usuario): UsuarioRegistradoResponseDto {
-        return UsuarioRegistradoResponseDto(
-            id = usuario.id,
-            nombre = usuario.nombre,
-            apellido = usuario.apellido,
-            celular = usuario.celular,
-            email = usuario.email,
-            estado = usuario.estado.name,
-        )
-    }
-
-    fun buildUsuarioPendienteResponseDto(usuario: Usuario): UsuarioPendienteResponseDto {
-        return UsuarioPendienteResponseDto(
-            id = usuario.id,
-            email = usuario.email,
-            fechaAlta = usuario.fechaAlta.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-        )
-    }
-
 
     fun buildUsuario(usuarioDto: UsuarioRequestDto): Usuario {
         return Usuario(
@@ -85,7 +69,7 @@ object UsuarioMapper {
 
     fun buildUsuarioDetailDto(
         usuario: Usuario,
-        cursosInscriptos: List<CursoResponseDto>?,
+        cursosInscriptos: List<CursoAlumnoResponseDto>?,
         cursosDictados: List<CursoResponseDto>?
     ): UsuarioDetailResponseDto {
         return UsuarioDetailResponseDto(
@@ -100,6 +84,22 @@ object UsuarioMapper {
             listaRol = usuario.getRolTypes().toMutableSet(),
             cursosInscriptos = cursosInscriptos.orEmpty(),
             cursosDictados = cursosDictados.orEmpty(),
+        )
+    }
+
+    fun buildAlumno(inscripcion: Inscripcion): AlumnoResponseDto {
+        return AlumnoResponseDto(
+            id = inscripcion.alumno.usuario.id,
+            nombre = inscripcion.alumno.usuario.nombre,
+            apellido = inscripcion.alumno.usuario.apellido,
+            dni = inscripcion.alumno.usuario.dni,
+            email = inscripcion.alumno.usuario.email,
+            celular = inscripcion.alumno.usuario.celular.toString(),
+            estadoPago = inscripcion.estadoPago.name,
+            tipoPagoElegido = inscripcion.tipoPagoSeleccionado.tipo.name,
+            asistencias = 0, // Este campo debe ser calculado aparte
+            beneficio = inscripcion.beneficio.toDouble(),
+            puntos = inscripcion.puntos
         )
     }
 
