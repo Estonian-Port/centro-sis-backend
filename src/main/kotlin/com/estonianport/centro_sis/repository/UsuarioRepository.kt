@@ -122,6 +122,8 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 """)
     fun findOficina(): List<Usuario>
 
+    fun getUsuarioByDni(dni: String): Usuario?
+
 
     override fun findById(id: Long): Optional<Usuario>
 }

@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.controller
 
 import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
+import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.TipoPagoMapper
@@ -30,7 +31,23 @@ class CursoController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> {
         val curso = cursoService.getById(id)
-        val alumnosInscriptos = curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
+        val alumnosInscriptos = curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
+
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Curso obtenido correctamente",
+                data = CursoMapper.buildCursoResponseDto(
+                    curso, alumnosInscriptos
+                )
+            )
+        )
+    }
+
+    //Obtetener un curso por id con sus inscripciones
+    @GetMapping("/inscripciones/{id}")
+    fun getCursoConInscripciones(@PathVariable id: Long): ResponseEntity<CustomResponse> {
+        val curso = cursoService.getById(id)
+        val alumnosInscriptos = curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
 
         return ResponseEntity.status(200).body(
             CustomResponse(
@@ -53,7 +70,7 @@ class CursoController(
                 data = cursos.map { curso ->
                     CursoMapper.buildCursoResponseDto(
                         curso,
-                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
+                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
                     )
                 }
             )

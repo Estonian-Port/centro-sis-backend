@@ -71,7 +71,7 @@ class EmailService {
         val template = loadHtmlTemplate("alta_usuario.html")
         emailBody.content = renderTemplate(template, mapOf(
             //EMPRESA LOGO DEBERIA APUNTAR A OTRO LADO, AHORA ESTA HARDCODEADO A UN LINK DE FACEBOOK
-            "empresa_logo" to "https://scontent.faep9-3.fna.fbcdn.net/v/t39.30808-6/327332451_5633429620117056_5440705858245116522_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeHg-4DaCf9WpBqFoxVEhRCtb4IwJUOD0CxvgjAlQ4PQLLIzyTtJ1mzX4gE6p8U73Rg7zQg2dXdst2dtFW1aEo8g&_nc_ohc=qogK_-cn3lMQ7kNvwEQC06g&_nc_oc=Adn4pILdfSOE3s-Wgy2bLHPLjmUfDksmcjHOdGoAVGcO0y1IQNm2T0ZjDzszPxjyzLPaaNDlrRIFv-DiNpgGjKrv&_nc_zt=23&_nc_ht=scontent.faep9-3.fna&_nc_gid=iE-zsgiCXLlL5TgDvzEMFA&oh=00_AfpyOn_5rFwk-g8JgY-oAzi034GBlWkslfuD_wSFfDtgEQ&oe=69620E2E",
+            "empresa_logo" to "https://iili.io/fku9DTF.png",
             "usuario" to usuario.email,
             "password" to password,
             "action" to action,

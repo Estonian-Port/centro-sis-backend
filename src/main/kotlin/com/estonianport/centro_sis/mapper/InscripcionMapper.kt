@@ -8,12 +8,15 @@ object InscripcionMapper {
     fun buildInscripcionResponseDto(inscripcion : Inscripcion) : InscripcionResponseDto {
         return InscripcionResponseDto(
             id = inscripcion.id,
-            nombreAlumno = inscripcion.alumno.usuario.nombreCompleto(),
-            nombreCurso = inscripcion.curso.nombre,
-            tipoPagoSeleccionado = inscripcion.tipoPagoSeleccionado.tipo.name,
-            beneficio = inscripcion.beneficio,
+            alumno = UsuarioMapper.buildAlumno(inscripcion.alumno.usuario),
+            tipoPagoElegido = TipoPagoMapper.buildTipoPagoResponseDto(inscripcion.tipoPagoSeleccionado),
             fechaInscripcion = inscripcion.fechaInscripcion.toString(),
-            estadoPago = inscripcion.estadoPago.name
+            pagosRealizados = inscripcion.pagos.map { PagoMapper.buildPagoResponseDto(it) },
+            estadoPago = inscripcion.estadoPago.name,
+            beneficio = inscripcion.beneficio,
+            puntos = inscripcion.puntos,
+            porcentajeAsistencia = 0.0, //inscripcion.porcentajeAsistencia,
+            estado = inscripcion.estado.name
         )
     }
 }

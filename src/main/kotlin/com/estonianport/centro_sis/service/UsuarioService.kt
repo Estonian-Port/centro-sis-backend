@@ -6,7 +6,7 @@ import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
-import com.estonianport.centro_sis.dto.response.CustomResponse
+import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.enums.EstadoType
@@ -14,7 +14,6 @@ import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.repository.RolRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
-import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -58,11 +57,24 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return getAll()!!.filter { it.estado.name == "PENDIENTE" }
     }
 
-    fun verificarEmailNoExiste(email: String) {
+    fun verificarEmailNoExistente(email: String) {
         val usuario = usuarioRepository.getUsuarioByEmail(email)
-        println(usuario?.email)
         if (usuario != null) {
             throw IllegalArgumentException("Ya existe un usuario registrado con el email proporcionado")
+        }
+    }
+
+    fun verificarEmailEnUso(email: String, id: Long) {
+        val usuario = usuarioRepository.getUsuarioByEmail(email)
+        if (usuario != null && usuario.id != id) {
+            throw IllegalArgumentException("Ya existe un usuario registrado con el email proporcionado")
+        }
+    }
+
+    fun verficarDniNoExiste(dni: String, id: Long) {
+        val usuario = usuarioRepository.findAll().toList().find { it.dni == dni }
+        if (usuario != null && usuario.id != id) {
+            throw IllegalArgumentException("Ya existe un usuario registrado con el DNI proporcionado")
         }
     }
 
@@ -93,24 +105,29 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     }
 
     fun darDeBaja(usuarioId: Long) {
-        val usuario = findById(usuarioId) ?: throw NoSuchElementException("No se encontró un usuario con el ID proporcionado")
+        val usuario =
+            findById(usuarioId) ?: throw NoSuchElementException("No se encontró un usuario con el ID proporcionado")
         usuario.estado = EstadoType.BAJA
         usuario.fechaBaja = LocalDate.now()
         save(usuario)
     }
 
-    fun updatePerfil (usuario: Usuario) : Usuario {
-        val usuarioExistente = findById(usuario.id) ?: throw NoSuchElementException("No se encontró un usuario con el ID proporcionado")
+    fun updatePerfil(usuario: UsuarioUpdatePerfilRequestDto, id: Long): Usuario {
+        val usuarioExistente =
+            findById(id) ?: throw NoSuchElementException("No se encontró un usuario con el ID proporcionado")
         usuarioExistente.nombre = usuario.nombre
         usuarioExistente.apellido = usuario.apellido
+        verficarDniNoExiste(usuario.dni, id)
+        usuarioExistente.dni = usuario.dni
+        verificarEmailEnUso(usuario.email, id)
         usuarioExistente.email = usuario.email
         usuarioExistente.celular = usuario.celular
         save(usuarioExistente)
         return usuarioExistente
     }
 
-    fun updatePassword (usuarioDto : UsuarioCambioPasswordRequestDto) : Usuario {
-        val usuario = getUsuarioByEmail(usuarioDto.email)
+    fun updatePassword(usuarioDto: UsuarioCambioPasswordRequestDto, id: Long): Usuario {
+        val usuario = getById(id)
         if (!BCryptPasswordEncoder().matches(usuarioDto.passwordActual, usuario.password)) {
             throw IllegalArgumentException("La contraseña actual es incorrecta")
         }
@@ -133,7 +150,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return rolRepository.countDistinctUsuariosProfesorByEstado(EstadoType.ACTIVO)
     }
 
-    fun obtenerInscripcionesPorAlumno(idAlumno : Long) : List<Inscripcion> {
+    fun obtenerInscripcionesPorAlumno(idAlumno: Long): List<Inscripcion> {
         val usuario = getById(idAlumno)
         if (!usuario.tieneRol(RolType.ALUMNO)) {
             throw IllegalArgumentException("El usuario con ID $idAlumno no es un alumno.")
@@ -141,7 +158,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return usuario.getRolAlumno().getInscripcionesActivas()
     }
 
-    fun obtenerCursosProfesor(idProfe : Long) : List<Curso> {
+    fun obtenerCursosProfesor(idProfe: Long): List<Curso> {
         val usuario = getById(idProfe)
         if (!usuario.tieneRol(RolType.PROFESOR)) {
             throw IllegalArgumentException("El usuario con ID $idProfe no es un profesor.")

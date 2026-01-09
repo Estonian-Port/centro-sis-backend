@@ -9,6 +9,7 @@ import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
 import java.time.LocalDate
@@ -83,7 +85,7 @@ class UsuarioController(
     //Alta de usuario
     @PostMapping("/altaUsuario")
     fun altaUsuario(@RequestBody usuarioDto: UsuarioAltaRequestDto): ResponseEntity<CustomResponse> {
-        usuarioService.verificarEmailNoExiste(usuarioDto.email)
+        usuarioService.verificarEmailNoExistente(usuarioDto.email)
         val usuario = UsuarioMapper.buildAltaUsuario(usuarioDto)
 
         val password = usuarioService.generarPassword()
@@ -145,24 +147,29 @@ class UsuarioController(
     }
 
     // Busca el usuario por id y encriptar la nueva password
-    @PostMapping("/update-password")
-    fun editPassword(@RequestBody usuarioDto: UsuarioCambioPasswordRequestDto): ResponseEntity<CustomResponse> {
+    @PostMapping("/update-password/{id}")
+    fun editPassword(
+        @PathVariable id: Long,
+        @RequestBody usuarioDto: UsuarioCambioPasswordRequestDto
+    ): ResponseEntity<CustomResponse> {
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Password actualizado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePassword(usuarioDto))
+                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePassword(usuarioDto, id))
             )
         )
     }
 
     // Editar perfil de usuario (nombre, apellido, telefono, etc) menos la password
-    @PutMapping("/update-perfil")
-    fun updatePerfil(@RequestBody usuarioDto: UsuarioRequestDto): ResponseEntity<CustomResponse> {
-        val usuario = UsuarioMapper.buildUsuario(usuarioDto)
+    @PutMapping("/update-perfil/{id}")
+    fun updatePerfil(
+        @PathVariable id: Long,
+        @RequestBody usuarioDto: UsuarioUpdatePerfilRequestDto
+    ): ResponseEntity<CustomResponse> {
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Perfil actualizado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePerfil(usuario))
+                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePerfil(usuarioDto, id))
             )
         )
     }
@@ -180,6 +187,61 @@ class UsuarioController(
             )
         )
     }
+
+    //Endpoint para obtener todos los usuarios con rol Alumno que este activos
+    @GetMapping("/all/alumnos")
+    fun getAllAlumnosActivos(): ResponseEntity<CustomResponse> {
+        val usuarios = usuarioService.getUsuariosPorRol(RolType.ALUMNO).filter { it.estado.name == "ACTIVO" }
+        val usuariosDto = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Alumnos obtenidos correctamente",
+                data = usuariosDto
+            )
+        )
+    }
+
+    // Enpoint de busqueda de alumnos por nombre, apellido o dni. Se usa en la inscripcion a cursos
+    @GetMapping("/alumnos/search")
+    fun searchAlumnos(
+        @RequestParam q: String,
+        @RequestParam(required = false) cursoId: Long,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): ResponseEntity<CustomResponse> {
+        if (q.length < 2) {
+            return ResponseEntity.status(400).body(
+                CustomResponse(
+                    message = "La búsqueda debe tener al menos 2 caracteres",
+                    data = emptyList<Any>()
+                )
+            )
+        }
+
+        val queryLower = q.lowercase()
+        var usuarios = usuarioService.getUsuariosPorRol(RolType.ALUMNO)
+            .filter { it.estado.name == "ACTIVO" }
+            .filter { usuario ->
+                usuario.nombre.lowercase().contains(queryLower) ||
+                        usuario.apellido.lowercase().contains(queryLower) || usuario.dni.lowercase()
+                    .contains(queryLower)
+            }
+
+        // Excluir alumnos ya inscriptos en el curso
+        val curso = cursoService.getById(cursoId)
+        val alumnosInscriptosIds = curso.inscripciones.map { it.alumno.usuario.id }.toSet()
+        usuarios = usuarios.filter { it.id !in alumnosInscriptosIds }
+
+        usuarios = usuarios.take(limit.coerceAtMost(50)) // Máximo 50
+
+        val usuariosDto = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "${usuariosDto.size} alumno(s) encontrado(s)",
+                data = usuariosDto
+            )
+        )
+    }
+
 
     // Obtener todas los cursos de un alumno
     @GetMapping("/cursos-alumno/{idAlumno}")
@@ -207,7 +269,7 @@ class UsuarioController(
                 data = listaCursosProfesor.map { curso ->
                     CursoMapper.buildCursoResponseDto(
                         curso,
-                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
+                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
                     )
                 }
             )
@@ -293,7 +355,7 @@ class UsuarioController(
                 .map { curso ->
                     CursoMapper.buildCursoResponseDto(
                         curso,
-                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it) }
+                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
                     )
                 }
             cursosDictados.addAll(cursos)

@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter
 object CursoMapper {
 
     fun buildCursoResponseDto(curso: Curso, alumnos: List<AlumnoResponseDto>): CursoResponseDto {
-        val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        val formatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
         return CursoResponseDto(
             id = curso.id,
@@ -27,7 +27,9 @@ object CursoMapper {
             fechaInicio = curso.fechaInicio.format(formatter),
             fechaFin = curso.fechaFin.format(formatter),
             estado = curso.estado.name,
-            profesores = curso.profesores.map { UsuarioMapper.buildNombreCompleto(it.usuario) }.toSet()
+            profesores = curso.profesores.map { UsuarioMapper.buildNombreCompleto(it.usuario) }.toSet(),
+            tiposPago = curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
+            inscripciones = curso.inscripciones.map { InscripcionMapper.buildInscripcionResponseDto(it) }
         )
     }
 

@@ -25,7 +25,7 @@ class Usuario(
     var email: String,
 
     @Column(nullable = false)
-    val dni: String,
+    var dni: String,
 
     @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var listaRol: MutableSet<Rol> = mutableSetOf(),

@@ -1,7 +1,9 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.model.enums.EstadoCursoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.EstadoPagoType
+import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import jakarta.persistence.*
 import java.math.BigDecimal
@@ -46,7 +48,11 @@ class Inscripcion(
     var beneficio: Int = 0,
 
     @Column(nullable = false)
-    var puntos: Int = 0
+    var puntos: Int = 0,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var estado: EstadoType = EstadoType.ACTIVO
 ) {
 
     init {

@@ -87,19 +87,14 @@ object UsuarioMapper {
         )
     }
 
-    fun buildAlumno(inscripcion: Inscripcion): AlumnoResponseDto {
+    fun buildAlumno(alumno: Usuario): AlumnoResponseDto {
         return AlumnoResponseDto(
-            id = inscripcion.alumno.usuario.id,
-            nombre = inscripcion.alumno.usuario.nombre,
-            apellido = inscripcion.alumno.usuario.apellido,
-            dni = inscripcion.alumno.usuario.dni,
-            email = inscripcion.alumno.usuario.email,
-            celular = inscripcion.alumno.usuario.celular.toString(),
-            estadoPago = inscripcion.estadoPago.name,
-            tipoPagoElegido = inscripcion.tipoPagoSeleccionado.tipo.name,
-            asistencias = 0, // Este campo debe ser calculado aparte
-            beneficio = inscripcion.beneficio.toDouble(),
-            puntos = inscripcion.puntos
+            id = alumno.id,
+            nombre = alumno.nombre,
+            apellido = alumno.apellido,
+            dni = alumno.dni,
+            email = alumno.email,
+            celular = alumno.celular.toString(),
         )
     }
 

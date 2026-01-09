@@ -1,6 +1,6 @@
 package com.estonianport.centro_sis.dto.request
 
-data class UsuarioRequestDto (
+data class UsuarioRequestDto(
     val id: Long,
     val nombre: String,
     val apellido: String,
@@ -10,14 +10,21 @@ data class UsuarioRequestDto (
     val password: String
 )
 
-data class UsuarioAltaRequestDto (
+data class UsuarioAltaRequestDto(
     val email: String,
     val roles: List<String>
 )
 
-data class UsuarioCambioPasswordRequestDto (
-    val email: String,
+data class UsuarioCambioPasswordRequestDto(
     val passwordActual: String,
     val nuevoPassword: String,
     val confirmacionPassword: String
+)
+
+data class UsuarioUpdatePerfilRequestDto(
+    val nombre: String,
+    val apellido: String,
+    val dni: String,
+    val celular: Long,
+    val email: String
 )
