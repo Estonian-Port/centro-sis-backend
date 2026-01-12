@@ -27,9 +27,13 @@ object CursoMapper {
             fechaInicio = curso.fechaInicio.format(formatter),
             fechaFin = curso.fechaFin.format(formatter),
             estado = curso.estado.name,
-            profesores = curso.profesores.map { UsuarioMapper.buildNombreCompleto(it.usuario) }.toSet(),
+            profesores = curso.profesores.map { UsuarioMapper.buildUsuarioResponseDto(it.usuario) }.toSet(),
             tiposPago = curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
-            inscripciones = curso.inscripciones.map { InscripcionMapper.buildInscripcionResponseDto(it) }
+            inscripciones = curso.inscripciones.map { InscripcionMapper.buildInscripcionResponseDto(it) },
+            recargoPorAtraso = curso.recargoAtraso
+                .minus(BigDecimal.ONE)
+                .multiply(BigDecimal(100))
+                .toDouble()
         )
     }
 
