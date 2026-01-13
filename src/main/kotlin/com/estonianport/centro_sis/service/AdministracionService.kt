@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.dto.response.EstadisticasResponseDto
+import com.estonianport.centro_sis.model.enums.RolType
 import org.springframework.stereotype.Service
 
 @Service
@@ -15,8 +16,7 @@ class AdministracionService(
         val usuario = usuarioService.findById(usuarioId)
             ?: throw NotFoundException("Usuario no encontrado con ID: $usuarioId")
 
-        //TODO Ajustar con ROL usuario.rol.
-        if (true) {
+        if (!usuario.tieneRol(RolType.ADMINISTRADOR)) {
             throw IllegalAccessException("El usuario no tiene permisos de administrador")
         }
     }

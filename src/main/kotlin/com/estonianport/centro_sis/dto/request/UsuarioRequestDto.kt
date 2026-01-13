@@ -7,7 +7,8 @@ data class UsuarioRequestDto(
     val dni: String,
     val celular: Long,
     val email: String,
-    val password: String
+    val password: String,
+    val fechaDeNacimiento: String,
 )
 
 data class UsuarioAltaRequestDto(

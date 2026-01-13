@@ -219,7 +219,7 @@ class UsuarioController(
 
         val queryLower = q.lowercase()
         var usuarios = usuarioService.getUsuariosPorRol(RolType.ALUMNO)
-            .filter { it.estado.name == "ACTIVO" }
+            .filter { it.estado.name == "ACTIVO" || it.estado.name == "INACTIVO" }
             .filter { usuario ->
                 usuario.nombre.lowercase().contains(queryLower) ||
                         usuario.apellido.lowercase().contains(queryLower) || usuario.dni.lowercase()

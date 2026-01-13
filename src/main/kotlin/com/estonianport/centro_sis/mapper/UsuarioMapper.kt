@@ -15,9 +15,13 @@ import com.estonianport.centro_sis.model.RolAlumno
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 object UsuarioMapper {
+    val formatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    val formatterTime: DateTimeFormatter? = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")
 
     fun buildUsuarioResponseDto(usuario: Usuario): UsuarioResponseDto {
         return UsuarioResponseDto(
@@ -27,9 +31,11 @@ object UsuarioMapper {
             dni = usuario.dni,
             email = usuario.email,
             celular = usuario.celular,
+            fechaNacimiento = usuario.fechaNacimiento.format(formatter),
             estado = usuario.estado.name,
-            primerLogin = usuario.estado == EstadoType.PENDIENTE,
-            listaRol = usuario.getRolTypes().toMutableSet()
+            primerLogin = usuario.esPrimerLogin(),
+            listaRol = usuario.getRolTypes().toMutableSet(),
+            ultimoIngreso = usuario.ultimoIngreso?.format(formatterTime) ?: "",
         )
     }
 
@@ -43,8 +49,9 @@ object UsuarioMapper {
             nombre = usuarioDto.nombre,
             apellido = usuarioDto.apellido,
             dni = usuarioDto.dni,
+            email = usuarioDto.email,
             celular = usuarioDto.celular,
-            email = usuarioDto.email
+            fechaNacimiento = LocalDate.parse(usuarioDto.fechaDeNacimiento),
         )
     }
 
@@ -55,7 +62,8 @@ object UsuarioMapper {
             apellido = "",
             dni = "",
             celular = 0,
-            email = usuarioDto.email
+            email = usuarioDto.email,
+            fechaNacimiento = LocalDate.now(),
         )
     }
 
@@ -79,8 +87,9 @@ object UsuarioMapper {
             dni = usuario.dni,
             email = usuario.email,
             celular = usuario.celular,
+            fechaNacimiento = usuario.fechaNacimiento.format(formatter),
             estado = usuario.estado.name,
-            primerLogin = usuario.estado == EstadoType.PENDIENTE,
+            primerLogin = usuario.esPrimerLogin(),
             listaRol = usuario.getRolTypes().toMutableSet(),
             cursosInscriptos = cursosInscriptos.orEmpty(),
             cursosDictados = cursosDictados.orEmpty(),
@@ -95,6 +104,7 @@ object UsuarioMapper {
             dni = alumno.dni,
             email = alumno.email,
             celular = alumno.celular.toString(),
+            fechaNacimiento = alumno.fechaNacimiento.format(formatter),
         )
     }
 

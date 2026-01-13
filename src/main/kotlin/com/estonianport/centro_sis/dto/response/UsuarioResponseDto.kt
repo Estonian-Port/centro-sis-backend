@@ -10,9 +10,11 @@ data class UsuarioResponseDto (
     val dni: String,
     val email: String,
     val celular: Long,
+    val fechaNacimiento : String,
     val estado: String,
     val primerLogin: Boolean,
-    val listaRol: MutableSet<RolType>
+    val listaRol: MutableSet<RolType>,
+    val ultimoIngreso: String
 )
 
 data class UsuarioDetailResponseDto (
@@ -22,6 +24,7 @@ data class UsuarioDetailResponseDto (
     val dni: String,
     val email: String,
     val celular: Long,
+    val fechaNacimiento : String,
     val estado: String,
     val primerLogin: Boolean,
     val listaRol: MutableSet<RolType>,
@@ -29,3 +32,4 @@ data class UsuarioDetailResponseDto (
     val cursosDictados: List<CursoResponseDto>,
     //val pagos: List<PagoResponseDto>?
 )
+

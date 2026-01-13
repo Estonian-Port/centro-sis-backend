@@ -27,6 +27,7 @@ object CursoMapper {
             fechaInicio = curso.fechaInicio.format(formatter),
             fechaFin = curso.fechaFin.format(formatter),
             estado = curso.estado.name,
+            estadoAlta = curso.estadoAlta.name,
             profesores = curso.profesores.map { UsuarioMapper.buildUsuarioResponseDto(it.usuario) }.toSet(),
             tiposPago = curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
             inscripciones = curso.inscripciones.map { InscripcionMapper.buildInscripcionResponseDto(it) },

@@ -7,4 +7,5 @@ data class AlumnoResponseDto (
     val dni : String,
     val email : String,
     val celular : String,
+    val fechaNacimiento : String,
 )

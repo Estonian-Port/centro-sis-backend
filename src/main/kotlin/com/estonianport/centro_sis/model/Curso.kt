@@ -56,7 +56,7 @@ abstract class Curso(
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var activo : EstadoType = EstadoType.PENDIENTE
+    var estadoAlta : EstadoType = EstadoType.PENDIENTE
 ) {
 
     @get:Transient

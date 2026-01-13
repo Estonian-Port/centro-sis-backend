@@ -2,10 +2,8 @@ package com.estonianport.centro_sis.controller
 
 import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
-import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
-import com.estonianport.centro_sis.mapper.TipoPagoMapper
 import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
@@ -103,7 +101,7 @@ class CursoController(
             .toMutableSet()
 
         val nuevoCursoComision = CursoMapper.buildCursoComision(cursoRequestDto, profesores)
-        nuevoCursoComision.activo = EstadoType.ACTIVO
+        nuevoCursoComision.estadoAlta = EstadoType.ACTIVO
 
         val cursoAgregado = cursoService.alta(nuevoCursoComision)
 

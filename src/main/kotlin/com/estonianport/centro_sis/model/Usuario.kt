@@ -4,6 +4,7 @@ import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import jakarta.persistence.*
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "usuario")
@@ -32,7 +33,14 @@ class Usuario(
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var estado: EstadoType = EstadoType.PENDIENTE
+    var estado: EstadoType = EstadoType.PENDIENTE,
+
+    @Column(nullable = false)
+    var fechaNacimiento: LocalDate,
+
+    @Embedded
+    var adultoResponsable: AdultoResponsable? = null
+
 ) {
 
     @Column
@@ -45,10 +53,10 @@ class Usuario(
     var fechaBaja: LocalDate? = null
 
     @Column
-    var ultimoIngreso: LocalDate? = null
+    var ultimoIngreso: LocalDateTime? = null
 
     fun registrarIngreso() {
-        ultimoIngreso = LocalDate.now()
+        ultimoIngreso = LocalDateTime.now()
     }
 
     fun confirmarPrimerLogin() {
@@ -56,6 +64,14 @@ class Usuario(
         if (ultimoIngreso != null) {
             estado = EstadoType.INACTIVO
         }
+    }
+
+    fun esPrimerLogin(): Boolean {
+        return estado == EstadoType.PENDIENTE
+    }
+
+    fun esMenorDeEdad(): Boolean {
+        return fechaNacimiento.plusYears(18).isAfter(LocalDate.now())
     }
 
     fun nombreCompleto(): String = "$nombre $apellido"

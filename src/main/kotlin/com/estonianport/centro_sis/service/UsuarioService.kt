@@ -17,6 +17,7 @@ import org.springframework.data.repository.CrudRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Service
 class UsuarioService : GenericServiceImpl<Usuario, Long>() {
@@ -86,22 +87,24 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return CodeGeneratorUtil.base26Only4Letters + CodeGeneratorUtil.base26Only4Letters
     }
 
-    fun actualizarFechaUltimoAcceso(email: String, fecha: LocalDate) {
+    fun actualizarFechaUltimoAcceso(email: String, fecha: LocalDateTime) {
         val usuario = getUsuarioByEmail(email)
         usuario.ultimoIngreso = fecha
         save(usuario)
     }
 
     fun primerLogin(usuarioDto: UsuarioRegistroRequestDto) {
-        val usuario = findById(usuarioDto.id)
-        if (usuario != null) {
-            usuario.password = encriptarPassword(usuarioDto.nuevoPassword)
-            usuario.nombre = usuarioDto.nombre
-            usuario.apellido = usuarioDto.apellido
-            usuario.celular = usuarioDto.celular
-            usuario.confirmarPrimerLogin()
-            save(usuario)
+        val usuario = getById(usuarioDto.id)
+        usuario.password = encriptarPassword(usuarioDto.password)
+        usuario.nombre = usuarioDto.nombre
+        usuario.apellido = usuarioDto.apellido
+        usuario.celular = usuarioDto.celular
+        usuario.fechaNacimiento = usuarioDto.fechaNacimiento
+        usuario.confirmarPrimerLogin()
+        if (usuarioDto.adultoResponsable != null) {
+            usuario.adultoResponsable = usuarioDto.adultoResponsable
         }
+        save(usuario)
     }
 
     fun darDeBaja(usuarioId: Long) {

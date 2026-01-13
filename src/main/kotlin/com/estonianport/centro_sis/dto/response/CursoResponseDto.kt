@@ -10,6 +10,7 @@ data class CursoResponseDto (
     val fechaInicio: String,
     val fechaFin: String,
     val estado: String,
+    val estadoAlta : String,
     val profesores: Set<UsuarioResponseDto>,
     val tiposPago: List<TipoPagoDto>,
     val inscripciones : List<InscripcionResponseDto>,
