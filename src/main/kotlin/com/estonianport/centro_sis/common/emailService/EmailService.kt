@@ -70,8 +70,7 @@ class EmailService {
         // ----------------- Content email -------------------------
         val template = loadHtmlTemplate("alta_usuario.html")
         emailBody.content = renderTemplate(template, mapOf(
-            //EMPRESA LOGO DEBERIA APUNTAR A OTRO LADO, AHORA ESTA HARDCODEADO A UN LINK DE FACEBOOK
-            "empresa_logo" to "https://freeimage.host/i/feEOZWg",
+            "empresa_logo" to "https://iili.io/feEOZWg.png",
             "usuario" to usuario.email,
             "password" to password,
             "action" to action,
