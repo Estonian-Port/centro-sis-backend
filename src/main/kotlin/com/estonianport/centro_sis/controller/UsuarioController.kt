@@ -201,11 +201,12 @@ class UsuarioController(
         )
     }
 
-    // Enpoint de busqueda de alumnos por nombre, apellido o dni. Se usa en la inscripcion a cursos
-    @GetMapping("/alumnos/search")
+    // Enpoint de busqueda de alumnos por nombre, apellido, mail o dni. Se usa en la inscripcion a cursos
+    @GetMapping("/search-by-rol")
     fun searchAlumnos(
+        @RequestParam rol: String,
         @RequestParam q: String,
-        @RequestParam(required = false) cursoId: Long,
+        @RequestParam(required = false) cursoId: Long?,
         @RequestParam(defaultValue = "20") limit: Int
     ): ResponseEntity<CustomResponse> {
         if (q.length < 2) {
@@ -218,25 +219,35 @@ class UsuarioController(
         }
 
         val queryLower = q.lowercase()
-        var usuarios = usuarioService.getUsuariosPorRol(RolType.ALUMNO)
+        var usuarios = usuarioService.getUsuariosPorRol(RolType.valueOf(rol))
             .filter { it.estado.name == "ACTIVO" || it.estado.name == "INACTIVO" }
             .filter { usuario ->
                 usuario.nombre.lowercase().contains(queryLower) ||
                         usuario.apellido.lowercase().contains(queryLower) || usuario.dni.lowercase()
+                    .contains(queryLower) || usuario.email.lowercase()
                     .contains(queryLower)
             }
 
         // Excluir alumnos ya inscriptos en el curso
-        val curso = cursoService.getById(cursoId)
-        val alumnosInscriptosIds = curso.inscripciones.map { it.alumno.usuario.id }.toSet()
-        usuarios = usuarios.filter { it.id !in alumnosInscriptosIds }
+        if (rol == "ALUMNO" && cursoId != null) {
+            val curso = cursoService.getById(cursoId)
+            val alumnosInscriptosIds = curso.inscripciones.map { it.alumno.usuario.id }.toSet()
+            usuarios = usuarios.filter { it.id !in alumnosInscriptosIds }
+        }
+
+        //Excluir profesores que dictan el curso
+        if (rol == "PROFESOR" && cursoId != null) {
+            val curso = cursoService.getById(cursoId)
+            val profesoresIds = curso.profesores.map { it.usuario.id }.toSet()
+            usuarios = usuarios.filter { it.id !in profesoresIds }
+        }
 
         usuarios = usuarios.take(limit.coerceAtMost(50)) // Máximo 50
 
         val usuariosDto = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
         return ResponseEntity.status(200).body(
             CustomResponse(
-                message = "${usuariosDto.size} alumno(s) encontrado(s)",
+                message = "${usuariosDto.size} usuario(s) encontrado(s)",
                 data = usuariosDto
             )
         )
@@ -371,6 +382,24 @@ class UsuarioController(
             CustomResponse(
                 message = "Usuario obtenido correctamente",
                 data = UsuarioMapper.buildUsuarioDetailDto(usuario, cursosInscriptos, cursosDictados)
+            )
+        )
+    }
+
+    //Endpoint para asignar rol a un usuario
+    @PostMapping("/asignar-rol/{usuarioId}/{rolType}")
+    fun asignarRol(
+        @PathVariable usuarioId: Long,
+        @PathVariable rolType: String
+    ): ResponseEntity<CustomResponse> {
+        val usuario = usuarioService.getById(usuarioId)
+        val rol = rolFactory.build(rolType, usuario)
+        usuario.asignarRol(rol)
+        usuarioService.save(usuario)
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Rol asignado correctamente",
+                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
             )
         )
     }

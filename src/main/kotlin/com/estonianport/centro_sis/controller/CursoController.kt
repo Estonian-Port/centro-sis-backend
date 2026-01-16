@@ -1,9 +1,12 @@
 package com.estonianport.centro_sis.controller
 
-import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
+import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
+import com.estonianport.centro_sis.dto.request.CursoAlquilerProfeRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
+import com.estonianport.centro_sis.mapper.HorarioMapper
+import com.estonianport.centro_sis.mapper.TipoPagoMapper
 import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
@@ -77,7 +80,7 @@ class CursoController(
 
     //Crear un nuevo curso alquiler
     @PostMapping("/alta-alquiler")
-    fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerRequestDto): ResponseEntity<CustomResponse> {
+    fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerAdminRequestDto): ResponseEntity<CustomResponse> {
         val profesores = cursoRequestDto.profesoresId
             .map { usuarioService.getById(it).getRolProfesor() }
             .toMutableSet()
@@ -109,6 +112,49 @@ class CursoController(
             CustomResponse(
                 message = "Curso creado correctamente",
                 data = cursoAgregado
+            )
+        )
+    }
+
+    // Actualizar profesores de un curso
+    @PostMapping("/{cursoId}/actualizar-profesores")
+    fun actualizarProfesoresDeCurso(
+        @PathVariable cursoId: Long,
+        @RequestBody profesoresId: List<Long>
+    ): ResponseEntity<CustomResponse> {
+        val curso = cursoService.getById(cursoId)
+        val nuevosProfesores = profesoresId
+            .map { usuarioService.getById(it).getRolProfesor() }
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Profesores actualizados correctamente",
+                data = CursoMapper.buildCursoResponseDto(
+                    cursoService.actualizarProfesoresDelCurso(curso, nuevosProfesores),
+                    curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
+            )
+        )
+    }
+
+    //Endpoint para finalizar alta de un curso de alquiler
+    @PostMapping("/{cursoId}/finalizar-alta-alquiler")
+    fun finalizarAltaCursoAlquiler(
+        @PathVariable cursoId: Long,
+        @RequestBody curso: CursoAlquilerProfeRequestDto
+    ): ResponseEntity<CustomResponse> {
+        val horarios = curso.horarios.map {
+            HorarioMapper.buildHorario(it)
+        }
+        val tiposDePago = curso.tiposPago.map {
+            TipoPagoMapper.buildTipoPago(it)
+        }
+
+        val cursoFinalizado = cursoService.finalizarAltaCursoAlquiler(cursoId, horarios, tiposDePago, curso.recargo)
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Curso de alquiler finalizado correctamente",
+                data = CursoMapper.buildCursoResponseDto(
+                    cursoFinalizado,
+                    cursoFinalizado.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
             )
         )
     }

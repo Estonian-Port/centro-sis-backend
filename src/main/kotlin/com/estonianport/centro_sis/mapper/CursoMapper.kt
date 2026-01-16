@@ -1,6 +1,6 @@
 package com.estonianport.centro_sis.mapper
 
-import com.estonianport.centro_sis.dto.request.CursoAlquilerRequestDto
+import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.AlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
@@ -17,15 +17,13 @@ import java.time.format.DateTimeFormatter
 object CursoMapper {
 
     fun buildCursoResponseDto(curso: Curso, alumnos: List<AlumnoResponseDto>): CursoResponseDto {
-        val formatter: DateTimeFormatter? = DateTimeFormatter.ofPattern("dd-MM-yyyy")
-
         return CursoResponseDto(
             id = curso.id,
             nombre = curso.nombre,
             horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
             alumnosInscriptos = alumnos,
-            fechaInicio = curso.fechaInicio.format(formatter),
-            fechaFin = curso.fechaFin.format(formatter),
+            fechaInicio = curso.fechaInicio.toString(),
+            fechaFin = curso.fechaFin.toString(),
             estado = curso.estado.name,
             estadoAlta = curso.estadoAlta.name,
             profesores = curso.profesores.map { UsuarioMapper.buildUsuarioResponseDto(it.usuario) }.toSet(),
@@ -34,7 +32,10 @@ object CursoMapper {
             recargoPorAtraso = curso.recargoAtraso
                 .minus(BigDecimal.ONE)
                 .multiply(BigDecimal(100))
-                .toDouble()
+                .toDouble(),
+            tipoCurso = curso.tipoCurso.name,
+            montoAlquiler = if (curso is CursoAlquiler) curso.precioAlquiler.toDouble() else null,
+            cuotasAlquiler = if (curso is CursoAlquiler) curso.cuotasAlquiler else null
         )
     }
 
@@ -43,16 +44,31 @@ object CursoMapper {
             id = inscripcion.curso.id,
             nombre = inscripcion.curso.nombre,
             horarios = inscripcion.curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
-            arancel = inscripcion.tipoPagoSeleccionado.monto.toDouble(),
-            tipoPagoElegido = inscripcion.tipoPagoSeleccionado.tipo.name,
-            profesores = inscripcion.curso.profesores.map { UsuarioMapper.buildNombreCompleto(it.usuario) }.toSet(),
+            tipoPagoElegido = TipoPagoMapper.buildTipoPagoResponseDto(inscripcion.tipoPagoSeleccionado),
+            profesores = inscripcion.curso.profesores.map { UsuarioMapper.buildUsuarioResponseDto(it.usuario) }.toSet(),
             beneficio = inscripcion.beneficio,
-            estadoPago = inscripcion.estadoPago.name
+            estadoPago = inscripcion.estadoPago.name,
+            alumnosInscriptos = listOf(UsuarioMapper.buildAlumno(inscripcion.alumno.usuario)),
+            fechaInicio = inscripcion.curso.fechaInicio.toString(),
+            fechaFin = inscripcion.curso.fechaFin.toString(),
+            estado = inscripcion.curso.estado.name,
+            estadoAlta = inscripcion.curso.estadoAlta.name,
+            tiposPago = inscripcion.curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
+            inscripciones = inscripcion.curso.inscripciones.map { InscripcionMapper.buildInscripcionResponseDto(it) },
+            recargoPorAtraso = inscripcion.curso.recargoAtraso
+                .minus(BigDecimal.ONE)
+                .multiply(BigDecimal(100))
+                .toDouble(),
+            tipoCurso = inscripcion.curso.tipoCurso.name,
+            fechaInscripcion = inscripcion.fechaInscripcion.toString(),
+            porcentajeAsistencia = 1.0, //TODO: calcular porcentaje de asistencia
+            pagosRealizados = inscripcion.pagos.map {PagoMapper.buildPagoResponseDto(it)},
+            puntos = inscripcion.puntos,
         )
     }
 
     fun buildCursoAlquiler(
-        cursoDto: CursoAlquilerRequestDto,
+        cursoDto: CursoAlquilerAdminRequestDto,
         profesores: MutableSet<RolProfesor> = mutableSetOf()
     ): CursoAlquiler {
         return CursoAlquiler(
@@ -60,6 +76,7 @@ object CursoMapper {
             nombre = cursoDto.nombre,
             profesores = profesores,
             precioAlquiler = cursoDto.montoAlquiler.toBigDecimal(),
+            cuotasAlquiler = cursoDto.cuotasAlquiler,
             fechaInicio = LocalDate.parse(cursoDto.fechaInicio),
             fechaFin = LocalDate.parse(cursoDto.fechaFin),
         )

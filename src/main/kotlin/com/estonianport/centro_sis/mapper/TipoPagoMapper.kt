@@ -9,7 +9,8 @@ object TipoPagoMapper {
     fun buildTipoPagoResponseDto(tipoPago: TipoPago): TipoPagoDto {
         return TipoPagoDto(
             tipo = tipoPago.tipo.name,
-            monto = tipoPago.monto.toDouble()
+            monto = tipoPago.monto.toDouble(),
+            cuotas = tipoPago.cuotas
         )
     }
 
@@ -31,7 +32,11 @@ object TipoPagoMapper {
 
         return TipoPago(
             tipo = pagoType,
-            monto = tipoPagoDto.monto.toBigDecimal()
+            monto = tipoPagoDto.monto.toBigDecimal(),
+            cuotas = when (pagoType) {
+                PagoType.MENSUAL -> tipoPagoDto.cuotas
+                PagoType.TOTAL -> 1
+            }
         )
     }
 }

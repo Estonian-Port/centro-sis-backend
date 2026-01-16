@@ -9,6 +9,7 @@ import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
+import com.estonianport.centro_sis.model.Rol
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.repository.RolRepository
@@ -37,7 +38,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     }
 
     fun getAllUsuarios(): List<Usuario> {
-        return usuarioRepository.findAll().toList()
+        return usuarioRepository.findAllByOrderByNombreAsc()
     }
 
     fun getUsuarioByEmail(email: String): Usuario {
@@ -177,6 +178,5 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
             RolType.OFICINA -> usuarioRepository.findOficina()
         }
     }
-
 
 }

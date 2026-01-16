@@ -15,7 +15,10 @@ class TipoPago(
     val tipo: PagoType,
 
     @Column(nullable = false)
-    val monto: BigDecimal
+    val monto: BigDecimal,
+
+    @Column (nullable = false)
+    val cuotas: Int = 1
 ) {
 
     override fun equals(other: Any?): Boolean {

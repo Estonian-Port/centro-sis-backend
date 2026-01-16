@@ -1,11 +1,13 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.model.enums.CursoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.EstadoCursoType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
+import jakarta.persistence.Transient
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -30,14 +32,14 @@ abstract class Curso(
         name = "curso_horarios",
         joinColumns = [JoinColumn(name = "curso_id")]
     )
-    val horarios: MutableList<Horario> = mutableListOf(),
+    var horarios: MutableList<Horario> = mutableListOf(),
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "curso_tipos_pago",
         joinColumns = [JoinColumn(name = "curso_id")]
     )
-    val tiposPago: MutableSet<TipoPago> = mutableSetOf(),
+    var tiposPago: MutableSet<TipoPago> = mutableSetOf(),
 
     @Column(nullable = false)
     var fechaInicio: LocalDate,
@@ -56,7 +58,11 @@ abstract class Curso(
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var estadoAlta : EstadoType = EstadoType.PENDIENTE
+    var estadoAlta : EstadoType = EstadoType.PENDIENTE,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    val tipoCurso : CursoType,
 ) {
 
     @get:Transient
@@ -81,13 +87,13 @@ abstract class Curso(
         }
     }
 
-    fun definirPrecio(tipo: PagoType, monto: BigDecimal) {
+    fun definirPrecio(tipo: PagoType, monto: BigDecimal, cuotas: Int) {
         require(monto > BigDecimal.ZERO) {
             "El monto debe ser mayor a cero"
         }
 
         tiposPago.removeIf { it.tipo == tipo }
-        tiposPago.add(TipoPago(tipo, monto))
+        tiposPago.add(TipoPago(tipo, monto, cuotas))
     }
 
     fun eliminarTipoPago(tipo: PagoType) {
@@ -134,6 +140,9 @@ class CursoAlquiler(
     fechaFin: LocalDate,
     fechaBaja: LocalDate? = null,
     recargoAtraso: BigDecimal = BigDecimal.ONE,
+    tipoCurso: CursoType = CursoType.ALQUILER,
+    inscripciones: MutableList<Inscripcion> = mutableListOf(),
+    estadoAlta: EstadoType = EstadoType.PENDIENTE,
 
     @Column(nullable = false, precision = 10, scale = 2)
     var precioAlquiler: BigDecimal,
@@ -142,9 +151,12 @@ class CursoAlquiler(
     @JoinColumn(name = "profesor_id")
     var profesor: RolProfesor? = null,
 
+    @Column(name = "cuotas_alquiler")
+    var cuotasAlquiler: Int = 1,
+
     @OneToMany(mappedBy = "curso", cascade = [CascadeType.ALL])
     val pagosAlquiler: MutableList<PagoAlquiler> = mutableListOf()
-) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso) {
+) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso, inscripciones, estadoAlta, tipoCurso) {
 
     init {
         require(precioAlquiler > BigDecimal.ZERO) {
@@ -189,13 +201,17 @@ class CursoComision(
     fechaFin: LocalDate,
     fechaBaja: LocalDate? = null,
     recargoAtraso: BigDecimal = BigDecimal.ONE,
+    tipoCurso: CursoType = CursoType.COMISION,
+    inscripciones: MutableList<Inscripcion> = mutableListOf(),
+    estadoAlta: EstadoType = EstadoType.PENDIENTE,
 
     @Column(nullable = false, precision = 3, scale = 2)
     var porcentajeComision: BigDecimal = BigDecimal("0.50"),
 
     @OneToMany(mappedBy = "curso", cascade = [CascadeType.ALL])
-    val pagosComision: MutableList<PagoComision> = mutableListOf()
-) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso) {
+    val pagosComision: MutableList<PagoComision> = mutableListOf(),
+
+) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso, inscripciones, estadoAlta, tipoCurso) {
 
     init {
         require(porcentajeComision >= BigDecimal.ZERO && porcentajeComision <= BigDecimal.ONE) {

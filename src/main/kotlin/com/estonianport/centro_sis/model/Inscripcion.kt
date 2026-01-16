@@ -26,7 +26,7 @@ class Inscripcion(
 
     @Embedded
     @AttributeOverrides(
-        AttributeOverride(name = "tipoPago", column = Column(name = "tipo_pago")),
+        AttributeOverride(name = "tipo", column = Column(name = "tipo_pago")),
         AttributeOverride(name = "monto", column = Column(name = "monto_tipo_pago"))
     )
     var tipoPagoSeleccionado: TipoPago,

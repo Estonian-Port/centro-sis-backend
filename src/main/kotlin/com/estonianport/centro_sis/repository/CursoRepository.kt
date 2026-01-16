@@ -11,4 +11,8 @@ interface CursoRepository : CrudRepository<Curso, Long> {
 
     fun countByFechaBajaIsNull(): Long
 
+
+    @Query("SELECT c FROM Curso c WHERE c.fechaBaja IS NULL ORDER BY c.nombre ASC")
+    fun findAllActivosOrdenados(): List<Curso>
+
 }

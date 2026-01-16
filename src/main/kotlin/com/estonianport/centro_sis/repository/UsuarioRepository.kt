@@ -92,12 +92,15 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     fun getCantidadUsuarioFiltrados(empresaId : Long, buscar: String) : Int
     */
 
+    fun findAllByOrderByNombreAsc(): List<Usuario>
+
     fun getUsuarioByEmail(email: String): Usuario?
 
     @Query("""
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolProfesor
+    ORDER BY u.nombre ASC
 """)
     fun findProfesores(): List<Usuario>
 
@@ -105,6 +108,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAlumno
+    ORDER BY u.nombre ASC
 """)
     fun findAlumnos(): List<Usuario>
 
@@ -112,6 +116,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAdmin
+    ORDER BY u.nombre ASC
 """)
     fun findAdministradores(): List<Usuario>
 
@@ -119,6 +124,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolOficina
+    ORDER BY u.nombre ASC
 """)
     fun findOficina(): List<Usuario>
 
