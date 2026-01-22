@@ -11,5 +11,13 @@ data class UsuarioRegistroRequestDto (
     val celular: Long,
     val fechaNacimiento: LocalDate,
     val password: String,
-    val adultoResponsable: AdultoResponsable? = null
+    val adultoResponsable: AdultoResponsableRequestDto? = null
+)
+
+data class AdultoResponsableRequestDto (
+    val nombre: String,
+    val apellido: String,
+    val dni: String,
+    val celular: Long,
+    val relacion: String
 )

@@ -23,7 +23,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
         """
         SELECT COUNT(DISTINCT u)  
         FROM Usuario u
-        WHERE u.ultimoIngreso IS NOT NULL
+        WHERE u.ultimoIngresoAlSistema IS NOT NULL
         AND u.fechaBaja IS NULL
 
     """
@@ -35,7 +35,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
         """
     SELECT COUNT(DISTINCT u)
     FROM Usuario u
-    WHERE u.ultimoIngreso IS NOT NULL
+    WHERE u.ultimoIngresoAlSistema IS NOT NULL
     AND u.fechaBaja IS NULL
 """
     )
@@ -47,7 +47,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT COUNT(u)
     FROM Usuario u
     WHERE u.fechaBaja IS NULL
-    AND u.ultimoIngreso IS NULL
+    AND u.ultimoIngresoAlSistema IS NULL
 """
     )
     fun countUsuariosPendientes(): Int
@@ -67,7 +67,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
         """
         SELECT DISTINCT u
         FROM Usuario u
-        WHERE u.ultimoIngreso IS NOT NULL
+        WHERE u.ultimoIngresoAlSistema IS NOT NULL
         AND u.fechaBaja IS NULL
     """
     )

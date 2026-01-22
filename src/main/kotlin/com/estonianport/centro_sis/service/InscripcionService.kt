@@ -41,7 +41,7 @@ class InscripcionService() {
     fun editarBeneficio(idInscripcion: Long, idUsuario: Long, nuevoBeneficio: Int): Inscripcion {
         val inscripcion = getById(idInscripcion)
         // Verificar que el usuario tenga permiso para asignar beneficios
-        inscripcion.puedeEditar(inscripcion.alumno.usuario)
+        inscripcion.verificarPermisoEdicion(inscripcion.alumno.usuario)
         // Actualizar el beneficio
         inscripcion.aplicarBeneficio(nuevoBeneficio)
         return inscripcionRepository.save(inscripcion)

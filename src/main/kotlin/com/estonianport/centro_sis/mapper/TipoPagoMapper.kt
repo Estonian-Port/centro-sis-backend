@@ -1,7 +1,7 @@
 package com.estonianport.centro_sis.mapper
 
 import com.estonianport.centro_sis.dto.response.TipoPagoDto
-import com.estonianport.centro_sis.model.TipoPago
+import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.model.enums.PagoType
 
 object TipoPagoMapper {

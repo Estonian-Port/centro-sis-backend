@@ -1,6 +1,5 @@
-package com.estonianport.centro_sis.model
+package com.estonianport.centro_sis.model.enums
 
-import com.estonianport.centro_sis.model.enums.PagoType
 import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.EnumType

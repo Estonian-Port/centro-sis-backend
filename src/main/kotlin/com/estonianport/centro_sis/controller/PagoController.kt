@@ -1,91 +1,208 @@
 package com.estonianport.centro_sis.controller
 
-import com.estonianport.centro_sis.dto.response.CustomResponse
-import com.estonianport.centro_sis.mapper.PagoMapper
-import com.estonianport.centro_sis.model.CursoAlquiler
-import com.estonianport.centro_sis.model.CursoComision
-import com.estonianport.centro_sis.service.CursoService
-import com.estonianport.centro_sis.service.InscripcionService
+import com.estonianport.centro_sis.dto.*
+import com.estonianport.centro_sis.dto.response.PageResponse
+import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.model.enums.TipoPagoConcepto
 import com.estonianport.centro_sis.service.PagoService
-import com.estonianport.centro_sis.service.UsuarioService
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.CrossOrigin
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
-@RequestMapping("/pago")
-@CrossOrigin("*")
+@RequestMapping("/pagos")
+@CrossOrigin(origins = ["*"])
 class PagoController(
-    private val pagoService: PagoService,
-    private val inscripcionService: InscripcionService,
-    private val usuarioService: UsuarioService,
-    private val cursoService: CursoService
+    private val pagoService: PagoService
 ) {
 
-    //Obtener el detalle de un pago por id
-    @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> {
-        val pago = pagoService.get(id)!!
+    // ========================================
+    // GET - PAGOS RECIBIDOS
+    // ========================================
 
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pago obtenido correctamente",
-                data = PagoMapper.buildPagoResponseDto(pago)
-            )
+    /**
+     * Obtener pagos recibidos paginados
+     *
+     * - Admin/Oficina: CURSO (alumnos → instituto) + ALQUILER (profesores → instituto)
+     * - Profesor: CURSO (alumnos → profesor en sus cursos alquiler) + COMISION (instituto → profesor)
+     */
+    @GetMapping("/recibidos/{idUsuario}")
+    fun getPagosRecibidos(
+        @PathVariable idUsuario: Long,
+        @RequestParam rolActivo: RolType, // ✅ NUEVO: desde frontend
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) tipos: List<TipoPagoConcepto>?,
+        @RequestParam(required = false) meses: List<Int>?
+    ): ResponseEntity<PageResponse<PagoDTO>> {
+        val pagosPage = pagoService.getPagosRecibidos(
+            usuarioId = idUsuario,
+            rolActivo = rolActivo, // ✅ NUEVO
+            page = page,
+            size = size,
+            search = search,
+            tipos = tipos,
+            meses = meses
         )
+
+        return ResponseEntity.ok(PageResponse.from(pagosPage))
     }
 
-    //Registrar pago de alumno a instituto o profesor
-    @PutMapping("/registrarPagoAlumno/{inscripcionId}/{usuarioId}")
-    fun registrarPagoAlumno(
-        @PathVariable inscripcionId: Long,
-        @PathVariable usuarioId: Long
-    ): ResponseEntity<CustomResponse> {
-        val inscripcion = inscripcionService.getById(inscripcionId)
-        val usuario = usuarioService.getById(usuarioId)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pago registrado correctamente",
-                data = pagoService.registrarPagoAlumno(inscripcion, usuario)
-            )
+    // ========================================
+    // GET - PAGOS REALIZADOS
+    // ========================================
+
+    /**
+     * Obtener pagos realizados paginados
+     *
+     * - Admin/Oficina: COMISION (instituto → profesores)
+     * - Profesor: ALQUILER (profesor → instituto)
+     * - Alumno: CURSO (alumno → instituto/profesor)
+     */
+    @GetMapping("/realizados/{idUsuario}")
+    fun getPagosRealizados(
+        @PathVariable idUsuario: Long,
+        @RequestParam rolActivo: RolType, // ✅ NUEVO: desde frontend
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) meses: List<Int>?
+    ): ResponseEntity<PageResponse<PagoDTO>> {
+        val pagosPage = pagoService.getPagosRealizados(
+            usuarioId = idUsuario,
+            rolActivo = rolActivo, // ✅ NUEVO
+            page = page,
+            size = size,
+            search = search,
+            meses = meses
         )
+
+        return ResponseEntity.ok(PageResponse.from(pagosPage))
     }
 
-    //Registrar pago de profesor a instituto
-    @PutMapping("/registrarPagoProfesor/{usuarioId}/{cursoId}")
-    fun registrarPagoProfesor(
-        @PathVariable usuarioId: Long,
+    // ========================================
+    // POST - GENERAR PREVIEW PAGO
+    // ========================================
+
+
+    @PostMapping("/curso/preview/{idUsuario}")
+    fun calcularPreviewPago(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: PagoPreviewRequest
+    ): ResponseEntity<PagoPreviewDTO> {
+        val preview = pagoService.calcularPreviewPago(
+            usuarioId = idUsuario,
+            inscripcionId = request.inscripcionId,
+            aplicarRecargo = request.aplicarRecargo
+        )
+        return ResponseEntity.ok(preview)
+    }
+
+    @PostMapping("/alquiler/preview/{idUsuario}/{profesorId}")
+    fun calcularPreviewAlquiler(
+        @PathVariable idUsuario: Long,
+        @PathVariable profesorId: Long,
+        @RequestBody request: PagoAlquilerPreviewRequest
+    ): ResponseEntity<PagoAlquilerPreviewDTO> {
+        val preview = pagoService.calcularPreviewAlquiler(
+            usuarioId = idUsuario,
+            cursoId = request.cursoId,
+            profesorId = profesorId
+        )
+        return ResponseEntity.ok(preview)
+    }
+
+    @PostMapping("/comision/preview/{idUsuario}")
+    fun calcularPreviewComision(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: PagoComisionPreviewRequest
+    ): ResponseEntity<PagoComisionPreviewDTO> {
+        val preview = pagoService.calcularPreviewComision(
+            usuarioId = idUsuario,
+            cursoId = request.cursoId,
+            profesorId = request.profesorId
+        )
+        return ResponseEntity.ok(preview)
+    }
+
+    // ========================================
+    // POST - REGISTRAR PAGOS
+    // ========================================
+
+    /**
+     * Registrar pago de curso (alumno → instituto/profesor)
+     *
+     * Puede hacerlo: Admin, Oficina, Profesor del curso
+     */
+    @PostMapping("/curso/{idUsuario}")
+    fun registrarPagoCurso(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: RegistrarPagoCursoRequest
+    ): ResponseEntity<PagoDTO> {
+        val pago = pagoService.registrarPagoCurso(
+            usuarioId = idUsuario,
+            inscripcionId = request.inscripcionId,
+            aplicarRecargo = request.aplicarRecargo
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(pago)
+    }
+
+    @PostMapping("/alquiler/{idUsuario}")
+    fun registrarPagoAlquiler(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: RegistrarPagoAlquilerRequest
+    ): ResponseEntity<PagoDTO> {
+        val pago = pagoService.registrarPagoAlquiler(
+            usuarioId = idUsuario,
+            cursoId = request.cursoId,
+            numeroCuota = request.numeroCuota
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(pago)
+    }
+
+    @PostMapping("/comision/{idUsuario}")
+    fun registrarPagoComision(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: RegistrarPagoComisionRequest
+    ): ResponseEntity<PagoDTO> {
+        val pago = pagoService.registrarPagoComision(
+            usuarioId = idUsuario,
+            cursoId = request.cursoId,
+            profesorId = request.profesorId
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(pago)
+    }
+
+
+    // ========================================
+    // POST - ANULAR PAGO
+    // ========================================
+
+    /**
+     * Anular un pago (solo Admin)
+     */
+    @PostMapping("/{pagoId}/anular/{idUsuario}")
+    fun anularPago(
+        @PathVariable pagoId: Long,
+        @PathVariable idUsuario: Long,
+        @RequestBody dto: AnularPagoDTO
+    ): ResponseEntity<Void> {
+        pagoService.anularPago(idUsuario, pagoId, dto)
+        return ResponseEntity.noContent().build()
+    }
+
+    /**
+     * Obtener pagos de un curso específico
+     *
+     * - Si es ALQUILER: Pagos de alquiler del curso
+     * - Si es COMISION: Pagos de comisión del curso
+     */
+    @GetMapping("/curso/{cursoId}")
+    fun getPagosPorCurso(
         @PathVariable cursoId: Long
-    ): ResponseEntity<CustomResponse> {
-        val curso = cursoService.getById(cursoId)
-        val usuario = usuarioService.getById(usuarioId)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pago registrado correctamente",
-                data = pagoService.registrarPagoAlquilerProfesor(curso as CursoAlquiler, usuario)
-            )
-        )
-    }
-
-    //Registrar pago de instituto a profesor
-    @PutMapping("/registrarPagoInstituto/{usuarioId}/{cursoId}/{profesorId}")
-    fun registrarPagoInstituto(
-        @PathVariable usuarioId: Long,
-        @PathVariable cursoId: Long,
-        @PathVariable profesorId: Long
-    ): ResponseEntity<CustomResponse> {
-        val curso = cursoService.getById(cursoId)
-        val usuario = usuarioService.getById(usuarioId)
-        val profesor = usuarioService.getById(profesorId).getRolProfesor()
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pago registrado correctamente",
-                data = pagoService.registrarComisionProfesor(curso as CursoComision, profesor, usuario)
-            )
-        )
+    ): ResponseEntity<List<PagoDTO>> {
+        val pagos = pagoService.getPagosPorCurso(cursoId)
+        return ResponseEntity.ok(pagos)
     }
 }

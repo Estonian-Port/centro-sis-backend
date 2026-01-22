@@ -1,33 +1,32 @@
 package com.estonianport.centro_sis.model
 
-import com.estonianport.centro_sis.model.enums.EstadoCursoType
-import com.estonianport.centro_sis.model.enums.PagoType
-import com.estonianport.centro_sis.model.enums.EstadoPagoType
-import com.estonianport.centro_sis.model.enums.EstadoType
-import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.model.enums.*
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 
 @Entity
+@Table(name = "inscripcion")
 class Inscripcion(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
+    @JoinColumn(name = "alumno_id", nullable = false)
     var alumno: RolAlumno,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
+    @JoinColumn(name = "curso_id", nullable = false)
     var curso: Curso,
 
     @Embedded
     @AttributeOverrides(
         AttributeOverride(name = "tipo", column = Column(name = "tipo_pago")),
-        AttributeOverride(name = "monto", column = Column(name = "monto_tipo_pago"))
+        AttributeOverride(name = "monto", column = Column(name = "monto_tipo_pago")),
+        AttributeOverride(name = "cuotas", column = Column(name = "cuotas"))
     )
     var tipoPagoSeleccionado: TipoPago,
 
@@ -37,13 +36,18 @@ class Inscripcion(
     @Column
     var fechaBaja: LocalDate? = null,
 
-    @OneToMany(mappedBy = "inscripcion", cascade = [CascadeType.ALL], orphanRemoval = true)
+    @OneToMany(
+        mappedBy = "inscripcion",
+        cascade = [CascadeType.ALL],
+        orphanRemoval = true
+    )
     var pagos: MutableList<PagoCurso> = mutableListOf(),
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var estadoPago: EstadoPagoType = EstadoPagoType.PENDIENTE,
 
+    // Porcentaje de descuento (0-100)
     @Column(nullable = false)
     var beneficio: Int = 0,
 
@@ -61,58 +65,36 @@ class Inscripcion(
         }
     }
 
-    // Monto normal sin recargo
-    fun calcularMontoBase(): BigDecimal {
-        return tipoPagoSeleccionado.monto * convertirBeneficio()
-    }
+    // ====================
+    // REGISTRAR PAGO
+    // ====================
 
-    // Monto con recargo si está atrasado
-    fun calcularArancelFinal(): BigDecimal {
-        return calcularMontoBase() * verificarRetraso()
-    }
-
-    fun estaAlDia(): Boolean {
-        return when (tipoPagoSeleccionado.tipo) {
-            PagoType.MENSUAL -> estaAlDiaMensual()
-            PagoType.TOTAL -> estaAlDiaAnual()
-        }
-    }
-
-    private fun estaAlDiaMensual(): Boolean {
-        val mesesDesdeInscripcion = calcularMesesDesdeInscripcion()
-        val pagosRealizados = pagos.count { it.fechaBaja == null }
-        return pagosRealizados >= mesesDesdeInscripcion
-    }
-
-    private fun estaAlDiaAnual(): Boolean {
-        // Si pagó el año completo, está al día. O sea registra un pago activo.
-        return pagos.any { it.fechaBaja == null }
-    }
-
-    private fun calcularMesesDesdeInscripcion(): Int {
-        val inicio = YearMonth.from(curso.fechaInicio)
-        val actual = YearMonth.now()
-
-        // Si la fecha de inicio es futura, retorna 0
-        if (inicio.isAfter(actual)) return 0
-
-        var meses = 0
-        var temp = inicio
-
-        while (temp.isBefore(actual) || temp == actual) {
-            meses++
-            temp = temp.plusMonths(1)
+    /**
+     * Registra un pago. El recargo se controla manualmente desde el frontend.
+     *
+     * @param aplicarRecargo: true si el profesor/admin decide cobrar recargo
+     */
+    fun registrarPago(
+        registradoPor: Usuario,
+        aplicarRecargo: Boolean = false
+    ): PagoCurso {
+        require(puedeRegistrarPago()) {
+            "No se pueden registrar más pagos. La inscripción está completa o dada de baja."
         }
 
-        return meses
-    }
+        val montoPorCuota = calcularMontoPorCuota()
 
-    fun registrarPago(): PagoCurso {
+        val montoFinal = if (aplicarRecargo) {
+            montoPorCuota * curso.recargoAtraso
+        } else {
+            montoPorCuota
+        }
+
         val pago = PagoCurso(
+            monto = montoFinal,
+            registradoPor = registradoPor,
             inscripcion = this,
-            monto = calcularArancelFinal(),
-            fecha = LocalDate.now(),
-            retraso = esDeudor(),
+            conRecargo = aplicarRecargo,
             beneficioAplicado = beneficio
         )
 
@@ -122,61 +104,159 @@ class Inscripcion(
         return pago
     }
 
-    private fun actualizarEstadoPago() {
+    /**
+     * Calcula cuánto cuesta cada cuota (ya con descuento)
+     */
+    fun calcularMontoPorCuota(): BigDecimal {
+        val montoTotal = tipoPagoSeleccionado.monto
+        val descuento = (montoTotal * BigDecimal(beneficio)) / BigDecimal(100)
+        val montoConDescuento = montoTotal - descuento
+
+        return montoConDescuento / BigDecimal(tipoPagoSeleccionado.cuotas)
+    }
+
+    /**
+     * Calcula cuántas cuotas DEBERÍA haber pagado hasta ahora
+     * según el tiempo transcurrido desde el inicio del curso.
+     */
+    fun calcularCuotasEsperadas(): Int {
+        return when (tipoPagoSeleccionado.tipo) {
+            PagoType.MENSUAL -> calcularCuotasEsperadasMensuales()
+            PagoType.TOTAL -> calcularCuotasEsperadasTotal()
+        }
+    }
+
+    /**
+     * Para pago mensual: 1 cuota por cada mes transcurrido desde el inicio
+     */
+    private fun calcularCuotasEsperadasMensuales(): Int {
+        val hoy = LocalDate.now()
+        val inicioCurso = curso.fechaInicio
+
+        // ✅ Si el curso no empezó, no se espera ninguna cuota
+        if (hoy.isBefore(inicioCurso)) return 0
+
+        // ✅ Si el curso terminó, se esperan todas las cuotas
+        if (hoy.isAfter(curso.fechaFin)) {
+            return tipoPagoSeleccionado.cuotas
+        }
+
+        // ✅ Calcular meses transcurridos COMPLETOS
+        val mesesTranscurridos = ChronoUnit.MONTHS.between(
+            YearMonth.from(inicioCurso),
+            YearMonth.from(hoy)
+        ).toInt() + 1 // +1 porque el mes actual ya empezó
+
+        // ✅ No puede superar el total de cuotas
+        return minOf(mesesTranscurridos, tipoPagoSeleccionado.cuotas)
+    }
+
+    /**
+     * Para pago total: se espera 1 cuota desde el inicio del curso
+     */
+    private fun calcularCuotasEsperadasTotal(): Int {
+        val hoy = LocalDate.now()
+        val inicioCurso = curso.fechaInicio
+
+        return if (hoy.isBefore(inicioCurso)) 0 else 1
+    }
+
+    // ========================================
+    // ESTADO DE PAGO (SIMPLE)
+    // ========================================
+
+    /**
+     * Actualiza el estado considerando si está atrasado
+     */
+    fun actualizarEstadoPago() {
+        val cuotasPagadas = contarCuotasPagadas()
+        val cuotasEsperadas = calcularCuotasEsperadas()
+        val cuotasTotales = tipoPagoSeleccionado.cuotas
+
         estadoPago = when {
-            estaAlDia() -> EstadoPagoType.AL_DIA
-            esDeudor() -> EstadoPagoType.ATRASADO
+            // ✅ Pagó todas las cuotas
+            cuotasPagadas >= cuotasTotales -> EstadoPagoType.PAGO_COMPLETO
+
+            // ❌ Está atrasado (debe más de lo que pagó)
+            cuotasPagadas < cuotasEsperadas -> EstadoPagoType.ATRASADO
+
+            // ✅ Al día (pagó lo que debía hasta ahora)
+            cuotasPagadas >= cuotasEsperadas && cuotasPagadas > 0 -> EstadoPagoType.AL_DIA
+
+            // ⏳ Pendiente (no pagó nada pero tampoco debe aún)
             else -> EstadoPagoType.PENDIENTE
         }
     }
 
-    private fun fueDeudor(): Boolean {
-        return pagos.any { it.retraso && it.fechaBaja == null }
+    /**
+     * Verifica si está atrasado con los pagos
+     */
+    fun estaAtrasado(): Boolean {
+        return contarCuotasPagadas() < calcularCuotasEsperadas()
     }
 
-    private fun verificarRetraso(): BigDecimal {
-        return if (esDeudor()) {
-            curso.recargoAtraso
-        } else {
-            BigDecimal.ONE
-        }
+    /**
+     * Calcula cuántas cuotas debe (no pagadas pero esperadas)
+     */
+    fun calcularCuotasAtrasadas(): Int {
+        val cuotasPagadas = contarCuotasPagadas()
+        val cuotasEsperadas = calcularCuotasEsperadas()
+        return maxOf(0, cuotasEsperadas - cuotasPagadas)
     }
 
-    private fun esDeudor(): Boolean {
-        val mesesDesdeInscripcion = calcularMesesDesdeInscripcion()
-        val pagosRealizados = pagos.count { it.fechaBaja == null }
-        val pagosAdeudados = mesesDesdeInscripcion - pagosRealizados
-        if (pagosAdeudados == 0) return false // si es 0 no debe nada
-        if (pagosAdeudados > 1) return true // si debe más de un mes, seguro debe el último mes
-        return verificarFechaPago() // si debe un mes, verificar si ya pasó el plazo
+    /**
+     * Cuenta cuántas cuotas pagó (solo pagos activos)
+     */
+    fun contarCuotasPagadas(): Int {
+        return pagos.count { it.fechaBaja == null }
     }
 
-    private fun verificarFechaPago(): Boolean {
-        val fechaActual = LocalDate.now()
-        if (fechaActual.dayOfMonth <= 10) {
-            return false // Aún está dentro del plazo para pagar el último mes
-        }
-        return true // Ya pasó el plazo, debe el último mes
-    }
-
+    /**
+     * Calcula deuda pendiente simple
+     */
     fun calcularDeudaPendiente(): BigDecimal {
-        val pagosEsperados = when (tipoPagoSeleccionado.tipo) {
-            PagoType.MENSUAL -> calcularMesesDesdeInscripcion()
-            PagoType.TOTAL -> 1
+        val cuotasPendientes = calcularCuotasEsperadas() - contarCuotasPagadas()
+        val deudaTotal = calcularMontoPorCuota().multiply(BigDecimal(cuotasPendientes))
+        return maxOf(BigDecimal.ZERO, deudaTotal)
+    }
+
+    /**
+     * Total pagado hasta ahora
+     */
+    fun calcularTotalPagado(): BigDecimal {
+        return pagos
+            .filter { it.fechaBaja == null }
+            .sumOf { it.monto }
+    }
+
+    /**
+     * Verifica si puede registrar más pagos
+     */
+    fun puedeRegistrarPago(): Boolean {
+        return estadoPago != EstadoPagoType.PAGO_COMPLETO &&
+                fechaBaja == null &&
+                contarCuotasPagadas() < tipoPagoSeleccionado.cuotas
+    }
+
+    // ========================================
+    // ANULAR PAGO
+    // ========================================
+
+    /**
+     * Anula un pago (solo admin)
+     */
+    fun anularPago(pago: PagoCurso, motivo: String, anulador: Usuario) {
+        require(pagos.contains(pago)) {
+            "El pago no pertenece a esta inscripción"
         }
 
-        val pagosRealizados = pagos.count { it.fechaBaja == null }
-        val pagosPendientes = maxOf(0, pagosEsperados - pagosRealizados)
-
-        return BigDecimal(pagosPendientes) * calcularArancelFinal()
+        pago.anular(motivo, anulador)
+        actualizarEstadoPago()
     }
 
-    fun convertirBeneficio(): BigDecimal {
-        // Convertir porcentaje a multiplicador
-        // Ej: 20% descuento = 0.80 (paga el 80%)
-        val beneficioAplicado = BigDecimal.ONE - (BigDecimal(beneficio) / BigDecimal(100))
-        return beneficioAplicado
-    }
+    // ========================================
+    // BENEFICIOS Y PUNTOS
+    // ========================================
 
     fun aplicarBeneficio(nuevoBeneficio: Int) {
         require(nuevoBeneficio in 0..100) {
@@ -189,18 +269,82 @@ class Inscripcion(
         beneficio = 0
     }
 
-    fun darDeBaja(fecha: LocalDate = LocalDate.now()) {
-        this.fechaBaja = fecha
+    fun darPuntos(otorgadoPor: Usuario, puntosAGanar: Int) {
+        verificarPermisoEdicion(otorgadoPor)
+        require(puntosAGanar > 0) { "Los puntos deben ser positivos" }
+        puntos += puntosAGanar
     }
 
-    fun puedeEditar(usuario: Usuario) {
-        if (!usuario.tieneRol(RolType.ADMINISTRADOR) || usuario.tieneRol(RolType.PROFESOR)) {
-            throw IllegalAccessException("El usuario con id ${usuario.id} no tiene permiso para editar esta inscripción")
+    fun quitarPuntos(otorgadoPor: Usuario, puntosAPerder: Int) {
+        verificarPermisoEdicion(otorgadoPor)
+        require(puntosAPerder > 0) { "Los puntos deben ser positivos" }
+        puntos = maxOf(0, puntos - puntosAPerder)
+    }
+
+    // ========================================
+    // PERMISOS
+    // ========================================
+
+     fun verificarPermisoEdicion(usuario: Usuario) {
+        val tienePermiso = usuario.tieneRol(RolType.ADMINISTRADOR) ||
+                usuario.tieneRol(RolType.OFICINA) ||
+                usuario.tieneRol(RolType.PROFESOR)
+
+        require(tienePermiso) {
+            "El usuario ${usuario.nombreCompleto()} no tiene permiso para editar esta inscripción"
         }
     }
 
-    fun darPuntos(profesor : Usuario, puntosAGanar: Int) {
-        puedeEditar(profesor)
-        puntos += puntosAGanar
+    fun darDeBaja(fecha: LocalDate = LocalDate.now()) {
+        this.fechaBaja = fecha
+        this.estado = EstadoType.BAJA
+    }
+
+    fun reactivar() {
+        require(estado == EstadoType.BAJA) {
+            "Solo se pueden reactivar inscripciones dadas de baja"
+        }
+        this.fechaBaja = null
+        this.estado = EstadoType.ACTIVO
+        actualizarEstadoPago()
+    }
+
+    // ========================================
+    // RESUMEN
+    // ========================================
+
+    fun obtenerResumenPago(): ResumenPago {
+        val cuotasPagadas = contarCuotasPagadas()
+        val cuotasEsperadas = calcularCuotasEsperadas()
+        val cuotasAtrasadas = calcularCuotasAtrasadas()
+        val cuotasPendientes = tipoPagoSeleccionado.cuotas - cuotasPagadas
+        val deudaTotal = calcularDeudaPendiente()
+        val totalPagado = calcularTotalPagado()
+
+        return ResumenPago(
+            cuotasTotales = tipoPagoSeleccionado.cuotas,
+            cuotasPagadas = cuotasPagadas,
+            cuotasEsperadas = cuotasEsperadas,
+            cuotasAtrasadas = cuotasAtrasadas,
+            cuotasPendientes = cuotasPendientes,
+            deudaTotal = deudaTotal,
+            totalPagado = totalPagado,
+            estadoActual = estadoPago,
+            beneficioAplicado = beneficio,
+            montoPorCuota = calcularMontoPorCuota()
+        )
     }
 }
+
+data class ResumenPago(
+    val cuotasTotales: Int,
+    val cuotasPagadas: Int,
+    val cuotasEsperadas: Int,      // ✅ Cuántas debería haber pagado
+    val cuotasAtrasadas: Int,      // ✅ Cuántas está atrasado
+    val cuotasPendientes: Int,
+    val deudaTotal: BigDecimal,
+    val totalPagado: BigDecimal,
+    val estadoActual: EstadoPagoType,
+    val beneficioAplicado: Int,
+    val montoPorCuota: BigDecimal
+)

@@ -2,7 +2,10 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.model.enums.TipoAcceso
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -13,19 +16,23 @@ class Usuario(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(255)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     var nombre: String,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(255)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     var apellido: String,
 
     @Column(nullable = false)
     var celular: Long,
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, columnDefinition = "VARCHAR(255)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     var email: String,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     var dni: String,
 
     @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
@@ -38,12 +45,22 @@ class Usuario(
     @Column(nullable = false)
     var fechaNacimiento: LocalDate,
 
-    @Embedded
-    var adultoResponsable: AdultoResponsable? = null
+    @OneToOne(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "adulto_responsable_id", referencedColumnName = "id")
+    var adultoResponsable: AdultoResponsable? = null,
+
+    @OneToMany(
+        mappedBy = "usuario",
+        cascade = [CascadeType.ALL],
+        fetch = FetchType.LAZY,
+        orphanRemoval = true
+    )
+    val accesos: MutableList<Acceso> = mutableListOf()
 
 ) {
 
-    @Column
+    @Column(columnDefinition = "VARCHAR(255)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     var password: String? = null
 
     @Column(nullable = false)
@@ -53,15 +70,15 @@ class Usuario(
     var fechaBaja: LocalDate? = null
 
     @Column
-    var ultimoIngreso: LocalDateTime? = null
+    var ultimoIngresoAlSistema: LocalDateTime? = null
 
-    fun registrarIngreso() {
-        ultimoIngreso = LocalDateTime.now()
+    fun registrarIngresoAlSistema() {
+        ultimoIngresoAlSistema = LocalDateTime.now()
     }
 
     fun confirmarPrimerLogin() {
-        registrarIngreso()
-        if (ultimoIngreso != null) {
+        registrarIngresoAlSistema()
+        if (ultimoIngresoAlSistema != null) {
             estado = EstadoType.INACTIVO
         }
     }
@@ -139,5 +156,60 @@ class Usuario(
         }
         this.fechaBaja = null
         this.estado = EstadoType.ACTIVO
+    }
+
+    fun asignarAdultoResponsable(adulto: AdultoResponsable) {
+        require(esMenorDeEdad()) {
+            "Solo se puede asignar adulto responsable a menores de edad"
+        }
+        this.adultoResponsable = adulto
+        adulto.alumnoMenor = this
+    }
+
+    fun quitarAdultoResponsable() {
+        this.adultoResponsable?.alumnoMenor = null
+        this.adultoResponsable = null
+    }
+
+    fun validarAcceso() {
+        val hoy = LocalDate.now()
+        if (tuvoAccesoEnFecha(hoy)) {
+            throw IllegalStateException("El usuario ya ha registrado un acceso hoy")
+        }
+    }
+
+    fun registrarAcceso(
+        tipoAcceso: TipoAcceso,
+    ): Acceso {
+        validarAcceso()
+
+        val nuevoAcceso = Acceso(
+            usuario = this,
+            tipoAcceso = tipoAcceso,
+        )
+
+        accesos.add(nuevoAcceso)
+        return nuevoAcceso
+    }
+
+    fun tuvoAccesoEnFecha(fecha: LocalDate): Boolean {
+        return accesos.any { it.esDeFecha(fecha) }
+    }
+
+    fun getAccesosDelMes(mes: Int, anio: Int): List<Acceso> {
+        return accesos.filter {
+            it.fechaHora.monthValue == mes && it.fechaHora.year == anio
+        }
+    }
+
+    fun getUltimoAcceso(): Acceso? {
+        return accesos.maxByOrNull { it.fechaHora }
+    }
+
+    fun contarAccesosEnRango(desde: LocalDate, hasta: LocalDate): Int {
+        return accesos.count { acceso ->
+            val fecha = acceso.fechaHora.toLocalDate()
+            !fecha.isBefore(desde) && !fecha.isAfter(hasta)
+        }
     }
 }

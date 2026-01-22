@@ -25,7 +25,7 @@ class AdministracionService(
         val totalAlumnosActivos = usuarioService.countAlumnosActivos()
         val totalCursos = cursoService.countCursos()
         val totalProfesores = usuarioService.countProfesores()
-        val ingresosMes = pagoService.calcularIngresosMensuales()
+        val ingresosMes = 0.0 // pagoService.getTotalIngresosDelMes().toDouble()
 
         return EstadisticasResponseDto(
             alumnosActivos = totalAlumnosActivos,
@@ -33,6 +33,11 @@ class AdministracionService(
             profesores = totalProfesores,
             ingresosMensuales = ingresosMes
         )
+    }
+
+    fun registrarAccesoManual(idAdmin: Long, idUsuario: Long) {
+        verificarRol(idAdmin)
+        usuarioService.registrarAccesoManual(idUsuario)
     }
 
 }

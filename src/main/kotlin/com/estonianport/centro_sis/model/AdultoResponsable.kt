@@ -2,20 +2,30 @@ package com.estonianport.centro_sis.model
 
 import jakarta.persistence.*
 
-@Embeddable
-data class AdultoResponsable(
-    @Column(name = "responsable_nombre")
+@Entity
+@Table(name = "adulto_responsable")
+class AdultoResponsable(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0,
+
+    @Column(nullable = false)
     var nombre: String,
 
-    @Column(name = "responsable_apellido")
+    @Column(nullable = false)
     var apellido: String,
 
-    @Column(name = "responsable_dni")
+    @Column(nullable = false)
     var dni: String,
 
-    @Column(name = "responsable_celular")
+    @Column(nullable = false)
     var celular: Long,
 
-    @Column(name = "responsable_relacion")
-    var relacion: String
-)
+    @Column(nullable = false)
+    var relacion: String,
+
+    @OneToOne(mappedBy = "adultoResponsable")
+    var alumnoMenor: Usuario? = null
+) {
+    fun nombreCompleto(): String = "$nombre $apellido"
+}

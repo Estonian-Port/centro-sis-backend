@@ -7,11 +7,12 @@ import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
+import com.estonianport.centro_sis.model.AdultoResponsable
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
-import com.estonianport.centro_sis.model.Rol
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.model.enums.TipoAcceso
 import com.estonianport.centro_sis.repository.RolRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
@@ -90,7 +91,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
 
     fun actualizarFechaUltimoAcceso(email: String, fecha: LocalDateTime) {
         val usuario = getUsuarioByEmail(email)
-        usuario.ultimoIngreso = fecha
+        usuario.ultimoIngresoAlSistema = fecha
         save(usuario)
     }
 
@@ -103,7 +104,13 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         usuario.fechaNacimiento = usuarioDto.fechaNacimiento
         usuario.confirmarPrimerLogin()
         if (usuarioDto.adultoResponsable != null) {
-            usuario.adultoResponsable = usuarioDto.adultoResponsable
+            usuario.adultoResponsable = AdultoResponsable(
+                nombre = usuarioDto.adultoResponsable.nombre,
+                apellido = usuarioDto.adultoResponsable.apellido,
+                dni = usuarioDto.adultoResponsable.dni,
+                celular = usuarioDto.adultoResponsable.celular,
+                relacion = usuarioDto.adultoResponsable.relacion
+            )
         }
         save(usuario)
     }
@@ -177,6 +184,12 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
             RolType.ADMINISTRADOR -> usuarioRepository.findAdministradores()
             RolType.OFICINA -> usuarioRepository.findOficina()
         }
+    }
+
+    fun registrarAccesoManual(idUsuario: Long) {
+        val usuario = getById(idUsuario)
+        usuario.registrarAcceso(TipoAcceso.MANUAL)
+        save(usuario)
     }
 
 }

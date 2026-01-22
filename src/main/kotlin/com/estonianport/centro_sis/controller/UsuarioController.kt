@@ -253,6 +253,42 @@ class UsuarioController(
         )
     }
 
+    // Enpoint de busqueda de usuarios por nombre, apellido, mail o dni.
+    @GetMapping("/search")
+    fun search(
+        @RequestParam q: String,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): ResponseEntity<CustomResponse> {
+        if (q.length < 2) {
+            return ResponseEntity.status(400).body(
+                CustomResponse(
+                    message = "La búsqueda debe tener al menos 2 caracteres",
+                    data = emptyList<Any>()
+                )
+            )
+        }
+
+        val queryLower = q.lowercase()
+        var usuarios = usuarioService.getAllUsuarios()
+            .filter { it.estado.name == "ACTIVO" || it.estado.name == "INACTIVO" }
+            .filter { usuario ->
+                usuario.nombre.lowercase().contains(queryLower) ||
+                        usuario.apellido.lowercase().contains(queryLower) || usuario.dni.lowercase()
+                    .contains(queryLower) || usuario.email.lowercase()
+                    .contains(queryLower)
+            }
+
+        usuarios = usuarios.take(limit.coerceAtMost(50)) // Máximo 50
+
+        val usuariosDto = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "${usuariosDto.size} usuario(s) encontrado(s)",
+                data = usuariosDto
+            )
+        )
+    }
+
 
     // Obtener todas los cursos de un alumno
     @GetMapping("/cursos-alumno/{idAlumno}")

@@ -138,10 +138,6 @@ class RolAlumno(
         return inscripciones.filter { it.fechaBaja == null }
     }
 
-    fun estaAlDiaEnTodos(): Boolean {
-        return getInscripcionesActivas().all { it.estaAlDia() }
-    }
-
     fun calcularDeudaTotal(): BigDecimal {
         return getInscripcionesActivas()
             .map { it.calcularDeudaPendiente() }

@@ -1,8 +1,6 @@
 package com.estonianport.centro_sis.mapper
 
 import com.estonianport.centro_sis.dto.ProfesorListaResponseDto
-import com.estonianport.centro_sis.dto.response.UsuarioPendienteResponseDto
-import com.estonianport.centro_sis.dto.response.UsuarioRegistradoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
 import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
@@ -10,13 +8,9 @@ import com.estonianport.centro_sis.dto.response.AlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioDetailResponseDto
-import com.estonianport.centro_sis.model.Inscripcion
-import com.estonianport.centro_sis.model.RolAlumno
+import com.estonianport.centro_sis.dto.response.UsuarioSimpleResponseDto
 import com.estonianport.centro_sis.model.Usuario
-import com.estonianport.centro_sis.model.enums.EstadoType
-import com.estonianport.centro_sis.model.enums.RolType
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 object UsuarioMapper {
@@ -35,7 +29,7 @@ object UsuarioMapper {
             estado = usuario.estado.name,
             primerLogin = usuario.esPrimerLogin(),
             listaRol = usuario.getRolTypes().toMutableSet(),
-            ultimoIngreso = usuario.ultimoIngreso?.format(formatterTime) ?: "",
+            ultimoIngreso = usuario.ultimoIngresoAlSistema?.format(formatterTime) ?: "",
         )
     }
 
@@ -105,6 +99,14 @@ object UsuarioMapper {
             email = alumno.email,
             celular = alumno.celular.toString(),
             fechaNacimiento = alumno.fechaNacimiento.format(formatter),
+        )
+    }
+
+    fun buildUsuarioSimpleDto(usuario: Usuario): UsuarioSimpleResponseDto {
+        return UsuarioSimpleResponseDto(
+            id = usuario.id,
+            nombre = usuario.nombre,
+            apellido = usuario.apellido,
         )
     }
 

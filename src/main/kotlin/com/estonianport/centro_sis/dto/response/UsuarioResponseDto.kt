@@ -33,3 +33,9 @@ data class UsuarioDetailResponseDto (
     //val pagos: List<PagoResponseDto>?
 )
 
+data class UsuarioSimpleResponseDto (
+    val id : Long,
+    val nombre : String,
+    val apellido : String,
+)
+

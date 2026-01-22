@@ -15,7 +15,7 @@ object InscripcionMapper {
             estadoPago = inscripcion.estadoPago.name,
             beneficio = inscripcion.beneficio,
             puntos = inscripcion.puntos,
-            porcentajeAsistencia = 0.0, //inscripcion.porcentajeAsistencia,
+            porcentajeAsistencia = inscripcion.curso.getPorcentajeAsistenciaAlumno(inscripcion.alumno.id),
             estado = inscripcion.estado.name
         )
     }

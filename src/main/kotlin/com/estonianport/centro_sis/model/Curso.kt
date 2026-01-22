@@ -4,10 +4,13 @@ import com.estonianport.centro_sis.model.enums.CursoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.EstadoCursoType
 import com.estonianport.centro_sis.model.enums.EstadoType
+import com.estonianport.centro_sis.model.enums.TipoPago
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
 import jakarta.persistence.Transient
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -16,8 +19,9 @@ abstract class Curso(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(nullable = false)
-    val nombre: String,
+    @Column(nullable = false, columnDefinition = "VARCHAR(255)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    var nombre: String,
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -58,11 +62,19 @@ abstract class Curso(
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var estadoAlta : EstadoType = EstadoType.PENDIENTE,
+    var estadoAlta: EstadoType = EstadoType.PENDIENTE,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val tipoCurso : CursoType,
+    val tipoCurso: CursoType,
+
+    @OneToMany(
+        mappedBy = "curso",
+        cascade = [CascadeType.ALL],
+        fetch = FetchType.LAZY,
+        orphanRemoval = true
+    )
+    val partesDeAsistencia: MutableList<ParteAsistencia> = mutableListOf()
 ) {
 
     @get:Transient
@@ -70,6 +82,9 @@ abstract class Curso(
         get() = calcularEstado()
 
     private fun calcularEstado(): EstadoCursoType {
+        if (estadoAlta == EstadoType.BAJA) {
+            return EstadoCursoType.FINALIZADO
+        }
         val hoy = LocalDate.now()
         return when {
             hoy.isBefore(fechaInicio) -> EstadoCursoType.POR_COMENZAR
@@ -125,6 +140,73 @@ abstract class Curso(
         profesor.cursos.remove(this)
     }
 
+    fun validarTomaAsistencia(fecha: LocalDate = LocalDate.now()) {
+        if (yaSeTomoAsistencia(fecha)) {
+            throw IllegalStateException("Ya se tomó asistencia para el $fecha")
+        }
+    }
+
+    fun yaSeTomoAsistencia(fecha: LocalDate = LocalDate.now()): Boolean {
+        return partesDeAsistencia.any { it.fecha == fecha }
+    }
+
+    fun tomarAsistencia(
+        tomadoPor: Usuario,
+        fecha: LocalDate = LocalDate.now()
+    ): ParteAsistencia {
+        validarTomaAsistencia(fecha)
+
+        // Crear el parte de asistencia
+        val parte = ParteAsistencia(
+            curso = this,
+            fecha = fecha,
+            tomadoPor = tomadoPor
+        )
+
+        // Obtener alumnos activos del curso
+        val alumnosActivos = getInscripcionesActivas().map { it.alumno }
+
+        // Crear un registro por cada alumno
+        alumnosActivos.forEach { alumno ->
+            val tuvoAcceso = alumno.usuario.tuvoAccesoEnFecha(fecha)
+
+            val registro = RegistroAsistencia(
+                parteAsistencia = parte,
+                alumno = alumno,
+                presente = tuvoAcceso
+            )
+
+            parte.registros.add(registro)
+        }
+
+        partesDeAsistencia.add(parte)
+        return parte
+    }
+
+    // ✅ Obtener parte de asistencia de una fecha
+    fun getParteDeAsistencia(fecha: LocalDate): ParteAsistencia? {
+        return partesDeAsistencia.find { it.fecha == fecha }
+    }
+
+    fun getPorcentajeAsistenciaAlumno(alumnoId: Long) : Double {
+        val totalClases = partesDeAsistencia.size
+        if (totalClases == 0) return 0.0
+
+        val asistenciasAlumno = partesDeAsistencia.count { parte ->
+            parte.registros.any { registro ->
+                registro.alumno.id == alumnoId && registro.presente
+            }
+        }
+
+        return (asistenciasAlumno.toDouble() / totalClases) * 100
+
+    }
+
+    fun darDeBaja() {
+        fechaBaja = LocalDate.now()
+        estadoAlta = EstadoType.BAJA
+    }
+
     abstract fun calcularPagoProfesor(): BigDecimal
 }
 
@@ -143,6 +225,7 @@ class CursoAlquiler(
     tipoCurso: CursoType = CursoType.ALQUILER,
     inscripciones: MutableList<Inscripcion> = mutableListOf(),
     estadoAlta: EstadoType = EstadoType.PENDIENTE,
+    partesDeAsistencia: MutableList<ParteAsistencia> = mutableListOf(),
 
     @Column(nullable = false, precision = 10, scale = 2)
     var precioAlquiler: BigDecimal,
@@ -156,7 +239,21 @@ class CursoAlquiler(
 
     @OneToMany(mappedBy = "curso", cascade = [CascadeType.ALL])
     val pagosAlquiler: MutableList<PagoAlquiler> = mutableListOf()
-) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso, inscripciones, estadoAlta, tipoCurso) {
+) : Curso(
+    id,
+    nombre,
+    profesores,
+    horarios,
+    tiposPago,
+    fechaInicio,
+    fechaFin,
+    fechaBaja,
+    recargoAtraso,
+    inscripciones,
+    estadoAlta,
+    tipoCurso,
+    partesDeAsistencia
+) {
 
     init {
         require(precioAlquiler > BigDecimal.ZERO) {
@@ -169,13 +266,7 @@ class CursoAlquiler(
         return maxOf(BigDecimal.ZERO, recaudado - precioAlquiler)
     }
 
-    fun registrarPagoAlquiler(): PagoAlquiler {
-        val pago = PagoAlquiler(
-            curso = this,
-            monto = precioAlquiler,
-            fecha = LocalDate.now(),
-            profesor = profesor ?: throw IllegalStateException("El curso no tiene profesor asignado")
-        )
+    fun registrarPagoAlquiler(pago: PagoAlquiler): PagoAlquiler {
         pagosAlquiler.add(pago)
         return pago
     }
@@ -204,6 +295,7 @@ class CursoComision(
     tipoCurso: CursoType = CursoType.COMISION,
     inscripciones: MutableList<Inscripcion> = mutableListOf(),
     estadoAlta: EstadoType = EstadoType.PENDIENTE,
+    partesDeAsistencia: MutableList<ParteAsistencia> = mutableListOf(),
 
     @Column(nullable = false, precision = 3, scale = 2)
     var porcentajeComision: BigDecimal = BigDecimal("0.50"),
@@ -211,7 +303,21 @@ class CursoComision(
     @OneToMany(mappedBy = "curso", cascade = [CascadeType.ALL])
     val pagosComision: MutableList<PagoComision> = mutableListOf(),
 
-) : Curso(id, nombre, profesores, horarios, tiposPago, fechaInicio, fechaFin, fechaBaja, recargoAtraso, inscripciones, estadoAlta, tipoCurso) {
+    ) : Curso(
+    id,
+    nombre,
+    profesores,
+    horarios,
+    tiposPago,
+    fechaInicio,
+    fechaFin,
+    fechaBaja,
+    recargoAtraso,
+    inscripciones,
+    estadoAlta,
+    tipoCurso,
+    partesDeAsistencia
+) {
 
     init {
         require(porcentajeComision >= BigDecimal.ZERO && porcentajeComision <= BigDecimal.ONE) {
@@ -224,12 +330,13 @@ class CursoComision(
         return recaudado * porcentajeComision
     }
 
-    fun registrarPagoComision(profesor: RolProfesor): PagoComision {
+    fun registrarPagoComision(profesor: RolProfesor, recibioPago: Usuario): PagoComision {
         val pago = PagoComision(
             curso = this,
             monto = calcularPagoProfesor(),
             fecha = LocalDate.now(),
-            profesor = profesor
+            profesor = profesor,
+            registradoPor = recibioPago
         )
         pagosComision.add(pago)
         return pago
