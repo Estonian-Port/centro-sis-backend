@@ -100,6 +100,7 @@ class Usuario(
                 is RolOficina -> RolType.OFICINA
                 is RolProfesor -> RolType.PROFESOR
                 is RolAlumno -> RolType.ALUMNO
+                is RolPorteria -> RolType.PORTERIA
                 else -> throw IllegalArgumentException("Rol desconocido")
             }
         }.toSet()
@@ -142,6 +143,17 @@ class Usuario(
             .filterIsInstance<RolOficina>()
             .firstOrNull { it.fechaBaja == null }
             ?: throw NoSuchElementException("El usuario no tiene el rol de oficina activo")
+    }
+
+    fun getRolPorteria(): RolPorteria {
+        return listaRol
+            .filterIsInstance<RolPorteria>()
+            .firstOrNull { it.fechaBaja == null }
+            ?: throw NoSuchElementException("El usuario no tiene el rol de portería activo")
+    }
+
+    fun esPorteria(): Boolean {
+        return listaRol.any { it is RolPorteria && estado === EstadoType.ACTIVO }
     }
 
     fun darDeBaja(fecha: LocalDate = LocalDate.now()) {

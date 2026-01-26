@@ -169,6 +169,10 @@ class PagoService(
                     // CURSO (alumno → instituto/profesor)
                     pago is PagoCurso && pago.inscripcion.alumno.id == alumnoId
                 }
+
+                RolType.PORTERIA -> {
+                    false
+                }
             }
         }
 

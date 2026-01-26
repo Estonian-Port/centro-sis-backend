@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
+import com.estonianport.centro_sis.model.enums.RolType
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -142,5 +143,31 @@ class RolAlumno(
         return getInscripcionesActivas()
             .map { it.calcularDeudaPendiente() }
             .fold(BigDecimal.ZERO) { acc, deuda -> acc + deuda }
+    }
+}
+
+@Entity
+@DiscriminatorValue("PORTERIA")
+class RolPorteria(
+    usuario: Usuario,
+    fechaAlta: LocalDate = LocalDate.now(),
+    fechaBaja: LocalDate? = null
+) : Rol(
+    usuario = usuario,
+    fechaAlta = fechaAlta,
+    fechaBaja = fechaBaja
+) {
+    override fun puedeGestionarCurso(curso: Curso): Boolean = false
+
+    override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean = false
+
+    override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean = false
+
+    fun puedeRegistrarAccesos(): Boolean {
+        return usuario.estado == EstadoType.ACTIVO
+    }
+
+    fun puedeVerAccesosRecientes(): Boolean {
+        return usuario.estado == EstadoType.ACTIVO
     }
 }

@@ -5,6 +5,7 @@ import com.estonianport.centro_sis.model.Rol
 import com.estonianport.centro_sis.model.RolAdmin
 import com.estonianport.centro_sis.model.RolAlumno
 import com.estonianport.centro_sis.model.RolOficina
+import com.estonianport.centro_sis.model.RolPorteria
 import com.estonianport.centro_sis.model.RolProfesor
 import com.estonianport.centro_sis.model.Usuario
 
@@ -20,6 +21,10 @@ enum class RolType {
     },
     ALUMNO {
         override fun create(usuario: Usuario): Rol = RolAlumno(usuario)
+    },
+    PORTERIA
+    {
+        override fun create(usuario: Usuario): Rol = RolPorteria(usuario)
     };
 
     abstract fun create(usuario: Usuario): Rol

@@ -128,6 +128,14 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 """)
     fun findOficina(): List<Usuario>
 
+    @Query("""
+    SELECT DISTINCT u FROM Usuario u
+    INNER JOIN u.listaRol r
+    WHERE TYPE(r) = com.estonianport.centro_sis.model.RolPorteria
+    ORDER BY u.nombre ASC
+""")
+    fun findPorteria(): List<Usuario>
+
     fun getUsuarioByDni(dni: String): Usuario?
 
 

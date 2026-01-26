@@ -1,7 +1,9 @@
 package com.estonianport.centro_sis.controller
 
 import com.estonianport.centro_sis.dto.AccesoDTO
+import com.estonianport.centro_sis.dto.EstadisticasAccesoDTO
 import com.estonianport.centro_sis.dto.RegistrarAccesoDTO
+import com.estonianport.centro_sis.dto.RegistrarAccesoQRRequest
 import com.estonianport.centro_sis.dto.response.PageResponse
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.service.AccesoService
@@ -86,18 +88,84 @@ class AccesoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
     }
 
-    // ========================================
-    // POST - REGISTRAR ACCESO QR (futuro)
-    // ========================================
+    // =============================================
+    // POST - Registrar acceso mediante QR
+    // =============================================
 
     /**
-     * Registrar acceso por QR
+     * Registrar acceso escaneando QR
+     * Puede hacerlo: PORTERIA, ADMINISTRADOR, OFICINA
+     *
+     * Body: {
+     *   "usuarioId": 123,
+     *   "timestamp": 1234567890,  // Opcional (null para QR permanente)
+     *   "tipo": "TEMPORAL" o "PERMANENTE"
+     * }
      */
-    @PostMapping("/qr/{idUsuario}")
+    @PostMapping("/registrar-qr/{registradoPorId}")
     fun registrarAccesoQR(
-        @PathVariable idUsuario: Long
+        @PathVariable registradoPorId: Long,
+        @RequestBody request: RegistrarAccesoQRRequest
     ): ResponseEntity<AccesoDTO> {
-        val acceso = accesoService.registrarAccesoQR(idUsuario)
+        val acceso = accesoService.registrarAccesoQR(
+            usuarioId = request.usuarioId,
+            registradoPorId = registradoPorId
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
     }
+
+    // =============================================
+    // GET - Obtener accesos recientes
+    // =============================================
+
+    /**
+     * Obtener últimos N accesos registrados
+     * Puede hacerlo: PORTERIA, ADMINISTRADOR, OFICINA
+     *
+     * Default: últimos 50
+     */
+    @GetMapping("/recientes")
+    fun getAccesosRecientes(
+        @RequestParam(defaultValue = "50") limit: Int
+    ): ResponseEntity<List<AccesoDTO>> {
+        val accesos = accesoService.getAccesosRecientes(limit)
+        return ResponseEntity.ok(accesos)
+    }
+
+    // =============================================
+    // GET - Obtener accesos de un usuario
+    // =============================================
+
+    /**
+     * Obtener accesos de un usuario específico
+     * Puede hacerlo: Cualquier usuario (su propio historial)
+     *
+     * Default: últimos 30 días
+     */
+    @GetMapping("/usuario/{usuarioId}")
+    fun getAccesosPorUsuario(
+        @PathVariable usuarioId: Long,
+        @RequestParam(defaultValue = "30") dias: Int
+    ): ResponseEntity<List<AccesoDTO>> {
+        val accesos = accesoService.getAccesosPorUsuario(usuarioId, dias)
+        return ResponseEntity.ok(accesos)
+    }
+
+    // =============================================
+    // GET - Estadísticas de accesos (OPCIONAL)
+    // =============================================
+
+    /**
+     * Obtener estadísticas de accesos
+     * Puede hacerlo: ADMINISTRADOR, OFICINA
+     *
+     * Ejemplo: total de accesos hoy, esta semana, este mes
+     */
+    @GetMapping("/estadisticas")
+    fun getEstadisticasAccesos(): ResponseEntity<EstadisticasAccesoDTO> {
+        val estadisticas = accesoService.getEstadisticasAccesos()
+        return ResponseEntity.ok(estadisticas)
+    }
+
+
 }

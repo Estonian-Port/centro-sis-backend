@@ -183,6 +183,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
             RolType.ALUMNO -> usuarioRepository.findAlumnos()
             RolType.ADMINISTRADOR -> usuarioRepository.findAdministradores()
             RolType.OFICINA -> usuarioRepository.findOficina()
+            RolType.PORTERIA -> usuarioRepository.findPorteria()
         }
     }
 
