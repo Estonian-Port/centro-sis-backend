@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
 @Service
-class InscripcionService() {
+class InscripcionService {
 
     @Autowired
     lateinit var inscripcionRepository: InscripcionRepository
@@ -38,7 +38,13 @@ class InscripcionService() {
         return inscripcionRepository.save(inscripcion)
     }
 
-    fun editarBeneficio(idInscripcion: Long, idUsuario: Long, nuevoBeneficio: Int): Inscripcion {
+    fun asignarPuntos(idInscripcion: Long, puntos: Int, usuario: Usuario): Inscripcion {
+        val inscripcion = getById(idInscripcion)
+        inscripcion.darPuntos(usuario,puntos)
+        return inscripcionRepository.save(inscripcion)
+    }
+
+    fun editarBeneficio(idInscripcion: Long, nuevoBeneficio: Int): Inscripcion {
         val inscripcion = getById(idInscripcion)
         // Verificar que el usuario tenga permiso para asignar beneficios
         inscripcion.verificarPermisoEdicion(inscripcion.alumno.usuario)

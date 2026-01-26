@@ -1,12 +1,12 @@
 package com.estonianport.centro_sis.controller
 
+import com.estonianport.centro_sis.dto.request.AsignarPuntosRequest
 import com.estonianport.centro_sis.dto.request.InscripcionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.InscripcionMapper
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.InscripcionService
 import com.estonianport.centro_sis.service.UsuarioService
-import org.springframework.data.jpa.domain.AbstractPersistable_.id
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -57,6 +57,22 @@ class InscripcionController(
         )
     }
 
+    //Agregar puntos a un alumno
+    @PutMapping("/{idInscripcion}/asignar-puntos/{idUsuario}")
+    fun asignarPuntos(
+        @PathVariable idInscripcion: Long,
+        @PathVariable idUsuario: Long,
+        @RequestBody request: AsignarPuntosRequest
+    ): ResponseEntity<CustomResponse> {
+        val usuarioQueAsigna = usuarioService.getById(idUsuario)
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Puntos asignados correctamente",
+                data = inscripcionService.asignarPuntos(idInscripcion, request.puntos, usuarioQueAsigna)
+            )
+        )
+    }
+
     //Aplicar/modificar un beneficio a una inscripcion
     @PutMapping("/editar-beneficio/{idInscripcion}/{idUsuario}")
     fun aplicarBeneficio(
@@ -67,7 +83,7 @@ class InscripcionController(
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Beneficio aplicado/modificado correctamente",
-                data = inscripcionService.editarBeneficio(idInscripcion, idUsuario, beneficio)
+                data = inscripcionService.editarBeneficio(idInscripcion, beneficio)
             )
         )
     }
