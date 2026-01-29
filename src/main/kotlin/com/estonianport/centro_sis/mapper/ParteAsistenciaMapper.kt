@@ -4,7 +4,7 @@ import com.estonianport.centro_sis.dto.response.ParteAsistenciaResponseDto
 import com.estonianport.centro_sis.model.ParteAsistencia
 
 object ParteAsistenciaMapper {
-    fun buildParteAsistenciaResponseDto(parte : ParteAsistencia): ParteAsistenciaResponseDto {
+    fun buildParteAsistenciaResponseDto(parte: ParteAsistencia): ParteAsistenciaResponseDto {
         return ParteAsistenciaResponseDto(
             id = parte.id,
             fecha = parte.fecha.toString(),

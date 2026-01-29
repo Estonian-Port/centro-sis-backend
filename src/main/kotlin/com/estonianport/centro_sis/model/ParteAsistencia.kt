@@ -2,7 +2,6 @@ package com.estonianport.centro_sis.model
 
 import jakarta.persistence.*
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Entity
 @Table(
@@ -41,7 +40,7 @@ class ParteAsistencia(
     @JoinColumn(name = "tomado_por_id", nullable = false)
     val tomadoPor: Usuario,
 
-) {
+    ) {
     fun getTotalAlumnos(): Int = registros.size
 
     fun getTotalPresentes(): Int = registros.count { it.presente }

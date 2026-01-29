@@ -40,7 +40,7 @@ class InscripcionService {
 
     fun asignarPuntos(idInscripcion: Long, puntos: Int, usuario: Usuario): Inscripcion {
         val inscripcion = getById(idInscripcion)
-        inscripcion.darPuntos(usuario,puntos)
+        inscripcion.darPuntos(usuario, puntos)
         return inscripcionRepository.save(inscripcion)
     }
 

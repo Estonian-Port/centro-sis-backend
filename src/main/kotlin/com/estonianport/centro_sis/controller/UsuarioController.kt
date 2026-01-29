@@ -113,15 +113,48 @@ class UsuarioController(
         )
     }
 
+    //Endpoint para reenviar invitacion por mail a un usuario que aun no hizo el primer login
+    @PostMapping("/reenviar-invitacion/{usuarioId}/{administradorId}")
+    fun reenviarInvitacion(
+        @PathVariable usuarioId: Long,
+        @PathVariable administradorId: Long
+    ): ResponseEntity<CustomResponse> {
+        administracionService.verificarRol(administradorId)
+        val usuario = usuarioService.getById(usuarioId)
+        if (!usuario.esPrimerLogin()) {
+            return ResponseEntity.status(400).body(
+                CustomResponse(
+                    message = "El usuario ya realizó el primer login",
+                    data = null
+                )
+            )
+        }
+        val password = usuarioService.generarPassword()
+        usuario.password = usuarioService.encriptarPassword(password)
+        val usuarioActualizado = usuarioService.save(usuario)
+        try {
+            emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // TODO enviar notificacion de fallo al enviar el mail
+        }
+
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Usuario creado correctamente",
+                data = UsuarioMapper.buildUsuarioResponseDto(usuarioActualizado)
+            )
+        )
+    }
+
     // Registro de usuario (primer login)
     @PutMapping("/registro")
     fun registro(@RequestBody usuarioDto: UsuarioRegistroRequestDto): ResponseEntity<CustomResponse> {
-        usuarioService.primerLogin(usuarioDto)
-        val usuario = usuarioService.findById(usuarioDto.id)
+        val usuario = usuarioService.primerLogin(usuarioDto)
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Registro realizado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuario!!)
+                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
             )
         )
     }
@@ -333,7 +366,6 @@ class UsuarioController(
             CustomResponse(
                 message = "Pagos obtenidos correctamente",
                 data = profesor.obtenerPagosRecibidos().map { PagoMapper.buildPagoResponseDto(it) }
-                //ACA TAMBIEN TENGO QUE PONER LOS PAGOS RECIBIDOS PARA LOS CURSOS ALQUILER QUE TENGA A CARGO
             )
         )
     }
@@ -431,6 +463,23 @@ class UsuarioController(
         val usuario = usuarioService.getById(usuarioId)
         val rol = rolFactory.build(rolType, usuario)
         usuario.asignarRol(rol)
+        usuarioService.save(usuario)
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Rol asignado correctamente",
+                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
+            )
+        )
+    }
+
+    //Endpoint para remover rol a un usuario
+    @DeleteMapping("/{usuarioId}/remover-rol/{rol}")
+    fun removerRol(
+        @PathVariable usuarioId: Long,
+        @PathVariable rol: String
+    ): ResponseEntity<CustomResponse> {
+        val usuario = usuarioService.getById(usuarioId)
+        usuario.quitarRol(RolType.valueOf(rol))
         usuarioService.save(usuario)
         return ResponseEntity.status(200).body(
             CustomResponse(

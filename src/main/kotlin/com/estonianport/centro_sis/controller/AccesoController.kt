@@ -17,14 +17,7 @@ import org.springframework.web.bind.annotation.*
 class AccesoController(
     private val accesoService: AccesoService
 ) {
-
-    // ========================================
-    // GET - MIS ACCESOS
-    // ========================================
-
-    /**
-     * Obtener mis accesos (usuario actual)
-     */
+    // Obtener mis accesos (usuario actual)
     @GetMapping("/mis-accesos/{idUsuario}")
     fun getMisAccesos(
         @PathVariable idUsuario: Long,
@@ -43,13 +36,7 @@ class AccesoController(
         return ResponseEntity.ok(PageResponse.from(accesosPage))
     }
 
-    // ========================================
-    // GET - TODOS LOS ACCESOS
-    // ========================================
-
-    /**
-     * Obtener todos los accesos con filtros (Admin/Oficina)
-     */
+    // Obtener todos los accesos con filtros (Admin/Oficina)
     @GetMapping("/todos/{idUsuario}")
     fun getTodosAccesos(
         @PathVariable idUsuario: Long,
@@ -72,13 +59,7 @@ class AccesoController(
         return ResponseEntity.ok(PageResponse.from(accesosPage))
     }
 
-    // ========================================
-    // POST - REGISTRAR ACCESO MANUAL
-    // ========================================
-
-    /**
-     * Registrar acceso manualmente (Admin/Oficina)
-     */
+    // Registrar acceso manualmente (Admin/Oficina)
     @PostMapping("/manual/{idAdmin}")
     fun registrarAccesoManual(
         @PathVariable idAdmin: Long,
@@ -88,20 +69,7 @@ class AccesoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
     }
 
-    // =============================================
-    // POST - Registrar acceso mediante QR
-    // =============================================
-
-    /**
-     * Registrar acceso escaneando QR
-     * Puede hacerlo: PORTERIA, ADMINISTRADOR, OFICINA
-     *
-     * Body: {
-     *   "usuarioId": 123,
-     *   "timestamp": 1234567890,  // Opcional (null para QR permanente)
-     *   "tipo": "TEMPORAL" o "PERMANENTE"
-     * }
-     */
+    //Registrar acceso escaneando QR
     @PostMapping("/registrar-qr/{registradoPorId}")
     fun registrarAccesoQR(
         @PathVariable registradoPorId: Long,
@@ -114,16 +82,7 @@ class AccesoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
     }
 
-    // =============================================
-    // GET - Obtener accesos recientes
-    // =============================================
-
-    /**
-     * Obtener últimos N accesos registrados
-     * Puede hacerlo: PORTERIA, ADMINISTRADOR, OFICINA
-     *
-     * Default: últimos 50
-     */
+    // Obtener accesos recientes
     @GetMapping("/recientes")
     fun getAccesosRecientes(
         @RequestParam(defaultValue = "50") limit: Int
@@ -132,16 +91,7 @@ class AccesoController(
         return ResponseEntity.ok(accesos)
     }
 
-    // =============================================
-    // GET - Obtener accesos de un usuario
-    // =============================================
-
-    /**
-     * Obtener accesos de un usuario específico
-     * Puede hacerlo: Cualquier usuario (su propio historial)
-     *
-     * Default: últimos 30 días
-     */
+    // Obtener accesos de un usuario
     @GetMapping("/usuario/{usuarioId}")
     fun getAccesosPorUsuario(
         @PathVariable usuarioId: Long,
@@ -151,21 +101,10 @@ class AccesoController(
         return ResponseEntity.ok(accesos)
     }
 
-    // =============================================
-    // GET - Estadísticas de accesos (OPCIONAL)
-    // =============================================
-
-    /**
-     * Obtener estadísticas de accesos
-     * Puede hacerlo: ADMINISTRADOR, OFICINA
-     *
-     * Ejemplo: total de accesos hoy, esta semana, este mes
-     */
+    // GET - Estadísticas de accesos
     @GetMapping("/estadisticas")
     fun getEstadisticasAccesos(): ResponseEntity<EstadisticasAccesoDTO> {
         val estadisticas = accesoService.getEstadisticasAccesos()
         return ResponseEntity.ok(estadisticas)
     }
-
-
 }

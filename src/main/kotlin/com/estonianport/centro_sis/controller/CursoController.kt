@@ -281,16 +281,16 @@ class CursoController(
         )
     }
 
-        //Dar de baja un curso
-        @DeleteMapping("/baja/{id}")
-        fun baja(@PathVariable id: Long): ResponseEntity<CustomResponse> {
-            cursoService.delete(id)
-            return ResponseEntity.status(200).body(
-                CustomResponse(
-                    message = "Curso dado de baja correctamente",
-                    data = null
-                )
+    //Dar de baja un curso
+    @DeleteMapping("/baja/{id}")
+    fun baja(@PathVariable id: Long): ResponseEntity<CustomResponse> {
+        cursoService.delete(id)
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Curso dado de baja correctamente",
+                data = null
             )
-        }
+        )
+    }
 
 }

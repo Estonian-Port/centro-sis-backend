@@ -2,7 +2,7 @@ package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.dto.*
 import com.estonianport.centro_sis.model.*
-import com.estonianport.centro_sis.model.enums.PagoType
+import com.estonianport.centro_sis.model.enums.CursoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoPagoConcepto
 import com.estonianport.centro_sis.repository.*
@@ -10,12 +10,10 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 
 @Service
@@ -25,7 +23,6 @@ class PagoService(
     private val inscripcionRepository: InscripcionRepository,
     private val cursoRepository: CursoRepository
 ) {
-
     // ========================================
     // PAGOS RECIBIDOS
     // ========================================
@@ -33,7 +30,7 @@ class PagoService(
     @Transactional(readOnly = true)
     fun getPagosRecibidos(
         usuarioId: Long,
-        rolActivo: RolType, // ✅ NUEVO: rol con el que está logueado
+        rolActivo: RolType,
         page: Int,
         size: Int,
         search: String?,
@@ -45,16 +42,16 @@ class PagoService(
 
         val pageable: Pageable = PageRequest.of(page, size)
 
-        // ✅ Traer TODOS los pagos activos
+        // Traer TODOS los pagos activos
         val todosPagos = pagoRepository.findAllByFechaBajaIsNull(pageable)
 
-        // ✅ Filtrar en memoria según rol
+        // Filtrar en memoria según rol
         val pagosFiltrados = todosPagos.content.filter { pago ->
             when (rolActivo) {
                 RolType.ADMINISTRADOR, RolType.OFICINA -> {
                     // CURSO (alumnos → instituto en cursos comisión) + ALQUILER (profesores → instituto)
                     when (pago) {
-                        is PagoCurso -> pago.inscripcion.curso.tipoCurso == com.estonianport.centro_sis.model.enums.CursoType.COMISION
+                        is PagoCurso -> pago.inscripcion.curso.tipoCurso == CursoType.COMISION
                         is PagoAlquiler -> true
                         else -> false
                     }
@@ -65,7 +62,7 @@ class PagoService(
                     // CURSO (alumnos → profesor en sus cursos alquiler) + COMISION (instituto → profesor)
                     when (pago) {
                         is PagoCurso -> {
-                            pago.inscripcion.curso.tipoCurso == com.estonianport.centro_sis.model.enums.CursoType.ALQUILER &&
+                            pago.inscripcion.curso.tipoCurso == CursoType.ALQUILER &&
                                     pago.inscripcion.curso.profesores.any { it.id == profesorId }
                         }
 
@@ -78,7 +75,7 @@ class PagoService(
             }
         }
 
-        // ✅ Filtrar por search (case insensitive)
+        // Filtrar por search (case insensitive)
         val pagosBuscados = if (search.isNullOrBlank()) {
             pagosFiltrados
         } else {
@@ -107,24 +104,24 @@ class PagoService(
             }
         }
 
-        // ✅ Filtrar por tipo
+        // Filtrar por tipo
         val pagosPorTipo = if (tipos.isNullOrEmpty()) {
             pagosBuscados
         } else {
             pagosBuscados.filter { pago -> tipos.contains(pago.tipo) }
         }
 
-        // ✅ Filtrar por meses
+        //  Filtrar por meses
         val pagosPorMes = if (meses.isNullOrEmpty()) {
             pagosPorTipo
         } else {
             pagosPorTipo.filter { pago -> meses.contains(pago.fecha.monthValue) }
         }
 
-        // ✅ Ordenar por fecha DESC
+        //  Ordenar por fecha DESC
         val pagosOrdenados = pagosPorMes.sortedByDescending { it.fecha }
 
-        // ✅ Crear página
+        // Crear página
         val pagosDTO = pagosOrdenados.map { mapPagoToDTO(it) }
         return PageImpl(pagosDTO, pageable, todosPagos.totalElements)
     }
@@ -136,7 +133,7 @@ class PagoService(
     @Transactional(readOnly = true)
     fun getPagosRealizados(
         usuarioId: Long,
-        rolActivo: RolType, // ✅ NUEVO: rol con el que está logueado
+        rolActivo: RolType,
         page: Int,
         size: Int,
         search: String?,
@@ -147,10 +144,10 @@ class PagoService(
 
         val pageable: Pageable = PageRequest.of(page, size)
 
-        // ✅ Traer TODOS los pagos activos
+        // Traer TODOS los pagos activos
         val todosPagos = pagoRepository.findAllByFechaBajaIsNull(pageable)
 
-        // ✅ Filtrar en memoria según rol
+        // Filtrar en memoria según rol
         val pagosFiltrados = todosPagos.content.filter { pago ->
             when (rolActivo) {
                 RolType.ADMINISTRADOR, RolType.OFICINA -> {
@@ -176,7 +173,7 @@ class PagoService(
             }
         }
 
-        // ✅ Filtrar por search
+        // Filtrar por search
         val pagosBuscados = if (search.isNullOrBlank()) {
             pagosFiltrados
         } else {
@@ -195,17 +192,17 @@ class PagoService(
             }
         }
 
-        // ✅ Filtrar por meses
+        // Filtrar por meses
         val pagosPorMes = if (meses.isNullOrEmpty()) {
             pagosBuscados
         } else {
             pagosBuscados.filter { pago -> meses.contains(pago.fecha.monthValue) }
         }
 
-        // ✅ Ordenar por fecha DESC
+        // Ordenar por fecha DESC
         val pagosOrdenados = pagosPorMes.sortedByDescending { it.fecha }
 
-        // ✅ Crear página
+        // Crear página
         val pagosDTO = pagosOrdenados.map { mapPagoToDTO(it) }
         return PageImpl(pagosDTO, pageable, todosPagos.totalElements)
     }
@@ -266,17 +263,17 @@ class PagoService(
             "No tienes permiso para pagar alquiler de este curso"
         }
 
-        // ✅ Obtener pagos ACTIVOS (sin fechaBaja)
+        // Obtener pagos ACTIVOS (sin fechaBaja)
         val pagosActivos = curso.pagosAlquiler.filter { it.fechaBaja == null }
 
-        // ✅ SIMPLE: Solo contar cuántos pagos hay
+        // SIMPLE: Solo contar cuántos pagos hay
         val cuotasPagadas = pagosActivos.size
-        val totalCuotas = curso.cuotasAlquiler ?: 1
+        val totalCuotas = curso.cuotasAlquiler
 
-        // ✅ Números de cuotas pagadas (1, 2, 3, etc.)
+        // Números de cuotas pagadas (1, 2, 3, etc.)
         val numerosCuotasPagadas = (1..cuotasPagadas).toList()
 
-        // ✅ Números de cuotas pendientes
+        // Números de cuotas pendientes
         val numerosCuotasPendientes = ((cuotasPagadas + 1)..totalCuotas).toList()
 
         return PagoAlquilerPreviewDTO(
@@ -314,7 +311,7 @@ class PagoService(
             "El curso no es de tipo comisión"
         }
 
-        val profesorRol = curso.profesores.find { it.id == profesorId }
+        val profesorRol = curso.profesores.find { it.usuario.id == profesorId }
             ?: throw IllegalArgumentException("Profesor no encontrado en el curso")
 
         // Obtener último pago de comisión
@@ -406,13 +403,13 @@ class PagoService(
             "No tienes permiso para pagar alquiler de este curso"
         }
 
-        // ✅ Validar que no exceda el total de cuotas
-        val totalCuotas = curso.cuotasAlquiler ?: 1
+        //  Validar que no exceda el total de cuotas
+        val totalCuotas = curso.cuotasAlquiler
         require(numeroCuota in 1..totalCuotas) {
             "Número de cuota inválido. Debe estar entre 1 y $totalCuotas"
         }
 
-        // ✅ SIMPLE: Validar que la cuota no esté pagada
+        //  SIMPLE: Validar que la cuota no esté pagada
         // Contar cuotas pagadas activas
         val cuotasPagadas = curso.pagosAlquiler.count { it.fechaBaja == null }
 
@@ -421,11 +418,11 @@ class PagoService(
             "Debe pagar las cuotas en orden. La próxima cuota a pagar es la ${cuotasPagadas + 1}"
         }
 
-        // ✅ Calcular mes/año según número de cuota
+        //  Calcular mes/año según número de cuota
         val fechaInicioCurso = curso.fechaInicio
         val mesYAnioPago = fechaInicioCurso.plusMonths((numeroCuota - 1).toLong())
 
-        // ✅ Crear pago
+        //  Crear pago
         val pago = PagoAlquiler(
             monto = curso.precioAlquiler,
             registradoPor = usuario,
@@ -435,14 +432,11 @@ class PagoService(
             anioPago = mesYAnioPago.year
         )
 
-        // ✅ Agregar al curso (esto actualiza la relación bidireccional)
+        //  Agregar al curso (esto actualiza la relación bidireccional)
         curso.registrarPagoAlquiler(pago)
 
-        // ✅ Guardar el pago (Cascade guardará la relación)
+        //  Guardar el pago (Cascade guardará la relación)
         val pagoGuardado = pagoRepository.save(pago)
-
-        // ❌ NO necesitás curso.save() - Cascade se encarga
-        // Si guardás el pago, la relación se actualiza automáticamente
 
         return mapPagoToDTO(pagoGuardado)
     }
@@ -482,19 +476,6 @@ class PagoService(
         return mapPagoToDTO(pagoGuardado)
     }
 
-    // Helper para calcular número de cuota desde mes/año
-    private fun calcularNumeroCuota(pago: PagoAlquiler, curso: CursoAlquiler): Int {
-        val fechaPago = pago.fecha
-        val fechaInicioCurso = curso.fechaInicio
-
-        val mesesDiferencia = ChronoUnit.MONTHS.between(
-            YearMonth.from(fechaInicioCurso),
-            YearMonth.from(fechaPago)
-        ).toInt()
-
-        return mesesDiferencia + 1
-    }
-
     @Transactional
     fun anularPago(
         usuarioId: Long,
@@ -515,32 +496,6 @@ class PagoService(
         pagoRepository.save(pago)
     }
 
-    private fun validarPermisoRegistroPagoCurso(
-        usuario: Usuario,
-        inscripcionId: Long
-    ) {
-        val roles = usuario.getRolTypes()
-
-        if (roles.contains(RolType.ADMINISTRADOR) || roles.contains(RolType.OFICINA)) {
-            return
-        }
-
-        if (roles.contains(RolType.PROFESOR)) {
-            val inscripcion = inscripcionRepository.findById(inscripcionId)
-                .orElseThrow { IllegalArgumentException("Inscripción no encontrada") }
-
-            val profesorRol = usuario.getRolProfesor()
-            val esSuCurso = inscripcion.curso.profesores.contains(profesorRol)
-
-            require(esSuCurso) {
-                "No tienes permiso para registrar pagos de este curso"
-            }
-            return
-        }
-
-        throw IllegalAccessException("No tienes permisos para registrar pagos")
-    }
-
     @Transactional(readOnly = true)
     fun calcularPreviewPago(
         usuarioId: Long,
@@ -557,20 +512,21 @@ class PagoService(
         inscripcion.verificarPermisoEdicion(usuario)
 
         // Calcular montos
-        val montoPorCuota = inscripcion.calcularMontoPorCuota()
-        val totalDescuento = inscripcion.tipoPagoSeleccionado.monto -
-                (montoPorCuota * BigDecimal(inscripcion.tipoPagoSeleccionado.cuotas))
+        val montoCuota = inscripcion.calcularMontoPorCuota()
+
+        //Calucular descuento
+        val totalDescuento = inscripcion.calcularDescuentoAplicado()
 
         val recargo = if (aplicarRecargo) {
-            montoPorCuota * (inscripcion.curso.recargoAtraso - BigDecimal.ONE)
+            inscripcion.calcularRecargoAplicado()
         } else {
             BigDecimal.ZERO
         }
 
         val montoFinal = if (aplicarRecargo) {
-            montoPorCuota * inscripcion.curso.recargoAtraso
+            inscripcion.calcularMontoFinalConRecargo()
         } else {
-            montoPorCuota
+            montoCuota
         }
 
         val resumen = inscripcion.obtenerResumenPago()
@@ -579,7 +535,7 @@ class PagoService(
             inscripcionId = inscripcion.id,
             alumnoNombre = inscripcion.alumno.usuario.nombreCompleto(),
             cursoNombre = inscripcion.curso.nombre,
-            montoPorCuota = montoPorCuota,
+            montoPorCuota = inscripcion.tipoPagoSeleccionado.monto,
             beneficio = inscripcion.beneficio,
             descuento = totalDescuento,
             recargoPorcentaje = inscripcion.curso.recargoAtraso,
@@ -606,25 +562,22 @@ class PagoService(
                     .filter { it.fechaBaja == null }
                     .sortedByDescending { it.fecha }
             }
+
             is CursoComision -> {
                 pagoRepository.findAll()
                     .filterIsInstance<PagoComision>()
                     .filter { it.curso.id == cursoId && it.fechaBaja == null }
                     .sortedByDescending { it.fecha }
             }
+
             else -> emptyList()
         }
 
         return pagos.map { mapPagoToDTO(it) }
     }
 
-// ========================================
-// FIX en mapPagoToDTO - Verificar tipo
-// ========================================
-// Reemplazar en PagoService.kt
-
     private fun mapPagoToDTO(pago: Pago): PagoDTO {
-        // ✅ Verificar que el tipo no sea null
+        // Verificar que el tipo no sea null
         val tipoPago = try {
             pago.tipo
         } catch (e: Exception) {
@@ -644,7 +597,7 @@ class PagoService(
                 fecha = pago.fecha,
                 fechaBaja = pago.fechaBaja,
                 observaciones = pago.observaciones,
-                tipo = tipoPago, // ✅ Usar variable verificada
+                tipo = tipoPago,
                 cursoId = pago.inscripcion.curso.id,
                 cursoNombre = pago.inscripcion.curso.nombre,
                 usuarioPagaId = pago.inscripcion.alumno.usuario.id,
@@ -664,7 +617,7 @@ class PagoService(
                 fecha = pago.fecha,
                 fechaBaja = pago.fechaBaja,
                 observaciones = pago.observaciones,
-                tipo = tipoPago, // ✅ Usar variable verificada
+                tipo = tipoPago,
                 cursoId = pago.curso.id,
                 cursoNombre = pago.curso.nombre,
                 usuarioPagaId = pago.profesor.usuario.id,
@@ -681,7 +634,7 @@ class PagoService(
                 fecha = pago.fecha,
                 fechaBaja = pago.fechaBaja,
                 observaciones = pago.observaciones,
-                tipo = tipoPago, // ✅ Usar variable verificada
+                tipo = tipoPago,
                 cursoId = pago.curso.id,
                 cursoNombre = pago.curso.nombre,
                 usuarioPagaId = null,

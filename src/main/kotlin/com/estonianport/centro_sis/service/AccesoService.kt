@@ -19,13 +19,11 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
 
 @Service
 class AccesoService(
     private val accesoRepository: AccesoRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val usuarioService: UsuarioService
 ) {
 
     // =============================================
@@ -48,40 +46,32 @@ class AccesoService(
             "No tienes permisos para registrar accesos"
         }
 
-        // ✅ Validar usuario existe
         val usuario = usuarioRepository.findById(usuarioId)
             .orElseThrow { IllegalArgumentException("Usuario no encontrado") }
 
-        require(usuario.estado == EstadoType.ACTIVO) {
-            "El usuario ${usuario.nombreCompleto()} no está activo"
+        require(usuario.estado != EstadoType.BAJA ) {
+            "El usuario ${usuario.nombreCompleto()} fue dado de baja"
         }
 
-        // ✅ Validar que no haya acceso duplicado reciente (últimos 5 minutos)
         val ultimoAcceso = accesoRepository.findAll()
             .filter { it.usuario.id == usuarioId }
             .maxByOrNull { it.fechaHora }
 
         if (ultimoAcceso != null) {
-            val minutosDesdeUltimo = ChronoUnit.MINUTES.between(
-                ultimoAcceso.fechaHora,
-                LocalDateTime.now()
-            )
-
-            require(minutosDesdeUltimo >= 5) {
-                "El usuario ya registró acceso hace $minutosDesdeUltimo minuto(s)"
+            val hoy = LocalDateTime.now()
+            if (ultimoAcceso.fechaHora.dayOfWeek == hoy.dayOfWeek) {
+                throw IllegalArgumentException("El usuario ${usuario.nombreCompleto()} ya registró un acceso hoy")
             }
         }
 
-        // ✅ Crear acceso
         val acceso = Acceso(
             usuario = usuario,
             fechaHora = LocalDateTime.now(),
-            tipoAcceso = TipoAcceso.QR  // Siempre QR (permanente)
+            tipoAcceso = TipoAcceso.QR  // Siempre QR
         )
 
         val accesoGuardado = accesoRepository.save(acceso)
 
-        // ✅ Verificar pagos atrasados
         val alertaPagos = verificarPagosAtrasados(usuario)
 
         return AccesoDTO(
@@ -129,6 +119,7 @@ class AccesoService(
         val mensaje = when {
             cursosAtrasados.size == 1 ->
                 "Tiene pagos atrasados en ${cursosAtrasados[0].cursoNombre}"
+
             else ->
                 "Tiene pagos atrasados en ${cursosAtrasados.size} cursos"
         }
@@ -170,7 +161,7 @@ class AccesoService(
     }
 
     // =============================================
-    // Obtener estadísticas (OPCIONAL)
+    // Obtener estadísticas
     // =============================================
 
     @Transactional(readOnly = true)
@@ -192,7 +183,7 @@ class AccesoService(
             totalHoy = totalHoy,
             totalEstaSemana = totalSemana,
             totalEsteMes = totalMes,
-            promediodiario = promedioDiario,
+            promedioDiario = promedioDiario,
         )
     }
 

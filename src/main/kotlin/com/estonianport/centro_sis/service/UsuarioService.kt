@@ -51,15 +51,6 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return usuarioRepository.findById(id).get()
     }
 
-    fun getUsuariosRegistrados(): List<Usuario> {
-        //TODO ajustar usuario.rol. (ADMIN)
-        return getAll()!!.filter { true && it.estado.name != "PENDIENTE" && it.estado.name != "BAJA" }
-    }
-
-    fun getUsuariosPendientes(): List<Usuario> {
-        return getAll()!!.filter { it.estado.name == "PENDIENTE" }
-    }
-
     fun verificarEmailNoExistente(email: String) {
         val usuario = usuarioRepository.getUsuarioByEmail(email)
         if (usuario != null) {
@@ -95,11 +86,12 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         save(usuario)
     }
 
-    fun primerLogin(usuarioDto: UsuarioRegistroRequestDto) {
+    fun primerLogin(usuarioDto: UsuarioRegistroRequestDto): Usuario {
         val usuario = getById(usuarioDto.id)
         usuario.password = encriptarPassword(usuarioDto.password)
         usuario.nombre = usuarioDto.nombre
         usuario.apellido = usuarioDto.apellido
+        usuario.dni = usuarioDto.dni
         usuario.celular = usuarioDto.celular
         usuario.fechaNacimiento = usuarioDto.fechaNacimiento
         usuario.confirmarPrimerLogin()
@@ -112,7 +104,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
                 relacion = usuarioDto.adultoResponsable.relacion
             )
         }
-        save(usuario)
+        return save(usuario)
     }
 
     fun darDeBaja(usuarioId: Long) {

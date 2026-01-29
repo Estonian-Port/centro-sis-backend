@@ -16,20 +16,11 @@ class PagoController(
     private val pagoService: PagoService
 ) {
 
-    // ========================================
-    // GET - PAGOS RECIBIDOS
-    // ========================================
-
-    /**
-     * Obtener pagos recibidos paginados
-     *
-     * - Admin/Oficina: CURSO (alumnos → instituto) + ALQUILER (profesores → instituto)
-     * - Profesor: CURSO (alumnos → profesor en sus cursos alquiler) + COMISION (instituto → profesor)
-     */
+    // PAGOS RECIBIDOS
     @GetMapping("/recibidos/{idUsuario}")
     fun getPagosRecibidos(
         @PathVariable idUsuario: Long,
-        @RequestParam rolActivo: RolType, // ✅ NUEVO: desde frontend
+        @RequestParam rolActivo: RolType,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) search: String?,
@@ -38,7 +29,7 @@ class PagoController(
     ): ResponseEntity<PageResponse<PagoDTO>> {
         val pagosPage = pagoService.getPagosRecibidos(
             usuarioId = idUsuario,
-            rolActivo = rolActivo, // ✅ NUEVO
+            rolActivo = rolActivo,
             page = page,
             size = size,
             search = search,
@@ -49,21 +40,11 @@ class PagoController(
         return ResponseEntity.ok(PageResponse.from(pagosPage))
     }
 
-    // ========================================
-    // GET - PAGOS REALIZADOS
-    // ========================================
-
-    /**
-     * Obtener pagos realizados paginados
-     *
-     * - Admin/Oficina: COMISION (instituto → profesores)
-     * - Profesor: ALQUILER (profesor → instituto)
-     * - Alumno: CURSO (alumno → instituto/profesor)
-     */
+    // PAGOS REALIZADOS
     @GetMapping("/realizados/{idUsuario}")
     fun getPagosRealizados(
         @PathVariable idUsuario: Long,
-        @RequestParam rolActivo: RolType, // ✅ NUEVO: desde frontend
+        @RequestParam rolActivo: RolType,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) search: String?,
@@ -71,7 +52,7 @@ class PagoController(
     ): ResponseEntity<PageResponse<PagoDTO>> {
         val pagosPage = pagoService.getPagosRealizados(
             usuarioId = idUsuario,
-            rolActivo = rolActivo, // ✅ NUEVO
+            rolActivo = rolActivo,
             page = page,
             size = size,
             search = search,
@@ -81,11 +62,7 @@ class PagoController(
         return ResponseEntity.ok(PageResponse.from(pagosPage))
     }
 
-    // ========================================
-    // POST - GENERAR PREVIEW PAGO
-    // ========================================
-
-
+    // GENERAR PREVIEW PAGO
     @PostMapping("/curso/preview/{idUsuario}")
     fun calcularPreviewPago(
         @PathVariable idUsuario: Long,
@@ -126,15 +103,7 @@ class PagoController(
         return ResponseEntity.ok(preview)
     }
 
-    // ========================================
-    // POST - REGISTRAR PAGOS
-    // ========================================
-
-    /**
-     * Registrar pago de curso (alumno → instituto/profesor)
-     *
-     * Puede hacerlo: Admin, Oficina, Profesor del curso
-     */
+    // REGISTRAR PAGOS: Registrar pago de curso (alumno → instituto/profesor)
     @PostMapping("/curso/{idUsuario}")
     fun registrarPagoCurso(
         @PathVariable idUsuario: Long,
@@ -148,6 +117,7 @@ class PagoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(pago)
     }
 
+    // Registrar pago de alquiler (profesor → instituto)
     @PostMapping("/alquiler/{idUsuario}")
     fun registrarPagoAlquiler(
         @PathVariable idUsuario: Long,
@@ -161,6 +131,7 @@ class PagoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(pago)
     }
 
+    // Registrar pago de comisión (instituto → profesor)
     @PostMapping("/comision/{idUsuario}")
     fun registrarPagoComision(
         @PathVariable idUsuario: Long,
@@ -174,14 +145,7 @@ class PagoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(pago)
     }
 
-
-    // ========================================
-    // POST - ANULAR PAGO
-    // ========================================
-
-    /**
-     * Anular un pago (solo Admin)
-     */
+    // Anular un pago (solo Admin)
     @PostMapping("/{pagoId}/anular/{idUsuario}")
     fun anularPago(
         @PathVariable pagoId: Long,
@@ -192,12 +156,9 @@ class PagoController(
         return ResponseEntity.noContent().build()
     }
 
-    /**
-     * Obtener pagos de un curso específico
-     *
-     * - Si es ALQUILER: Pagos de alquiler del curso
-     * - Si es COMISION: Pagos de comisión del curso
-     */
+    // Obtener pagos de un curso específico
+    // - Si es ALQUILER: Pagos de alquiler del curso
+    // - Si es COMISION: Pagos de comisión del curso
     @GetMapping("/curso/{cursoId}")
     fun getPagosPorCurso(
         @PathVariable cursoId: Long

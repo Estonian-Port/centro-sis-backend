@@ -1,9 +1,8 @@
 package com.estonianport.centro_sis.dto.request
 
-import com.estonianport.centro_sis.model.AdultoResponsable
 import java.time.LocalDate
 
-data class UsuarioRegistroRequestDto (
+data class UsuarioRegistroRequestDto(
     val id: Long,
     val nombre: String,
     val apellido: String,
@@ -11,10 +10,10 @@ data class UsuarioRegistroRequestDto (
     val celular: Long,
     val fechaNacimiento: LocalDate,
     val password: String,
-    val adultoResponsable: AdultoResponsableRequestDto? = null
+    val adultoResponsable: AdultoResponsableDto? = null
 )
 
-data class AdultoResponsableRequestDto (
+data class AdultoResponsableDto(
     val nombre: String,
     val apellido: String,
     val dni: String,

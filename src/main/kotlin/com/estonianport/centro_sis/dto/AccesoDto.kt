@@ -4,9 +4,6 @@ import com.estonianport.centro_sis.model.enums.TipoAcceso
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
-/**
- * DTO para mostrar un acceso en el frontend
- */
 data class AccesoDTO(
     val id: Long,
     val usuarioId: Long,
@@ -15,12 +12,9 @@ data class AccesoDTO(
     val usuarioDni: String,
     val fechaHora: LocalDateTime,
     val tipoAcceso: TipoAcceso,
-    val alertaPagos: AlertaPagosDTO?  // ✅ NUEVO
+    val alertaPagos: AlertaPagosDTO?
 )
 
-/**
- * DTO para registrar un acceso manualmente
- */
 data class RegistrarAccesoDTO(
     val usuarioId: Long
 )
@@ -45,5 +39,5 @@ data class EstadisticasAccesoDTO(
     val totalHoy: Int,
     val totalEstaSemana: Int,
     val totalEsteMes: Int,
-    val promediodiario: Double,
+    val promedioDiario: Double,
 )

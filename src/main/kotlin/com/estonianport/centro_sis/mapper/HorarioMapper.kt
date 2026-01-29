@@ -14,11 +14,11 @@ object HorarioMapper {
         "lunes" to DayOfWeek.MONDAY,
         "martes" to DayOfWeek.TUESDAY,
         "miércoles" to DayOfWeek.WEDNESDAY,
-        "miercoles" to DayOfWeek.WEDNESDAY, // sin tilde
+        "miercoles" to DayOfWeek.WEDNESDAY,
         "jueves" to DayOfWeek.THURSDAY,
         "viernes" to DayOfWeek.FRIDAY,
         "sábado" to DayOfWeek.SATURDAY,
-        "sabado" to DayOfWeek.SATURDAY, // sin tilde
+        "sabado" to DayOfWeek.SATURDAY,
         "domingo" to DayOfWeek.SUNDAY
     )
 
@@ -36,7 +36,11 @@ object HorarioMapper {
     fun buildHorario(horarioDto: HorarioDto): Horario {
         val diaInput = horarioDto.dia.trim().lowercase(SPANISH)
         val dayOfWeek = spanishToDayOfWeek[diaInput]
-            ?: try { DayOfWeek.valueOf(horarioDto.dia.uppercase()) } catch (_: Exception) { throw IllegalArgumentException("Día inválido: ${horarioDto.dia}") }
+            ?: try {
+                DayOfWeek.valueOf(horarioDto.dia.uppercase())
+            } catch (_: Exception) {
+                throw IllegalArgumentException("Día inválido: ${horarioDto.dia}")
+            }
 
         return Horario(
             dia = dayOfWeek,

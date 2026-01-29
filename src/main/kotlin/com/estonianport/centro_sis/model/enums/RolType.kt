@@ -1,6 +1,5 @@
 package com.estonianport.centro_sis.model.enums
 
-import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Rol
 import com.estonianport.centro_sis.model.RolAdmin
 import com.estonianport.centro_sis.model.RolAlumno
@@ -22,8 +21,7 @@ enum class RolType {
     ALUMNO {
         override fun create(usuario: Usuario): Rol = RolAlumno(usuario)
     },
-    PORTERIA
-    {
+    PORTERIA {
         override fun create(usuario: Usuario): Rol = RolPorteria(usuario)
     };
 
@@ -31,7 +29,7 @@ enum class RolType {
 
     companion object {
         fun fromString(value: String): RolType =
-            values().firstOrNull { it.name.equals(value, ignoreCase = true) }
+            RolType.entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
                 ?: throw IllegalArgumentException("Rol desconocido: $value")
     }
 }

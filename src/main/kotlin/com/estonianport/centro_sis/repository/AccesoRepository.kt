@@ -1,14 +1,12 @@
 package com.estonianport.centro_sis.repository
 
 import com.estonianport.centro_sis.model.Acceso
-import com.estonianport.centro_sis.model.enums.RolType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
-import java.time.LocalDate
 
 @Repository
 interface AccesoRepository : JpaRepository<Acceso, Long> {
@@ -20,12 +18,14 @@ interface AccesoRepository : JpaRepository<Acceso, Long> {
     /**
      * Obtener accesos del usuario actual paginados
      */
-    @Query("""
+    @Query(
+        """
         SELECT a FROM Acceso a
         WHERE a.usuario.id = :usuarioId
         AND (:meses IS NULL OR MONTH(a.fechaHora) IN :meses)
         ORDER BY a.fechaHora DESC
-    """)
+    """
+    )
     fun findMisAccesos(
         @Param("usuarioId") usuarioId: Long,
         @Param("meses") meses: List<Int>?,
@@ -95,50 +95,4 @@ interface AccesoRepository : JpaRepository<Acceso, Long> {
         pageable: Pageable
     ): Page<Acceso>
 
-    // ========================================
-    // QUERIES AUXILIARES
-    // ========================================
-
-    /**
-     * Verificar si un usuario tuvo acceso en una fecha específica
-     */
-    @Query("""
-        SELECT COUNT(a) > 0 FROM Acceso a
-        WHERE a.usuario.id = :usuarioId
-        AND DATE(a.fechaHora) = :fecha
-    """)
-    fun tuvoAccesoEnFecha(
-        @Param("usuarioId") usuarioId: Long,
-        @Param("fecha") fecha: LocalDate
-    ): Boolean
-
-    /**
-     * Obtener accesos de un usuario en un rango de fechas
-     */
-    @Query("""
-        SELECT a FROM Acceso a
-        WHERE a.usuario.id = :usuarioId
-        AND DATE(a.fechaHora) BETWEEN :desde AND :hasta
-        ORDER BY a.fechaHora ASC
-    """)
-    fun findAccesosEnRango(
-        @Param("usuarioId") usuarioId: Long,
-        @Param("desde") desde: LocalDate,
-        @Param("hasta") hasta: LocalDate
-    ): List<Acceso>
-
-    /**
-     * Contar accesos de un usuario en un mes/año
-     */
-    @Query("""
-        SELECT COUNT(a) FROM Acceso a
-        WHERE a.usuario.id = :usuarioId
-        AND MONTH(a.fechaHora) = :mes
-        AND YEAR(a.fechaHora) = :anio
-    """)
-    fun contarAccesosEnMes(
-        @Param("usuarioId") usuarioId: Long,
-        @Param("mes") mes: Int,
-        @Param("anio") anio: Int
-    ): Long
 }

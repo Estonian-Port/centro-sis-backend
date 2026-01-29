@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service
 class AdministracionService(
     private val usuarioService: UsuarioService,
     private val cursoService: CursoService,
-    private val pagoService: PagoService
+    private val accesoService: AccesoService
 ) {
 
     fun verificarRol(usuarioId: Long) {
@@ -25,13 +25,13 @@ class AdministracionService(
         val totalAlumnosActivos = usuarioService.countAlumnosActivos()
         val totalCursos = cursoService.countCursos()
         val totalProfesores = usuarioService.countProfesores()
-        val ingresosMes = 0.0 // pagoService.getTotalIngresosDelMes().toDouble()
+        val accesosMes = accesoService.getEstadisticasAccesos().totalEsteMes
 
         return EstadisticasResponseDto(
             alumnosActivos = totalAlumnosActivos,
             cursos = totalCursos,
             profesores = totalProfesores,
-            ingresosMensuales = ingresosMes
+            accesosMensuales = accesosMes
         )
     }
 

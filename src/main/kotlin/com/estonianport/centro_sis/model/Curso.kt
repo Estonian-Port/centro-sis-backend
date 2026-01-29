@@ -183,12 +183,12 @@ abstract class Curso(
         return parte
     }
 
-    // ✅ Obtener parte de asistencia de una fecha
+    // Obtener parte de asistencia de una fecha
     fun getParteDeAsistencia(fecha: LocalDate): ParteAsistencia? {
         return partesDeAsistencia.find { it.fecha == fecha }
     }
 
-    fun getPorcentajeAsistenciaAlumno(alumnoId: Long) : Double {
+    fun getPorcentajeAsistenciaAlumno(alumnoId: Long): Double {
         val totalClases = partesDeAsistencia.size
         if (totalClases == 0) return 0.0
 

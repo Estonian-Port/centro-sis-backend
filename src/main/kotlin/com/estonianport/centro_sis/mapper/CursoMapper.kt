@@ -12,7 +12,6 @@ import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.RolProfesor
 import java.math.BigDecimal
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 object CursoMapper {
 
@@ -61,8 +60,8 @@ object CursoMapper {
                 .toDouble(),
             tipoCurso = inscripcion.curso.tipoCurso.name,
             fechaInscripcion = inscripcion.fechaInscripcion.toString(),
-            porcentajeAsistencia = 1.0, //TODO: calcular porcentaje de asistencia
-            pagosRealizados = inscripcion.pagos.map {PagoMapper.buildPagoResponseDto(it)},
+            porcentajeAsistencia = inscripcion.curso.getPorcentajeAsistenciaAlumno(inscripcion.alumno.id),
+            pagosRealizados = inscripcion.pagos.map { PagoMapper.buildPagoResponseDto(it) },
             puntos = inscripcion.puntos,
         )
     }

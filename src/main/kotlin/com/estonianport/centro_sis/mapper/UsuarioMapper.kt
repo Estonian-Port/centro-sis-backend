@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.mapper
 
 import com.estonianport.centro_sis.dto.ProfesorListaResponseDto
+import com.estonianport.centro_sis.dto.request.AdultoResponsableDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
 import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
@@ -9,6 +10,7 @@ import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioDetailResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioSimpleResponseDto
+import com.estonianport.centro_sis.model.AdultoResponsable
 import com.estonianport.centro_sis.model.Usuario
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -30,11 +32,18 @@ object UsuarioMapper {
             primerLogin = usuario.esPrimerLogin(),
             listaRol = usuario.getRolTypes().toMutableSet(),
             ultimoIngreso = usuario.ultimoIngresoAlSistema?.format(formatterTime) ?: "",
+            adultoResponsable = usuario.adultoResponsable?.let { buildAdultoResponsable(it) }
         )
     }
 
-    fun buildNombreCompleto(usuario: Usuario): String {
-        return "${usuario.nombre} ${usuario.apellido}"
+    fun buildAdultoResponsable(adulto: AdultoResponsable): AdultoResponsableDto {
+        return AdultoResponsableDto(
+            nombre = adulto.nombre,
+            apellido = adulto.apellido,
+            dni = adulto.dni,
+            celular = adulto.celular,
+            relacion = adulto.relacion
+        )
     }
 
     fun buildUsuario(usuarioDto: UsuarioRequestDto): Usuario {
@@ -85,6 +94,8 @@ object UsuarioMapper {
             estado = usuario.estado.name,
             primerLogin = usuario.esPrimerLogin(),
             listaRol = usuario.getRolTypes().toMutableSet(),
+            ultimoIngreso = usuario.ultimoIngresoAlSistema?.format(formatterTime) ?: "",
+            adultoResponsable = usuario.adultoResponsable?.let { buildAdultoResponsable(it) },
             cursosInscriptos = cursosInscriptos.orEmpty(),
             cursosDictados = cursosDictados.orEmpty(),
         )
@@ -99,6 +110,7 @@ object UsuarioMapper {
             email = alumno.email,
             celular = alumno.celular.toString(),
             fechaNacimiento = alumno.fechaNacimiento.format(formatter),
+            adultoResponsable = alumno.adultoResponsable?.let { buildAdultoResponsable(it) }
         )
     }
 

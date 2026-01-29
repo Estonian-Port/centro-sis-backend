@@ -65,13 +65,8 @@ class Inscripcion(
         }
     }
 
-    // ====================
-    // REGISTRAR PAGO
-    // ====================
-
     /**
      * Registra un pago. El recargo se controla manualmente desde el frontend.
-     *
      * @param aplicarRecargo: true si el profesor/admin decide cobrar recargo
      */
     fun registrarPago(
@@ -104,21 +99,35 @@ class Inscripcion(
         return pago
     }
 
-    /**
-     * Calcula cuánto cuesta cada cuota (ya con descuento)
-     */
+    // Calcula cuánto cuesta cada cuota (ya con descuento)
     fun calcularMontoPorCuota(): BigDecimal {
         val montoTotal = tipoPagoSeleccionado.monto
         val descuento = (montoTotal * BigDecimal(beneficio)) / BigDecimal(100)
         val montoConDescuento = montoTotal - descuento
 
-        return montoConDescuento / BigDecimal(tipoPagoSeleccionado.cuotas)
+        return montoConDescuento
     }
 
-    /**
-     * Calcula cuántas cuotas DEBERÍA haber pagado hasta ahora
-     * según el tiempo transcurrido desde el inicio del curso.
-     */
+    fun calcularDescuentoAplicado(): BigDecimal {
+        val montoTotal = tipoPagoSeleccionado.monto
+        val descuento = (montoTotal * BigDecimal(beneficio)) / BigDecimal(100)
+        return descuento
+    }
+
+    fun calcularRecargoAplicado(): BigDecimal {
+        val recargo = tipoPagoSeleccionado.monto * (curso.recargoAtraso / BigDecimal(100))
+        return recargo
+    }
+
+    fun calcularMontoFinalConRecargo(): BigDecimal {
+        val montoConDescuento = calcularMontoPorCuota()
+        val recargo = calcularRecargoAplicado()
+        return montoConDescuento + recargo
+    }
+
+    // Calcula cuántas cuotas DEBERÍA haber pagado hasta ahora
+    // según el tiempo transcurrido desde el inicio del curso.
+
     fun calcularCuotasEsperadas(): Int {
         return when (tipoPagoSeleccionado.tipo) {
             PagoType.MENSUAL -> calcularCuotasEsperadasMensuales()
@@ -126,34 +135,32 @@ class Inscripcion(
         }
     }
 
-    /**
-     * Para pago mensual: 1 cuota por cada mes transcurrido desde el inicio
-     */
+
+    // Para pago mensual: 1 cuota por cada mes transcurrido desde el inicio
+
     private fun calcularCuotasEsperadasMensuales(): Int {
         val hoy = LocalDate.now()
         val inicioCurso = curso.fechaInicio
 
-        // ✅ Si el curso no empezó, no se espera ninguna cuota
+        // Si el curso no empezó, no se espera ninguna cuota
         if (hoy.isBefore(inicioCurso)) return 0
 
-        // ✅ Si el curso terminó, se esperan todas las cuotas
+        // Si el curso terminó, se esperan todas las cuotas
         if (hoy.isAfter(curso.fechaFin)) {
             return tipoPagoSeleccionado.cuotas
         }
 
-        // ✅ Calcular meses transcurridos COMPLETOS
+        // Calcular meses transcurridos COMPLETOS
         val mesesTranscurridos = ChronoUnit.MONTHS.between(
             YearMonth.from(inicioCurso),
             YearMonth.from(hoy)
         ).toInt() + 1 // +1 porque el mes actual ya empezó
 
-        // ✅ No puede superar el total de cuotas
+        // No puede superar el total de cuotas
         return minOf(mesesTranscurridos, tipoPagoSeleccionado.cuotas)
     }
 
-    /**
-     * Para pago total: se espera 1 cuota desde el inicio del curso
-     */
+    // Para pago total: se espera 1 cuota desde el inicio del curso
     private fun calcularCuotasEsperadasTotal(): Int {
         val hoy = LocalDate.now()
         val inicioCurso = curso.fechaInicio
@@ -161,90 +168,66 @@ class Inscripcion(
         return if (hoy.isBefore(inicioCurso)) 0 else 1
     }
 
-    // ========================================
-    // ESTADO DE PAGO (SIMPLE)
-    // ========================================
-
-    /**
-     * Actualiza el estado considerando si está atrasado
-     */
+    // Actualiza el estado considerando si está atrasado
     fun actualizarEstadoPago() {
         val cuotasPagadas = contarCuotasPagadas()
         val cuotasEsperadas = calcularCuotasEsperadas()
         val cuotasTotales = tipoPagoSeleccionado.cuotas
 
         estadoPago = when {
-            // ✅ Pagó todas las cuotas
+            // Pagó todas las cuotas
             cuotasPagadas >= cuotasTotales -> EstadoPagoType.PAGO_COMPLETO
 
-            // ❌ Está atrasado (debe más de lo que pagó)
+            // Está atrasado (debe más de lo que pagó)
             cuotasPagadas < cuotasEsperadas -> EstadoPagoType.ATRASADO
 
-            // ✅ Al día (pagó lo que debía hasta ahora)
+            // Al día (pagó lo que debía hasta ahora)
             cuotasPagadas >= cuotasEsperadas && cuotasPagadas > 0 -> EstadoPagoType.AL_DIA
 
-            // ⏳ Pendiente (no pagó nada pero tampoco debe aún)
+            // Pendiente (no pagó nada pero tampoco debe aún)
             else -> EstadoPagoType.PENDIENTE
         }
     }
 
-    /**
-     * Verifica si está atrasado con los pagos
-     */
+    // Verifica si está atrasado con los pagos
     fun estaAtrasado(): Boolean {
         return contarCuotasPagadas() < calcularCuotasEsperadas()
     }
 
-    /**
-     * Calcula cuántas cuotas debe (no pagadas pero esperadas)
-     */
+    // Calcula cuántas cuotas debe (no pagadas pero esperadas)
     fun calcularCuotasAtrasadas(): Int {
         val cuotasPagadas = contarCuotasPagadas()
         val cuotasEsperadas = calcularCuotasEsperadas()
         return maxOf(0, cuotasEsperadas - cuotasPagadas)
     }
 
-    /**
-     * Cuenta cuántas cuotas pagó (solo pagos activos)
-     */
+    // Cuenta cuántas cuotas pagó (solo pagos activos)
     fun contarCuotasPagadas(): Int {
         return pagos.count { it.fechaBaja == null }
     }
 
-    /**
-     * Calcula deuda pendiente simple
-     */
+    // Calcula deuda pendiente simple
     fun calcularDeudaPendiente(): BigDecimal {
         val cuotasPendientes = calcularCuotasEsperadas() - contarCuotasPagadas()
         val deudaTotal = calcularMontoPorCuota().multiply(BigDecimal(cuotasPendientes))
         return maxOf(BigDecimal.ZERO, deudaTotal)
     }
 
-    /**
-     * Total pagado hasta ahora
-     */
+    // Total pagado hasta ahora
     fun calcularTotalPagado(): BigDecimal {
         return pagos
             .filter { it.fechaBaja == null }
             .sumOf { it.monto }
     }
 
-    /**
-     * Verifica si puede registrar más pagos
-     */
+    // Verifica si puede registrar más pagos
     fun puedeRegistrarPago(): Boolean {
         return estadoPago != EstadoPagoType.PAGO_COMPLETO &&
                 fechaBaja == null &&
                 contarCuotasPagadas() < tipoPagoSeleccionado.cuotas
     }
 
-    // ========================================
-    // ANULAR PAGO
-    // ========================================
-
-    /**
-     * Anula un pago (solo admin)
-     */
+    // Anula un pago (solo admin)
     fun anularPago(pago: PagoCurso, motivo: String, anulador: Usuario) {
         require(pagos.contains(pago)) {
             "El pago no pertenece a esta inscripción"
@@ -254,19 +237,11 @@ class Inscripcion(
         actualizarEstadoPago()
     }
 
-    // ========================================
-    // BENEFICIOS Y PUNTOS
-    // ========================================
-
     fun aplicarBeneficio(nuevoBeneficio: Int) {
         require(nuevoBeneficio in 0..100) {
             "El porcentaje de descuento debe estar entre 0 y 100"
         }
         beneficio = nuevoBeneficio
-    }
-
-    fun quitarBeneficio() {
-        beneficio = 0
     }
 
     fun darPuntos(otorgadoPor: Usuario, puntosAGanar: Int) {
@@ -275,17 +250,7 @@ class Inscripcion(
         puntos += puntosAGanar
     }
 
-    fun quitarPuntos(otorgadoPor: Usuario, puntosAPerder: Int) {
-        verificarPermisoEdicion(otorgadoPor)
-        require(puntosAPerder > 0) { "Los puntos deben ser positivos" }
-        puntos = maxOf(0, puntos - puntosAPerder)
-    }
-
-    // ========================================
-    // PERMISOS
-    // ========================================
-
-     fun verificarPermisoEdicion(usuario: Usuario) {
+    fun verificarPermisoEdicion(usuario: Usuario) {
         val tienePermiso = usuario.tieneRol(RolType.ADMINISTRADOR) ||
                 usuario.tieneRol(RolType.OFICINA) ||
                 usuario.tieneRol(RolType.PROFESOR)
@@ -308,10 +273,6 @@ class Inscripcion(
         this.estado = EstadoType.ACTIVO
         actualizarEstadoPago()
     }
-
-    // ========================================
-    // RESUMEN
-    // ========================================
 
     fun obtenerResumenPago(): ResumenPago {
         val cuotasPagadas = contarCuotasPagadas()
@@ -339,8 +300,8 @@ class Inscripcion(
 data class ResumenPago(
     val cuotasTotales: Int,
     val cuotasPagadas: Int,
-    val cuotasEsperadas: Int,      // ✅ Cuántas debería haber pagado
-    val cuotasAtrasadas: Int,      // ✅ Cuántas está atrasado
+    val cuotasEsperadas: Int,
+    val cuotasAtrasadas: Int,
     val cuotasPendientes: Int,
     val deudaTotal: BigDecimal,
     val totalPagado: BigDecimal,

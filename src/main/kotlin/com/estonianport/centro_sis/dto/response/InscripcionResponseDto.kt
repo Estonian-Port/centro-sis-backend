@@ -1,6 +1,6 @@
 package com.estonianport.centro_sis.dto.response
 
-data class InscripcionResponseDto (
+data class InscripcionResponseDto(
     val id: Long,
     val alumno: AlumnoResponseDto,
     val tipoPagoElegido: TipoPagoDto,
@@ -10,5 +10,5 @@ data class InscripcionResponseDto (
     val beneficio: Int,
     val puntos: Int,
     val porcentajeAsistencia: Double,
-    val estado : String
+    val estado: String
 )

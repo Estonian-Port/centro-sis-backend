@@ -109,8 +109,21 @@ class Usuario(
         listaRol.add(rol)
     }
 
-    fun quitarRol(rol: Rol) {
-        rol.fechaBaja = LocalDate.now()
+    fun quitarRol(rol: RolType) {
+        if (!tieneRol(rol)) {
+            throw NoSuchElementException("El usuario no tiene el rol $rol")
+        }
+        val rolAEliminar = listaRol.first {
+            when (rol) {
+                RolType.ADMINISTRADOR -> it is RolAdmin
+                RolType.OFICINA -> it is RolOficina
+                RolType.PROFESOR -> it is RolProfesor
+                RolType.ALUMNO -> it is RolAlumno
+                RolType.PORTERIA -> it is RolPorteria
+            }
+        }
+        rolAEliminar.fechaBaja = LocalDate.now()
+        listaRol.remove(rolAEliminar)
     }
 
     fun tieneRol(rolType: RolType): Boolean {

@@ -32,8 +32,7 @@ abstract class Pago(
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var observaciones: String? = null
 ) {
-    // ✅ Propiedad abstracta que cada subclase debe implementar
-    @get:Transient // ❌ NO guardar en BD - solo en código
+    @get:Transient // NO guardar en BD - solo en código
     abstract val tipo: TipoPagoConcepto
 
     fun anular(motivo: String, anulador: Usuario) {
@@ -74,7 +73,7 @@ class PagoCurso(
     registradoPor = registradoPor,
     fecha = fecha
 ) {
-    // ✅ NO guardar en BD - solo código
+    // NO guardar en BD - solo código
     @get:Transient
     override val tipo: TipoPagoConcepto
         get() = TipoPagoConcepto.CURSO
@@ -126,7 +125,7 @@ class PagoAlquiler(
     registradoPor = registradoPor,
     fecha = fecha
 ) {
-    // ✅ NO guardar en BD - solo código
+    // NO guardar en BD - solo código
     @get:Transient
     override val tipo: TipoPagoConcepto
         get() = TipoPagoConcepto.ALQUILER
@@ -167,7 +166,7 @@ class PagoComision(
     registradoPor = registradoPor,
     fecha = fecha
 ) {
-    // ✅ NO guardar en BD - solo código
+    // NO guardar en BD - solo código
     @get:Transient
     override val tipo: TipoPagoConcepto
         get() = TipoPagoConcepto.COMISION

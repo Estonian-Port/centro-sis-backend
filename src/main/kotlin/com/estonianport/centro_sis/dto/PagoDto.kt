@@ -1,13 +1,9 @@
 package com.estonianport.centro_sis.dto
 
-import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.model.enums.TipoPagoConcepto
 import java.math.BigDecimal
 import java.time.LocalDate
 
-/**
- * DTO para mostrar un pago en el frontend
- */
 data class PagoDTO(
     val id: Long,
     val monto: BigDecimal,
@@ -64,36 +60,6 @@ data class RegistrarPagoCursoRequest(
     val aplicarRecargo: Boolean = false
 )
 
-/**
- * DTO para registrar un pago de curso
- */
-data class RegistrarPagoCursoDTO(
-    val inscripcionId: Long,
-    val aplicarRecargo: Boolean = true
-)
-
-/**
- * DTO para registrar un pago de alquiler
- */
-data class RegistrarPagoAlquilerDTO(
-    val cursoId: Long,
-    val mesPago: Int?,
-    val anioPago: Int?
-)
-
-/**
- * DTO para registrar un pago de comisión
- */
-data class RegistrarPagoComisionDTO(
-    val cursoId: Long,
-    val profesorId: Long,
-    val mesPago: Int?,
-    val anioPago: Int?
-)
-
-/**
- * DTO para anular un pago
- */
 data class AnularPagoDTO(
     val motivo: String
 )
@@ -131,7 +97,7 @@ data class PagoComisionPreviewDTO(
     val cursoNombre: String,
     val profesorId: Long,
     val profesorNombre: String,
-    val porcentajeComision: BigDecimal, // 0.15 = 15%
+    val porcentajeComision: BigDecimal,
     val fechaInicio: LocalDate,
     val fechaFin: LocalDate,
     val diasPeriodo: Int,

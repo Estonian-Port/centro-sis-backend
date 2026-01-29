@@ -16,7 +16,7 @@ class TipoPago(
     @Column(nullable = false)
     val monto: BigDecimal,
 
-    @Column (nullable = false)
+    @Column(nullable = false)
     val cuotas: Int = 1
 ) {
 

@@ -5,7 +5,7 @@ import com.estonianport.centro_sis.model.Inscripcion
 
 object InscripcionMapper {
 
-    fun buildInscripcionResponseDto(inscripcion : Inscripcion) : InscripcionResponseDto {
+    fun buildInscripcionResponseDto(inscripcion: Inscripcion): InscripcionResponseDto {
         return InscripcionResponseDto(
             id = inscripcion.id,
             alumno = UsuarioMapper.buildAlumno(inscripcion.alumno.usuario),

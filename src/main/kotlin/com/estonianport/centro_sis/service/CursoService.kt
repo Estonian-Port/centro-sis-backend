@@ -51,19 +51,11 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         cursoRepository.save(curso)
     }
 
-    fun cantAlumnosInscriptos(cursoId: Long): Int {
-        return inscripcionRepository.countByCursoIdAndFechaBajaIsNull(cursoId)
-    }
-
     fun actualizarProfesoresDelCurso(curso: Curso, nuevosProfesores: List<RolProfesor>): Curso {
         curso.profesores.clear()
         curso.profesores.addAll(nuevosProfesores)
         return save(curso)
     }
-
-//    fun existeCursoConNombre(nombre: String): Boolean {
-//        return cursoRepository.existsByNombreAndFechaBajaIsNull(nombre)
-//    }
 
     fun finalizarAltaCursoAlquiler(
         cursoId: Long,
@@ -74,25 +66,27 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         val curso = getById(cursoId)
         curso.horarios = horarios.toMutableList()
         curso.tiposPago = tiposPago.toMutableSet()
-        curso.recargoAtraso = recargo?.let { BigDecimal.valueOf(it).divide(BigDecimal.valueOf(100)).add(BigDecimal.ONE) } ?: BigDecimal.ONE
+        curso.recargoAtraso =
+            recargo?.let { BigDecimal.valueOf(it).divide(BigDecimal.valueOf(100)).add(BigDecimal.ONE) }
+                ?: BigDecimal.ONE
         curso.estadoAlta = EstadoType.ACTIVO
         return save(curso)
     }
 
-    fun actualizarNombreCurso (cursoId: Long, nuevoNombre: String): Curso {
+    fun actualizarNombreCurso(cursoId: Long, nuevoNombre: String): Curso {
         val curso = getById(cursoId)
         curso.nombre = nuevoNombre
         return save(curso)
     }
 
-    fun actualizarProfesores (cursoId: Long, nuevosProfesores: List<RolProfesor>): Curso {
+    fun actualizarProfesores(cursoId: Long, nuevosProfesores: List<RolProfesor>): Curso {
         val curso = getById(cursoId)
         curso.profesores.clear()
         curso.profesores.addAll(nuevosProfesores)
         return save(curso)
     }
 
-    fun actualizarHorariosCurso (cursoId: Long, nuevosHorarios: List<Horario>): Curso {
+    fun actualizarHorariosCurso(cursoId: Long, nuevosHorarios: List<Horario>): Curso {
         val curso = getById(cursoId)
         curso.horarios.clear()
         curso.horarios.addAll(nuevosHorarios)
@@ -103,14 +97,14 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         return cursoRepository.findPartesAsistenciaByCursoId(cursoId)
     }
 
-    fun actualizarMontosTiposPagoCurso (cursoId: Long, nuevosTiposPago: List<TipoPago>): Curso {
+    fun actualizarMontosTiposPagoCurso(cursoId: Long, nuevosTiposPago: List<TipoPago>): Curso {
         val curso = getById(cursoId)
         curso.tiposPago.clear()
         curso.tiposPago.addAll(nuevosTiposPago)
         return save(curso)
     }
 
-    fun tomarAsistenciaAutomatica(cursoId: Long, usuarioId: Long, fecha : LocalDate?) : Curso {
+    fun tomarAsistenciaAutomatica(cursoId: Long, usuarioId: Long, fecha: LocalDate?): Curso {
         val curso = getById(cursoId)
         val usuario = usuarioService.getById(usuarioId)
         curso.tomarAsistencia(usuario, fecha ?: LocalDate.now())
