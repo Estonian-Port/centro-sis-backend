@@ -538,7 +538,7 @@ class PagoService(
             montoPorCuota = inscripcion.tipoPagoSeleccionado.monto,
             beneficio = inscripcion.beneficio,
             descuento = totalDescuento,
-            recargoPorcentaje = inscripcion.curso.recargoAtraso,
+            recargoPorcentaje = (inscripcion.curso.recargoAtraso - BigDecimal.ONE) * BigDecimal(100),
             recargo = recargo,
             montoFinal = montoFinal,
             aplicaRecargo = aplicarRecargo,

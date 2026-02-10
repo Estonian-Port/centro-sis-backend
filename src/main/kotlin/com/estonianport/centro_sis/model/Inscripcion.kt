@@ -115,14 +115,12 @@ class Inscripcion(
     }
 
     fun calcularRecargoAplicado(): BigDecimal {
-        val recargo = tipoPagoSeleccionado.monto * (curso.recargoAtraso / BigDecimal(100))
+        val recargo = (calcularMontoPorCuota() * curso.recargoAtraso) - calcularMontoPorCuota()
         return recargo
     }
 
     fun calcularMontoFinalConRecargo(): BigDecimal {
-        val montoConDescuento = calcularMontoPorCuota()
-        val recargo = calcularRecargoAplicado()
-        return montoConDescuento + recargo
+        return calcularMontoPorCuota() + calcularRecargoAplicado()
     }
 
     // Calcula cuántas cuotas DEBERÍA haber pagado hasta ahora

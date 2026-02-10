@@ -37,7 +37,6 @@ data class CursoAtrasoDTO(
 
 data class EstadisticasAccesoDTO(
     val totalHoy: Int,
-    val totalEstaSemana: Int,
     val totalEsteMes: Int,
     val promedioDiario: Double,
 )
