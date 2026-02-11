@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import java.io.IOException
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class JWTAuthenticationFilter(
     private val usuarioService: UsuarioService
@@ -37,7 +38,7 @@ class JWTAuthenticationFilter(
 
     override fun successfulAuthentication(request: HttpServletRequest?, response: HttpServletResponse?, chain: FilterChain?, authResult: Authentication?) {
         val email = authResult?.name ?: return
-        usuarioService.actualizarFechaUltimoAcceso(email, LocalDate.now())
+        usuarioService.actualizarFechaUltimoAcceso(email, LocalDateTime.now())
 
         val userDetails : UserDetailImpl = authResult.principal as UserDetailImpl
 

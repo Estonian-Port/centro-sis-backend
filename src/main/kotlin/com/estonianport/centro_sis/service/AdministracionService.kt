@@ -2,21 +2,21 @@ package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.dto.response.EstadisticasResponseDto
+import com.estonianport.centro_sis.model.enums.RolType
 import org.springframework.stereotype.Service
 
 @Service
 class AdministracionService(
     private val usuarioService: UsuarioService,
     private val cursoService: CursoService,
-    private val pagoService: PagoService
+    private val accesoService: AccesoService
 ) {
 
     fun verificarRol(usuarioId: Long) {
         val usuario = usuarioService.findById(usuarioId)
             ?: throw NotFoundException("Usuario no encontrado con ID: $usuarioId")
 
-        //TODO Ajustar con ROL usuario.rol.
-        if (true) {
+        if (!usuario.tieneRol(RolType.ADMINISTRADOR)) {
             throw IllegalAccessException("El usuario no tiene permisos de administrador")
         }
     }
@@ -25,14 +25,19 @@ class AdministracionService(
         val totalAlumnosActivos = usuarioService.countAlumnosActivos()
         val totalCursos = cursoService.countCursos()
         val totalProfesores = usuarioService.countProfesores()
-        val ingresosMes = pagoService.calcularIngresosMensuales()
+        val accesosMes = accesoService.getEstadisticasAccesos().totalEsteMes
 
         return EstadisticasResponseDto(
             alumnosActivos = totalAlumnosActivos,
             cursos = totalCursos,
             profesores = totalProfesores,
-            ingresosMensuales = ingresosMes
+            accesosMensuales = accesosMes
         )
+    }
+
+    fun registrarAccesoManual(idAdmin: Long, idUsuario: Long) {
+        verificarRol(idAdmin)
+        usuarioService.registrarAccesoManual(idUsuario)
     }
 
 }

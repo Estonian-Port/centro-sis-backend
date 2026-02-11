@@ -1,8 +1,10 @@
 package com.estonianport.centro_sis.model
 
-import com.estonianport.centro_sis.model.enums.BeneficioType
+import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
+import com.estonianport.centro_sis.model.enums.RolType
 import jakarta.persistence.*
+import java.math.BigDecimal
 import java.time.LocalDate
 
 @Entity
@@ -21,22 +23,93 @@ abstract class Rol(
 
     @Column
     var fechaBaja: LocalDate? = null
-)
+) {
+    abstract fun puedeGestionarCurso(curso: Curso): Boolean
+    abstract fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean
+    abstract fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean
+}
 
 @Entity
 @DiscriminatorValue("ADMINISTRADOR")
 class RolAdmin(
     usuario: Usuario
-) : Rol(usuario = usuario)
+) : Rol(usuario = usuario) {
+
+    override fun puedeGestionarCurso(curso: Curso): Boolean = true
+
+    override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean = true
+
+    override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean = true
+}
+
+@Entity
+@DiscriminatorValue("OFICINA")
+class RolOficina(
+    usuario: Usuario
+) : Rol(usuario = usuario) {
+
+    override fun puedeGestionarCurso(curso: Curso): Boolean = true
+
+    override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean = true
+
+    override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean {
+        // Solo puede asignar beneficios en cursos por comisión
+        return inscripcion.curso is CursoComision
+    }
+}
 
 @Entity
 @DiscriminatorValue("PROFESOR")
 class RolProfesor(
     usuario: Usuario,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    var curso: Curso? = null
-) : Rol(usuario = usuario)
+    @ManyToMany(mappedBy = "profesores", fetch = FetchType.LAZY)
+    var cursos: MutableSet<Curso> = mutableSetOf(),
+
+    // Pagos DE alquiler (profesor PAGA al instituto)
+    @OneToMany(mappedBy = "profesor", cascade = [CascadeType.ALL])
+    val pagosAlquilerRealizados: MutableList<PagoAlquiler> = mutableListOf(),
+
+    // Pagos DE comisión (profesor RECIBE del instituto)
+    @OneToMany(mappedBy = "profesor", cascade = [CascadeType.ALL])
+    val pagosComisionRecibidos: MutableList<PagoComision> = mutableListOf()
+) : Rol(usuario = usuario) {
+
+    override fun puedeGestionarCurso(curso: Curso): Boolean {
+        return curso is CursoAlquiler && cursos.contains(curso)
+    }
+
+    override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean {
+        return inscripcion.curso is CursoAlquiler &&
+                cursos.contains(inscripcion.curso)
+    }
+
+    override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean {
+        return inscripcion.curso is CursoAlquiler &&
+                cursos.contains(inscripcion.curso)
+    }
+
+    fun cursosActivos(): List<Curso> {
+        return cursos.filter { it.fechaBaja == null }
+    }
+
+    // Pagos que el profesor REALIZÓ al instituto (alquileres)
+    fun obtenerPagosRealizados(): List<PagoAlquiler> {
+        return pagosAlquilerRealizados.filter { it.estaActivo() }
+    }
+
+    // Pagos que el profesor RECIBIÓ del instituto (comisiones)
+    fun obtenerPagosRecibidos(): List<PagoComision> {
+        return pagosComisionRecibidos.filter { it.estaActivo() }
+    }
+
+    // Balance del profesor (comisiones recibidas - alquileres pagados)
+    fun calcularBalance(): BigDecimal {
+        val totalRecibido = obtenerPagosRecibidos().sumOf { it.monto }
+        val totalPagado = obtenerPagosRealizados().sumOf { it.monto }
+        return totalRecibido - totalPagado
+    }
+}
 
 @Entity
 @DiscriminatorValue("ALUMNO")
@@ -44,33 +117,17 @@ class RolAlumno(
     usuario: Usuario,
 
     @OneToMany(mappedBy = "alumno", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var inscripciones: MutableList<Inscripcion> = mutableListOf(),
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = true)
-    var beneficioType: BeneficioType? = null
+    var inscripciones: MutableList<Inscripcion> = mutableListOf()
 ) : Rol(usuario = usuario) {
 
-    fun calcularArancelFinal(arancelBase: Double, beneficioFactory: BeneficioFactory): Double {
-        val beneficio = beneficioType?.let { beneficioFactory.getStrategy(it) }
-        return beneficio?.aplicarBeneficio(arancelBase, usuario, null) ?: arancelBase
-    }
+    override fun puedeGestionarCurso(curso: Curso): Boolean = false
 
-     //Inscribe al alumno en un curso con un tipo de pago específico
-    fun inscribirEnCurso(curso: Curso, tipoPago: PagoType): Inscripcion {
-        // Verificar que el curso acepte ese tipo de pago
-        if (!curso.tiposPago.contains(tipoPago)) {
-            throw IllegalArgumentException("El curso ${curso.nombre} no acepta el tipo de pago $tipoPago")
-        }
+    override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean = false
 
-        val inscripcion = Inscripcion(
-            alumno = this,
-            curso = curso,
-            tipoPago = tipoPago
-        )
+    override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean = false
 
+    fun inscribirEnCurso(inscripcion: Inscripcion) {
         inscripciones.add(inscripcion)
-        return inscripcion
     }
 
     fun getInscripcionPorCurso(curso: Curso): Inscripcion {
@@ -78,18 +135,39 @@ class RolAlumno(
             ?: throw NoSuchElementException("El alumno no está inscrito en el curso ${curso.nombre}")
     }
 
-     //Obtiene todas las inscripciones activas
     fun getInscripcionesActivas(): List<Inscripcion> {
         return inscripciones.filter { it.fechaBaja == null }
     }
 
-     //Verifica si está al día en todos sus cursos
-    fun estaAlDiaEnTodos(beneficioFactory: BeneficioFactory): Boolean {
-        return getInscripcionesActivas().all { it.estaAlDia() }
+    fun calcularDeudaTotal(): BigDecimal {
+        return getInscripcionesActivas()
+            .map { it.calcularDeudaPendiente() }
+            .fold(BigDecimal.ZERO) { acc, deuda -> acc + deuda }
+    }
+}
+
+@Entity
+@DiscriminatorValue("PORTERIA")
+class RolPorteria(
+    usuario: Usuario,
+    fechaAlta: LocalDate = LocalDate.now(),
+    fechaBaja: LocalDate? = null
+) : Rol(
+    usuario = usuario,
+    fechaAlta = fechaAlta,
+    fechaBaja = fechaBaja
+) {
+    override fun puedeGestionarCurso(curso: Curso): Boolean = false
+
+    override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean = false
+
+    override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean = false
+
+    fun puedeRegistrarAccesos(): Boolean {
+        return usuario.estado == EstadoType.ACTIVO
     }
 
-     //Calcula la deuda total pendiente
-    fun calcularDeudaTotal(beneficioFactory: BeneficioFactory): Double {
-        return getInscripcionesActivas().sumOf { it.calcularDeudaPendiente(beneficioFactory) }
+    fun puedeVerAccesosRecientes(): Boolean {
+        return usuario.estado == EstadoType.ACTIVO
     }
 }

@@ -70,7 +70,7 @@ class EmailService {
         // ----------------- Content email -------------------------
         val template = loadHtmlTemplate("alta_usuario.html")
         emailBody.content = renderTemplate(template, mapOf(
-            "empresa_logo" to "https://iili.io/KqONvFj.png",
+            "empresa_logo" to "https://iili.io/feEOZWg.png",
             "usuario" to usuario.email,
             "password" to password,
             "action" to action,
