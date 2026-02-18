@@ -460,7 +460,7 @@ class PagoService(
         val curso = cursoRepository.findById(cursoId)
             .orElseThrow { IllegalArgumentException("Curso no encontrado") } as CursoComision
 
-        val profesorRol = curso.profesores.find { it.id == profesorId }
+        val profesorRol = curso.profesores.find { it.usuario.id == profesorId }
             ?: throw IllegalArgumentException("Profesor no encontrado")
 
         val pago = PagoComision(

@@ -10,6 +10,7 @@ import com.estonianport.centro_sis.model.CursoAlquiler
 import com.estonianport.centro_sis.model.CursoComision
 import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.RolProfesor
+import com.estonianport.centro_sis.model.enums.EstadoType
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -27,7 +28,14 @@ object CursoMapper {
             estadoAlta = curso.estadoAlta.name,
             profesores = curso.profesores.map { UsuarioMapper.buildUsuarioResponseDto(it.usuario) }.toSet(),
             tiposPago = curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
-            inscripciones = curso.inscripciones.map { InscripcionMapper.buildInscripcionResponseDto(it) },
+            inscripciones = curso.inscripciones
+                .filter {it.estado == EstadoType.ACTIVO}
+                .sortedWith(
+                    compareBy(
+                    { it.alumno.usuario.nombre },
+                    { it.alumno.usuario.apellido }
+                ))
+                .map { InscripcionMapper.buildInscripcionResponseDto(it) },
             recargoPorAtraso = curso.recargoAtraso
                 .minus(BigDecimal.ONE)
                 .multiply(BigDecimal(100))

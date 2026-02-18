@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service
 class InscripcionService {
 
     @Autowired
+    private lateinit var usuarioService: UsuarioService
+
+    @Autowired
     lateinit var inscripcionRepository: InscripcionRepository
 
     fun getById(id: Long): Inscripcion {
@@ -44,10 +47,11 @@ class InscripcionService {
         return inscripcionRepository.save(inscripcion)
     }
 
-    fun editarBeneficio(idInscripcion: Long, nuevoBeneficio: Int): Inscripcion {
+    fun editarBeneficio(idInscripcion: Long, nuevoBeneficio: Int, idUsuario: Long): Inscripcion {
         val inscripcion = getById(idInscripcion)
         // Verificar que el usuario tenga permiso para asignar beneficios
-        inscripcion.verificarPermisoEdicion(inscripcion.alumno.usuario)
+        val otorgadoPor = usuarioService.getById(idUsuario)
+        inscripcion.verificarPermisoEdicion(otorgadoPor)
         // Actualizar el beneficio
         inscripcion.aplicarBeneficio(nuevoBeneficio)
         return inscripcionRepository.save(inscripcion)

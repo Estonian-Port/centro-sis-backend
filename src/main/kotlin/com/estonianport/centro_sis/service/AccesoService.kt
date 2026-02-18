@@ -168,17 +168,20 @@ class AccesoService(
     fun getEstadisticasAccesos(): EstadisticasAccesoDTO {
         val ahora = LocalDateTime.now()
         val hoy = ahora.toLocalDate().atStartOfDay()
+        val ultimaSemana = ahora.minusDays(7)
         val inicioMes = ahora.withDayOfMonth(1).toLocalDate().atStartOfDay()
 
         val accesos = accesoRepository.findAll()
 
         val totalHoy = accesos.count { it.fechaHora.isAfter(hoy) }
+        val totalSemana = accesos.count { it.fechaHora.isAfter(ultimaSemana) }
         val totalMes = accesos.count { it.fechaHora.isAfter(inicioMes) }
 
         val promedioDiario = if (totalMes > 0) totalMes / 30.0 else 0.0
 
         return EstadisticasAccesoDTO(
             totalHoy = totalHoy,
+            totalSemana = totalSemana,
             totalEsteMes = totalMes,
             promedioDiario = promedioDiario,
         )

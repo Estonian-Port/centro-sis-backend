@@ -107,12 +107,20 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return save(usuario)
     }
 
-    fun darDeBaja(usuarioId: Long) {
+    fun darDeBaja(usuarioId: Long, eliminadoPorId: Long) {
+        puedeEliminar(eliminadoPorId)
         val usuario =
             findById(usuarioId) ?: throw NoSuchElementException("No se encontró un usuario con el ID proporcionado")
         usuario.estado = EstadoType.BAJA
         usuario.fechaBaja = LocalDate.now()
         save(usuario)
+    }
+
+    fun puedeEliminar(eliminadoPorId: Long) {
+        val usuarioEliminador = getById(eliminadoPorId)
+        if (!usuarioEliminador.tieneRol(RolType.ADMINISTRADOR) && !usuarioEliminador.tieneRol(RolType.OFICINA)) {
+            throw IllegalAccessException("El usuario no tiene permisos para eliminar usuarios")
+        }
     }
 
     fun updatePerfil(usuario: UsuarioUpdatePerfilRequestDto, id: Long): Usuario {

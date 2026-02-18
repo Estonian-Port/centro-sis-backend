@@ -81,8 +81,19 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     fun actualizarProfesores(cursoId: Long, nuevosProfesores: List<RolProfesor>): Curso {
         val curso = getById(cursoId)
-        curso.profesores.clear()
-        curso.profesores.addAll(nuevosProfesores)
+        //Agregar a los profesores que no estaban previamente asignados
+        nuevosProfesores.forEach {
+            if (!curso.esProfesor(it)) {
+                curso.agregarProfesor(it)
+            }
+        }
+        //Eliminar a los profesores que ya no están asignados
+        curso.profesores.toList().forEach {
+            if (!nuevosProfesores.contains(it)) {
+                curso.removerProfesor(it)
+            }
+        }
+
         return save(curso)
     }
 

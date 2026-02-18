@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.ZoneId
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -56,7 +57,7 @@ abstract class Pago(
 class PagoCurso(
     monto: BigDecimal,
     registradoPor: Usuario,
-    fecha: LocalDate = LocalDate.now(),
+    fecha: LocalDate = LocalDate.now(ZoneId.of("America/Argentina/Buenos_Aires")),
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inscripcion_id", nullable = false)

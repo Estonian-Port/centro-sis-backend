@@ -39,7 +39,9 @@ class CursoController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> {
         val curso = cursoService.getById(id)
-        val alumnosInscriptos = curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
+        val alumnosInscriptos = curso.inscripciones
+            .filter { it.estado == EstadoType.ACTIVO }
+            .map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
 
         return ResponseEntity.status(200).body(
             CustomResponse(

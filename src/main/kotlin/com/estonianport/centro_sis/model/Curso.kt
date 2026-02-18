@@ -130,6 +130,10 @@ abstract class Curso(
             .fold(BigDecimal.ZERO) { acc, monto -> acc + monto }
     }
 
+    fun esProfesor (profesor: RolProfesor) : Boolean {
+        return profesores.contains(profesor)
+    }
+
     fun agregarProfesor(profesor: RolProfesor) {
         profesores.add(profesor)
         profesor.cursos.add(this)
