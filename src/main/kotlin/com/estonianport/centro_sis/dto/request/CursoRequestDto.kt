@@ -11,11 +11,11 @@ data class CursoAlquilerAdminRequestDto(
     val profesoresId: List<Long>,
     val fechaInicio: String,
     val fechaFin: String,
+    val horarios: List<HorarioDto>,
 )
 
 data class CursoAlquilerProfeRequestDto(
     val id: Long,
-    val horarios: List<HorarioDto>,
     val tiposPago: List<TipoPagoDto>,
     val recargo: Double
 )

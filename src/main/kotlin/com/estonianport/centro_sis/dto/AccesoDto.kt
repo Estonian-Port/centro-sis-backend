@@ -6,13 +6,14 @@ import java.time.LocalDateTime
 
 data class AccesoDTO(
     val id: Long,
-    val usuarioId: Long,
-    val usuarioNombre: String,
-    val usuarioApellido: String,
+    val usuarioId: Long?,
+    val usuarioNombre: String?,
+    val usuarioApellido: String?,
     val usuarioDni: String,
     val fechaHora: LocalDateTime,
     val tipoAcceso: TipoAcceso,
-    val alertaPagos: AlertaPagosDTO?
+    val alertaPagos: AlertaPagosDTO?,
+    val esInvitado: Boolean = false
 )
 
 data class RegistrarAccesoDTO(
@@ -40,4 +41,9 @@ data class EstadisticasAccesoDTO(
     val totalSemana : Int,
     val totalEsteMes: Int,
     val promedioDiario: Double,
+)
+
+data class RegistrarAccesoInvitadoRequest(
+    val dni: String,
+    val nombre: String? = null // Opcional
 )

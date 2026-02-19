@@ -18,7 +18,9 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Service
 class AccesoService(
@@ -35,7 +37,7 @@ class AccesoService(
         usuarioId: Long,
         registradoPorId: Long
     ): AccesoDTO {
-        // ✅ Validar registrador tiene permisos
+        // Validar registrador tiene permisos
         val registrador = usuarioRepository.findById(registradoPorId)
             .orElseThrow { IllegalArgumentException("Usuario registrador no encontrado") }
 
@@ -54,7 +56,7 @@ class AccesoService(
         }
 
         val ultimoAcceso = accesoRepository.findAll()
-            .filter { it.usuario.id == usuarioId }
+            .filter { it.usuario?.id == usuarioId }
             .maxByOrNull { it.fechaHora }
 
         if (ultimoAcceso != null) {
@@ -153,7 +155,7 @@ class AccesoService(
 
         return accesoRepository.findAll()
             .filter {
-                it.usuario.id == usuarioId &&
+                it.usuario?.id == usuarioId &&
                         it.fechaHora.isAfter(fechaLimite)
             }
             .sortedByDescending { it.fechaHora }
@@ -299,6 +301,66 @@ class AccesoService(
         return mapAccesoToDTO(accesoGuardado)
     }
 
+    @Transactional
+    fun registrarAccesoInvitado(
+        dni: String,
+        nombre: String?,
+        registradoPorId: Long
+    ): AccesoDTO {
+        // 1. Validar registrador tiene permisos
+        val registrador = usuarioRepository.findById(registradoPorId)
+            .orElseThrow { IllegalArgumentException("Usuario registrador no encontrado") }
+
+        require(
+            registrador.tieneRol(RolType.ADMINISTRADOR) ||
+                    registrador.tieneRol(RolType.PORTERIA)
+        ) {
+            "No tienes permisos para registrar accesos"
+        }
+
+        // 2. Validar formato DNI
+        require(dni.matches(Regex("^\\d{7,8}$"))) {
+            "El DNI debe tener 7 u 8 dígitos"
+        }
+
+        // 3. Verificar si ya hay un acceso de este invitado hoy
+        val hoy = LocalDate.now()
+        val accesoHoy = accesoRepository.findAll().firstOrNull {
+            it.invitadoDni == dni &&
+                    it.fechaHora.toLocalDate() == hoy
+        }
+
+        if (accesoHoy != null) {
+            throw IllegalArgumentException(
+                "Ya se registró un acceso para el DNI $dni hoy a las ${accesoHoy.fechaHora.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+            )
+        }
+
+        // 4. Crear acceso de invitado
+        val acceso = Acceso(
+            usuario = null,
+            fechaHora = LocalDateTime.now(),
+            tipoAcceso = TipoAcceso.INVITADO,
+            invitadoDni = dni,
+            invitadoNombre = nombre
+        )
+
+        val accesoGuardado = accesoRepository.save(acceso)
+
+        // 5. Retornar DTO
+        return AccesoDTO(
+            id = accesoGuardado.id,
+            usuarioId = null,
+            usuarioNombre = nombre,
+            usuarioApellido = null,
+            usuarioDni = dni,
+            fechaHora = accesoGuardado.fechaHora,
+            tipoAcceso = TipoAcceso.INVITADO,
+            alertaPagos = null,
+            esInvitado = true
+        )
+    }
+
     // ========================================
     // HELPERS
     // ========================================
@@ -306,13 +368,14 @@ class AccesoService(
     private fun mapAccesoToDTO(acceso: Acceso): AccesoDTO {
         return AccesoDTO(
             id = acceso.id,
-            usuarioId = acceso.usuario.id,
-            usuarioNombre = acceso.usuario.nombre,
-            usuarioApellido = acceso.usuario.apellido,
-            usuarioDni = acceso.usuario.dni,
+            usuarioId = acceso.usuario?.id,
+            usuarioNombre = acceso.usuario?.nombre ?: acceso.invitadoNombre,
+            usuarioApellido = acceso.usuario?.apellido,
+            usuarioDni = acceso.usuario?.dni ?: acceso.invitadoDni ?: "",
             fechaHora = acceso.fechaHora,
             tipoAcceso = acceso.tipoAcceso,
-            alertaPagos = null
+            alertaPagos = null,
+            esInvitado = acceso.tipoAcceso == TipoAcceso.INVITADO
         )
     }
 }

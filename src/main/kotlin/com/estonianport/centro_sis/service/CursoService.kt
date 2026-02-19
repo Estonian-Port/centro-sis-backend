@@ -59,12 +59,10 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     fun finalizarAltaCursoAlquiler(
         cursoId: Long,
-        horarios: List<Horario>,
         tiposPago: List<TipoPago>,
         recargo: Double?
     ): Curso {
         val curso = getById(cursoId)
-        curso.horarios = horarios.toMutableList()
         curso.tiposPago = tiposPago.toMutableSet()
         curso.recargoAtraso =
             recargo?.let { BigDecimal.valueOf(it).divide(BigDecimal.valueOf(100)).add(BigDecimal.ONE) }

@@ -86,6 +86,7 @@ object CursoMapper {
             cuotasAlquiler = cursoDto.cuotasAlquiler,
             fechaInicio = LocalDate.parse(cursoDto.fechaInicio),
             fechaFin = LocalDate.parse(cursoDto.fechaFin),
+            horarios = cursoDto.horarios.map { HorarioMapper.buildHorario(it) }.toMutableList(),
         )
     }
 
