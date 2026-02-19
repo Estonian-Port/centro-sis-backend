@@ -16,6 +16,11 @@ data class UsuarioAltaRequestDto(
     val roles: List<String>
 )
 
+data class AltaAlumnoRequestDto(
+    val email: String,
+    val dni: String
+)
+
 data class UsuarioCambioPasswordRequestDto(
     val passwordActual: String,
     val nuevoPassword: String,

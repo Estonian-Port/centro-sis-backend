@@ -58,14 +58,14 @@ object UsuarioMapper {
         )
     }
 
-    fun buildAltaUsuario(usuarioDto: UsuarioAltaRequestDto): Usuario {
+    fun buildAltaUsuario(emailAlta: String): Usuario {
         return Usuario(
             id = 0,
             nombre = "",
             apellido = "",
             dni = "",
             celular = 0,
-            email = usuarioDto.email,
+            email = emailAlta,
             fechaNacimiento = LocalDate.now(),
         )
     }

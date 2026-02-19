@@ -15,6 +15,8 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 
     fun getUsuarioByEmail(email: String): Usuario?
 
+    fun existsByDni(dni: String): Boolean
+
     @Query(
         """
     SELECT DISTINCT u FROM Usuario u

@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.controller
 
 import com.estonianport.centro_sis.common.emailService.EmailService
+import com.estonianport.centro_sis.dto.request.AltaAlumnoRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.service.AdministracionService
@@ -16,9 +17,11 @@ import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.PagoMapper
 import com.estonianport.centro_sis.model.RolFactory
 import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.InscripcionService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 import java.security.Principal
 import java.time.LocalDate
 
@@ -39,6 +43,9 @@ import java.time.LocalDate
 class UsuarioController(
     private val rolFactory: RolFactory,
 ) {
+
+    @Autowired
+    private lateinit var usuarioRepository: UsuarioRepository
 
     @Autowired
     private lateinit var inscripcionService: InscripcionService
@@ -85,7 +92,7 @@ class UsuarioController(
     @PostMapping("/altaUsuario")
     fun altaUsuario(@RequestBody usuarioDto: UsuarioAltaRequestDto): ResponseEntity<CustomResponse> {
         usuarioService.verificarEmailNoExistente(usuarioDto.email)
-        val usuario = UsuarioMapper.buildAltaUsuario(usuarioDto)
+        val usuario = UsuarioMapper.buildAltaUsuario(usuarioDto.email)
 
         val password = usuarioService.generarPassword()
         usuario.password = usuarioService.encriptarPassword(password)
@@ -110,6 +117,110 @@ class UsuarioController(
                 data = UsuarioMapper.buildUsuarioResponseDto(usuario)
             )
         )
+    }
+
+    // Alta pública de alumno (sin autenticación)
+    @PostMapping("/altaAlumno")
+    fun altaAlumno(@RequestBody request: AltaAlumnoRequestDto): ResponseEntity<CustomResponse> {
+
+        try {
+            // 1. Validar que el email no exista
+            val usuarioConEmail = usuarioRepository.getUsuarioByEmail(request.email)
+            if (usuarioConEmail != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    CustomResponse(
+                        message = "Ya existe un usuario registrado con el email proporcionado",
+                        data = null
+                    )
+                )
+            }
+
+            // 2. Validar que el DNI no exista
+            if (usuarioRepository.existsByDni(request.dni)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    CustomResponse(
+                        message = "Ya existe un usuario registrado con ese DNI. Si olvidaste tu contraseña, contactá a la administración.",
+                        data = null
+                    )
+                )
+            }
+
+            // 3. Validar formato de DNI (7-8 dígitos)
+            if (!request.dni.matches(Regex("^\\d{7,8}$"))) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    CustomResponse(
+                        message = "El DNI debe tener 7 u 8 dígitos numéricos",
+                        data = null
+                    )
+                )
+            }
+
+            // 4. Validar formato de email
+            if (!request.email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    CustomResponse(
+                        message = "El formato del email no es válido",
+                        data = null
+                    )
+                )
+            }
+
+            // 5. Crear usuario con datos mínimos
+            val usuario = UsuarioMapper.buildAltaUsuario(request.email)
+
+            // 6. Generar password temporal
+            val passwordTemporal = usuarioService.generarPassword()
+            usuario.password = usuarioService.encriptarPassword(passwordTemporal)
+
+            // 7. Asignar solo rol ALUMNO
+            val rolAlumno = rolFactory.build("ALUMNO", usuario)
+            usuario.asignarRol(rolAlumno)
+
+            // 8. Guardar
+            val usuarioGuardado = usuarioService.save(usuario)
+
+            // 9. Enviar email
+            try {
+                emailService.enviarEmailAltaUsuario(
+                    usuarioGuardado,
+                    "Bienvenido/a a Centro SIS",
+                    passwordTemporal
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // El usuario se creó pero falló el email
+                return ResponseEntity.status(HttpStatus.CREATED).body(
+                    CustomResponse(
+                        message = "Registro exitoso, pero hubo un problema al enviar el email. Por favor, contactá a la administración para obtener tu contraseña.",
+                        data = mapOf(
+                            "email" to usuario.email,
+                            "debeCompletarPerfil" to true
+                        )
+                    )
+                )
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(
+                CustomResponse(
+                    message = "Registro exitoso. Te enviamos un email a ${request.email} con tu contraseña temporal. Revisá tu casilla (incluyendo spam) para completar tu perfil.",
+                    data = mapOf(
+                        "email" to usuario.email,
+                        "debeCompletarPerfil" to true
+                    )
+                )
+            )
+
+        } catch (e: ResponseStatusException) {
+            throw e // Re-lanzar para que el ExceptionHandler lo maneje
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                CustomResponse(
+                    message = "Ocurrió un error inesperado. Por favor, intentá nuevamente o contactá a la administración.",
+                    data = null
+                )
+            )
+        }
     }
 
     //Endpoint para reenviar invitacion por mail a un usuario que aun no hizo el primer login
