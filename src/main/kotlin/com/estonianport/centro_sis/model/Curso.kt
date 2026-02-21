@@ -11,6 +11,7 @@ import java.time.LocalDate
 import jakarta.persistence.Transient
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import java.time.LocalDateTime
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -338,7 +339,7 @@ class CursoComision(
         val pago = PagoComision(
             curso = this,
             monto = calcularPagoProfesor(),
-            fecha = LocalDate.now(),
+            fecha = LocalDateTime.now(),
             profesor = profesor,
             registradoPor = recibioPago
         )

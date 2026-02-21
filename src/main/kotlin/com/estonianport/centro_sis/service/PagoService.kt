@@ -3,6 +3,7 @@ package com.estonianport.centro_sis.service
 import com.estonianport.centro_sis.dto.*
 import com.estonianport.centro_sis.model.*
 import com.estonianport.centro_sis.model.enums.CursoType
+import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoPagoConcepto
 import com.estonianport.centro_sis.repository.*
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 @Service
@@ -208,7 +211,7 @@ class PagoService(
     }
 
     // ========================================
-    // REGISTRAR PAGOS (sin cambios)
+    // REGISTRAR PAGOS
     // ========================================
 
     @Transactional
@@ -223,13 +226,22 @@ class PagoService(
         val inscripcion = inscripcionRepository.findById(inscripcionId)
             .orElseThrow { IllegalArgumentException("Inscripción no encontrada") }
 
-        // Validar permisos
         inscripcion.verificarPermisoEdicion(usuario)
 
-        // Registrar pago
+        // Calcular cuotas para liquidación según meses restantes
+        val cuotasParaLiquidacion = when (inscripcion.tipoPagoSeleccionado.tipo) {
+            PagoType.TOTAL -> {
+                // Calcular meses desde HOY hasta fin de curso
+                calcularMesesRestantesCurso(inscripcion)
+            }
+
+            PagoType.MENSUAL -> 1
+        }
+
         val pago = inscripcion.registrarPago(
             registradoPor = usuario,
-            aplicarRecargo = aplicarRecargo
+            aplicarRecargo = aplicarRecargo,
+            cuotasParaLiquidacion = cuotasParaLiquidacion
         )
 
         val pagoGuardado = pagoRepository.save(pago)
@@ -314,33 +326,36 @@ class PagoService(
         val profesorRol = curso.profesores.find { it.usuario.id == profesorId }
             ?: throw IllegalArgumentException("Profesor no encontrado en el curso")
 
-        // Obtener último pago de comisión
+        // Obtener último pago de comisión del CURSO
         val ultimoPago = pagoRepository.findAll()
             .filterIsInstance<PagoComision>()
             .filter {
                 it.curso.id == cursoId &&
-                        it.profesor.id == profesorId &&
                         it.fechaBaja == null
             }
             .maxByOrNull { it.fecha }
 
         // Calcular fechas del período
-        val fechaInicio = ultimoPago?.fecha?.plusDays(1) ?: curso.fechaInicio
-        val hoy = LocalDate.now()
-        val fechaFinCurso = curso.fechaFin
-        val cursoFinalizado = hoy.isAfter(fechaFinCurso)
-        val fechaFin = if (cursoFinalizado) fechaFinCurso else hoy
+        // Si hay un pago anterior, empezar DESPUÉS de ese pago (plusSeconds(1))
+        // Si no hay pagos, empezar desde el inicio del curso
+        val fechaHoraInicio = ultimoPago?.fecha?.plusSeconds(1)
+            ?: curso.fechaInicio.atStartOfDay()
+
+        val ahora = LocalDateTime.now()
+        val fechaHoraFinCurso = curso.fechaFin.atTime(23, 59, 59)
+        val cursoFinalizado = ahora.isAfter(fechaHoraFinCurso)
+        val fechaHoraFin = if (cursoFinalizado) fechaHoraFinCurso else ahora
 
         // Validar que hay período para liquidar
-        if (fechaInicio.isAfter(fechaFin)) {
+        if (fechaHoraInicio.isAfter(fechaHoraFin)) {
             return PagoComisionPreviewDTO(
                 cursoId = curso.id,
                 cursoNombre = curso.nombre,
                 profesorId = profesorId,
                 profesorNombre = profesorRol.usuario.nombreCompleto(),
                 porcentajeComision = curso.porcentajeComision,
-                fechaInicio = fechaInicio,
-                fechaFin = fechaFin,
+                fechaInicio = fechaHoraInicio.toLocalDate(),
+                fechaFin = fechaHoraFin.toLocalDate(),
                 diasPeriodo = 0,
                 recaudacionPeriodo = BigDecimal.ZERO,
                 montoComision = BigDecimal.ZERO,
@@ -350,18 +365,17 @@ class PagoService(
         }
 
         // Calcular días del período
-        val diasPeriodo = ChronoUnit.DAYS.between(fechaInicio, fechaFin).toInt() + 1
+        val diasPeriodo = ChronoUnit.DAYS.between(
+            fechaHoraInicio.toLocalDate(),
+            fechaHoraFin.toLocalDate()
+        ).toInt() + 1
 
         // Calcular recaudación del período
-        val recaudacion = pagoRepository.findAll()
-            .filterIsInstance<PagoCurso>()
-            .filter { pago ->
-                pago.inscripcion.curso.id == cursoId &&
-                        pago.fechaBaja == null &&
-                        !pago.fecha.isBefore(fechaInicio) &&
-                        !pago.fecha.isAfter(fechaFin)
-            }
-            .sumOf { it.monto }
+        val recaudacion = calcularRecaudacionProrrateada(
+            cursoId = cursoId,
+            fechaHoraInicio = fechaHoraInicio,
+            fechaHoraFin = fechaHoraFin
+        )
 
         // Calcular comisión
         val montoComision = recaudacion * curso.porcentajeComision
@@ -372,8 +386,8 @@ class PagoService(
             profesorId = profesorId,
             profesorNombre = profesorRol.usuario.nombreCompleto(),
             porcentajeComision = curso.porcentajeComision,
-            fechaInicio = fechaInicio,
-            fechaFin = fechaFin,
+            fechaInicio = fechaHoraInicio.toLocalDate(),
+            fechaFin = fechaHoraFin.toLocalDate(),
             diasPeriodo = diasPeriodo,
             recaudacionPeriodo = recaudacion,
             montoComision = montoComision,
@@ -409,7 +423,7 @@ class PagoService(
             "Número de cuota inválido. Debe estar entre 1 y $totalCuotas"
         }
 
-        //  SIMPLE: Validar que la cuota no esté pagada
+        // Validar que la cuota no esté pagada
         // Contar cuotas pagadas activas
         val cuotasPagadas = curso.pagosAlquiler.count { it.fechaBaja == null }
 
@@ -432,10 +446,8 @@ class PagoService(
             anioPago = mesYAnioPago.year
         )
 
-        //  Agregar al curso (esto actualiza la relación bidireccional)
         curso.registrarPagoAlquiler(pago)
 
-        //  Guardar el pago (Cascade guardará la relación)
         val pagoGuardado = pagoRepository.save(pago)
 
         return mapPagoToDTO(pagoGuardado)
@@ -447,7 +459,6 @@ class PagoService(
         cursoId: Long,
         profesorId: Long
     ): PagoDTO {
-        // Reusar el preview para obtener datos calculados
         val preview = calcularPreviewComision(usuarioId, cursoId, profesorId)
 
         require(preview.puedeRegistrar) {
@@ -469,7 +480,8 @@ class PagoService(
             curso = curso,
             profesor = profesorRol,
             mesPago = preview.fechaFin.monthValue,
-            anioPago = preview.fechaFin.year
+            anioPago = preview.fechaFin.year,
+            fecha = LocalDateTime.now()
         )
 
         val pagoGuardado = pagoRepository.save(pago)
@@ -576,6 +588,29 @@ class PagoService(
         return pagos.map { mapPagoToDTO(it) }
     }
 
+    private fun calcularMesesRestantesCurso(inscripcion: Inscripcion): Int {
+        val hoy = LocalDate.now()
+        val fechaFinCurso = inscripcion.curso.fechaFin
+
+        // Validar que el curso no haya terminado
+        if (hoy.isAfter(fechaFinCurso)) {
+            throw IllegalStateException(
+                "El curso finalizó el ${fechaFinCurso.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}. " +
+                        "No se pueden registrar pagos totales en cursos finalizados."
+            )
+        }
+
+        // Calcular meses entre hoy y fin de curso
+        // Usamos withDayOfMonth(1) para comparar por mes completo
+        val mesesRestantes = ChronoUnit.MONTHS.between(
+            hoy.withDayOfMonth(1),
+            fechaFinCurso.withDayOfMonth(1)
+        ).toInt() + 1 // +1 para incluir el mes actual
+
+        // Asegurar mínimo 1 mes
+        return maxOf(mesesRestantes, 1)
+    }
+
     private fun mapPagoToDTO(pago: Pago): PagoDTO {
         // Verificar que el tipo no sea null
         val tipoPago = try {
@@ -594,7 +629,7 @@ class PagoService(
             is PagoCurso -> PagoDTO(
                 id = pago.id,
                 monto = pago.monto,
-                fecha = pago.fecha,
+                fecha = pago.fecha.toLocalDate(),
                 fechaBaja = pago.fechaBaja,
                 observaciones = pago.observaciones,
                 tipo = tipoPago,
@@ -614,7 +649,7 @@ class PagoService(
             is PagoAlquiler -> PagoDTO(
                 id = pago.id,
                 monto = pago.monto,
-                fecha = pago.fecha,
+                fecha = pago.fecha.toLocalDate(),
                 fechaBaja = pago.fechaBaja,
                 observaciones = pago.observaciones,
                 tipo = tipoPago,
@@ -631,7 +666,7 @@ class PagoService(
             is PagoComision -> PagoDTO(
                 id = pago.id,
                 monto = pago.monto,
-                fecha = pago.fecha,
+                fecha = pago.fecha.toLocalDate(),
                 fechaBaja = pago.fechaBaja,
                 observaciones = pago.observaciones,
                 tipo = tipoPago,
@@ -647,5 +682,63 @@ class PagoService(
 
             else -> throw IllegalArgumentException("Tipo de pago desconocido")
         }
+    }
+
+    private fun calcularRecaudacionProrrateada(
+        cursoId: Long,
+        fechaHoraInicio: LocalDateTime,
+        fechaHoraFin: LocalDateTime
+    ): BigDecimal {
+
+        // Obtener TODOS los pagos activos del curso
+        val pagosCurso = pagoRepository.findAll()
+            .filterIsInstance<PagoCurso>()
+            .filter { pago ->
+                pago.inscripcion.curso.id == cursoId &&
+                        pago.fechaBaja == null
+            }
+
+        var recaudacionTotal = BigDecimal.ZERO
+
+        pagosCurso.forEach { pago ->
+            val montoPorMes = pago.calcularMontoPorMesParaLiquidacion()
+            val cuotas = pago.cuotasParaLiquidacion
+
+            // Calcular usando TIMESTAMP
+            val mesesEnPeriodo = calcularMesesEnPeriodo(
+                fechaHoraPago = pago.fecha,
+                cuotasTotales = cuotas,
+                fechaHoraInicio = fechaHoraInicio,
+                fechaHoraFin = fechaHoraFin
+            )
+
+            recaudacionTotal += montoPorMes * BigDecimal(mesesEnPeriodo)
+        }
+
+        return recaudacionTotal
+    }
+
+    private fun calcularMesesEnPeriodo(
+        fechaHoraPago: LocalDateTime,
+        cuotasTotales: Int,
+        fechaHoraInicio: LocalDateTime,
+        fechaHoraFin: LocalDateTime
+    ): Int {
+
+        var mesesEnPeriodo = 0
+
+        // Iterar por cada mes del pago
+        for (i in 0 until cuotasTotales) {
+            val fechaHoraMes = fechaHoraPago.plusMonths(i.toLong())
+
+            // Verificar con TIMESTAMP exacto
+            if (!fechaHoraMes.isBefore(fechaHoraInicio) &&
+                !fechaHoraMes.isAfter(fechaHoraFin)
+            ) {
+                mesesEnPeriodo++
+            }
+        }
+
+        return mesesEnPeriodo
     }
 }

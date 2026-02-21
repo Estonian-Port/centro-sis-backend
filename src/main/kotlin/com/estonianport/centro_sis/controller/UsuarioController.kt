@@ -16,6 +16,7 @@ import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.PagoMapper
 import com.estonianport.centro_sis.model.RolFactory
+import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.service.CursoService
@@ -91,30 +92,10 @@ class UsuarioController(
     //Alta de usuario
     @PostMapping("/altaUsuario")
     fun altaUsuario(@RequestBody usuarioDto: UsuarioAltaRequestDto): ResponseEntity<CustomResponse> {
-        usuarioService.verificarEmailNoExistente(usuarioDto.email)
-        val usuario = UsuarioMapper.buildAltaUsuario(usuarioDto.email)
-
-        val password = usuarioService.generarPassword()
-        usuario.password = usuarioService.encriptarPassword(password)
-        usuario.fechaAlta = LocalDate.now()
-        usuarioDto.roles.forEach {
-            val rol = rolFactory.build(it, usuario)
-            usuario.asignarRol(rol)
-        }
-
-        usuarioService.save(usuario)
-
-        try {
-            emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // TODO enviar notificacion de fallo al enviar el mail
-        }
-
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Usuario creado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
+                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.altaUsuario(usuarioDto))
             )
         )
     }
@@ -126,10 +107,19 @@ class UsuarioController(
         try {
             // 1. Validar que el email no exista
             val usuarioConEmail = usuarioRepository.getUsuarioByEmail(request.email)
-            if (usuarioConEmail != null) {
+            if (usuarioConEmail != null && usuarioConEmail.estado != EstadoType.BAJA) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(
                     CustomResponse(
                         message = "Ya existe un usuario registrado con el email proporcionado",
+                        data = null
+                    )
+                )
+            }
+
+            if (usuarioConEmail != null && usuarioConEmail.estado == EstadoType.BAJA) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    CustomResponse(
+                        message = "Tu email estaba asociado a una cuenta dada de baja. Si deseas reactivar tu cuenta, por favor contactá a la administración.",
                         data = null
                     )
                 )

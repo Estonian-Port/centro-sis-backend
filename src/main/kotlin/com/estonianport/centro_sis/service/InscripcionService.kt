@@ -6,6 +6,7 @@ import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.PagoCurso
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.PagoType
+import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -26,19 +27,31 @@ class InscripcionService {
 
     fun inscribirUsuarioACurso(usuario: Usuario, curso: Curso, inscripcion: InscripcionRequestDto): Inscripcion {
         val alumno = usuario.getRolAlumno()
+
         // Verificar que el curso acepte ese tipo de pago
         val tipoPagoDisponible =
             curso.tiposPago.firstOrNull { it.tipo == PagoType.valueOf(inscripcion.tipoPagoSeleccionado) }
-                ?: throw IllegalArgumentException("El curso ${curso.nombre} no acepta el tipo de pago $inscripcion.tipoPagoSeleccionado")
+                ?: throw IllegalArgumentException("El curso ${curso.nombre} no acepta el tipo de pago ${inscripcion.tipoPagoSeleccionado}")
 
-        val inscripcion = Inscripcion(
+        // Ajustar cuotas según tipo de pago
+        val tipoPagoAjustado = when (tipoPagoDisponible.tipo) {
+            PagoType.TOTAL -> TipoPago(
+                tipo = tipoPagoDisponible.tipo,
+                monto = tipoPagoDisponible.monto,
+                cuotas = 1  // Pago TOTAL = 1 cuota para el alumno
+            )
+            PagoType.MENSUAL -> tipoPagoDisponible
+        }
+
+        val nuevaInscripcion = Inscripcion(
             alumno = alumno,
             curso = curso,
-            tipoPagoSeleccionado = tipoPagoDisponible,
-            beneficio = inscripcion.beneficio
+            tipoPagoSeleccionado = tipoPagoAjustado,  // ✅ Usar el ajustado
+            beneficio = inscripcion.beneficio,
         )
-        alumno.inscribirEnCurso(inscripcion)
-        return inscripcionRepository.save(inscripcion)
+
+        alumno.inscribirEnCurso(nuevaInscripcion)
+        return inscripcionRepository.save(nuevaInscripcion)
     }
 
     fun asignarPuntos(idInscripcion: Long, puntos: Int, usuario: Usuario): Inscripcion {

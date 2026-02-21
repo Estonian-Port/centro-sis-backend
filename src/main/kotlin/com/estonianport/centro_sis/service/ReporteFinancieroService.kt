@@ -13,6 +13,7 @@ import com.estonianport.centro_sis.model.CursoComision
 import com.estonianport.centro_sis.model.PagoAlquiler
 import com.estonianport.centro_sis.model.PagoComision
 import com.estonianport.centro_sis.model.PagoCurso
+import com.estonianport.centro_sis.model.enums.CursoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.repository.PagoAlquilerRepository
 import com.estonianport.centro_sis.repository.PagoComisionRepository
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.YearMonth
 
 @Service
@@ -60,11 +62,15 @@ class ReporteFinancieroService(
         val primerDia = yearMonth.atDay(1)
         val ultimoDia = yearMonth.atEndOfMonth()
 
+        // Convertir a LocalDateTime
+        val desde = primerDia.atStartOfDay()         // 2026-02-01 00:00:00
+        val hasta = ultimoDia.atTime(23, 59, 59)    // 2026-02-28 23:59:59
+
         // 1. Calcular ingresos
-        val detalleIngresos = calcularIngresos(primerDia, ultimoDia)
+        val detalleIngresos = calcularIngresos(desde, hasta)
 
         // 2. Calcular egresos
-        val detalleEgresos = calcularEgresos(primerDia, ultimoDia)
+        val detalleEgresos = calcularEgresos(desde, hasta)
 
         // 3. Calcular balance
         val balance = detalleIngresos.total - detalleEgresos.total
@@ -73,7 +79,7 @@ class ReporteFinancieroService(
         val comparacion = calcularComparacionMesAnterior(mes, anio, primerDia, ultimoDia)
 
         // 5. Obtener movimientos detallados
-        val movimientos = obtenerMovimientos(primerDia, ultimoDia)
+        val movimientos = obtenerMovimientos(desde, hasta)
 
         // 6. Construir resumen
         val resumen = ResumenFinancieroDTO(
@@ -97,10 +103,10 @@ class ReporteFinancieroService(
     }
 
     // ============================================
-    // CALCULAR INGRESOS (CORREGIDO)
+    // CALCULAR INGRESOS
     // ============================================
 
-    private fun calcularIngresos(desde: LocalDate, hasta: LocalDate): DetalleIngresosDTO {
+    private fun calcularIngresos(desde: LocalDateTime, hasta: LocalDateTime): DetalleIngresosDTO {
 
         // ✅ INGRESOS = Pagos de alumnos en cursos COMISION + Alquileres de profesores
 
@@ -108,7 +114,7 @@ class ReporteFinancieroService(
         val pagosCurso = pagoCursoRepository.findByFechaBetweenAndFechaBajaIsNull(desde, hasta)
             .filter { pagoCurso ->
                 // ✅ SOLO contar pagos de cursos tipo COMISION
-                pagoCurso.inscripcion.curso is CursoComision
+                pagoCurso.inscripcion.curso.tipoCurso == CursoType.COMISION
             }
 
         val totalPagosAlumnos = pagosCurso.sumOf { it.monto }
@@ -138,10 +144,10 @@ class ReporteFinancieroService(
     }
 
     // ============================================
-    // CALCULAR EGRESOS (SIN CAMBIOS)
+    // CALCULAR EGRESOS
     // ============================================
 
-    private fun calcularEgresos(desde: LocalDate, hasta: LocalDate): DetalleEgresosDTO {
+    private fun calcularEgresos(desde: LocalDateTime, hasta: LocalDateTime): DetalleEgresosDTO {
 
         // Comisiones pagadas a profesores (salen del instituto)
         val pagosComision = pagoComisionRepository.findByFechaBetweenAndFechaBajaIsNull(desde, hasta)
@@ -159,15 +165,15 @@ class ReporteFinancieroService(
     }
 
     // ============================================
-    // OBTENER MOVIMIENTOS DETALLADOS (CORREGIDO)
+    // OBTENER MOVIMIENTOS DETALLADOS
     // ============================================
 
-    private fun obtenerMovimientos(desde: LocalDate, hasta: LocalDate): List<MovimientoFinancieroDTO> {
+    private fun obtenerMovimientos(desde: LocalDateTime, hasta: LocalDateTime): List<MovimientoFinancieroDTO> {
         val movimientos = mutableListOf<MovimientoFinancieroDTO>()
 
         // 1. Pagos de curso (SOLO cursos COMISION)
         val pagosCurso = pagoCursoRepository.findByFechaBetweenAndFechaBajaIsNull(desde, hasta)
-            .filter { it.inscripcion.curso is CursoComision }
+            .filter { it.inscripcion.curso.tipoCurso == CursoType.COMISION }
 
         pagosCurso.forEach { pago ->
             movimientos.add(mapearPagoCurso(pago))
@@ -186,7 +192,9 @@ class ReporteFinancieroService(
         }
 
         // Ordenar por fecha descendente
-        return movimientos.sortedByDescending { it.fecha }
+        return movimientos
+            .sortedByDescending { it.fecha }
+            .take(10)  // Solo últimos 10 movimientos
     }
 
     private fun mapearPagoCurso(pago: PagoCurso): MovimientoFinancieroDTO {
@@ -196,7 +204,7 @@ class ReporteFinancieroService(
 
         return MovimientoFinancieroDTO(
             id = pago.id,
-            fecha = pago.fecha,
+            fecha = pago.fecha.toLocalDate(),
             tipo = TipoMovimiento.INGRESO,
             categoria = CategoriaMovimiento.PAGO_ALUMNO,
             concepto = "Pago de alumno - ${curso.nombre}",
@@ -213,7 +221,7 @@ class ReporteFinancieroService(
 
         return MovimientoFinancieroDTO(
             id = pago.id,
-            fecha = pago.fecha,
+            fecha = pago.fecha.toLocalDate(),
             tipo = TipoMovimiento.INGRESO,
             categoria = CategoriaMovimiento.ALQUILER_PROFESOR,
             concepto = "Alquiler - ${curso.nombre} (${pago.mesPago}/${pago.anioPago})",
@@ -230,7 +238,7 @@ class ReporteFinancieroService(
 
         return MovimientoFinancieroDTO(
             id = pago.id,
-            fecha = pago.fecha,
+            fecha = pago.fecha.toLocalDate(),
             tipo = TipoMovimiento.EGRESO,
             categoria = CategoriaMovimiento.COMISION_PROFESOR,
             concepto = "Comisión - ${curso.nombre} (${pago.mesPago}/${pago.anioPago})",
@@ -260,14 +268,21 @@ class ReporteFinancieroService(
         val primerDiaAnterior = yearMonthAnterior.atDay(1)
         val ultimoDiaAnterior = yearMonthAnterior.atEndOfMonth()
 
+        // Convertir a LocalDateTime
+        val desdeAnterior = primerDiaAnterior.atStartOfDay()
+        val hastaAnterior = ultimoDiaAnterior.atTime(23, 59, 59)
+
+        val desdeActual = primerDiaActual.atStartOfDay()
+        val hastaActual = ultimoDiaActual.atTime(23, 59, 59)
+
         // Calcular totales del mes anterior
-        val ingresosAnterior = calcularIngresos(primerDiaAnterior, ultimoDiaAnterior).total
-        val egresosAnterior = calcularEgresos(primerDiaAnterior, ultimoDiaAnterior).total
+        val ingresosAnterior = calcularIngresos(desdeAnterior, hastaAnterior).total
+        val egresosAnterior = calcularEgresos(desdeAnterior, hastaAnterior).total
         val balanceAnterior = ingresosAnterior - egresosAnterior
 
         // Calcular totales del mes actual
-        val ingresosActual = calcularIngresos(primerDiaActual, ultimoDiaActual).total
-        val egresosActual = calcularEgresos(primerDiaActual, ultimoDiaActual).total
+        val ingresosActual = calcularIngresos(desdeActual, hastaActual).total
+        val egresosActual = calcularEgresos(desdeActual, hastaActual).total
         val balanceActual = ingresosActual - egresosActual
 
         // Calcular diferencias y porcentajes

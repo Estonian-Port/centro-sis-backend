@@ -2,20 +2,27 @@ package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.common.codeGeneratorUtil.CodeGeneratorUtil
+import com.estonianport.centro_sis.common.emailService.EmailService
+import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
+import com.estonianport.centro_sis.dto.response.CustomResponse
+import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.model.AdultoResponsable
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
+import com.estonianport.centro_sis.model.Rol
+import com.estonianport.centro_sis.model.RolFactory
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
 import com.estonianport.centro_sis.repository.RolRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
+import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -30,6 +37,12 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     @Autowired
     lateinit var rolRepository: RolRepository
 
+    @Autowired
+    lateinit var emailService: EmailService
+
+    @Autowired
+    lateinit var rolFactory: RolFactory
+
     override val dao: CrudRepository<Usuario, Long>
         get() = usuarioRepository
 
@@ -39,7 +52,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     }
 
     fun getAllUsuarios(): List<Usuario> {
-        return usuarioRepository.findAllByOrderByNombreAsc()
+        return usuarioRepository.findAllActivos()
     }
 
     fun getUsuarioByEmail(email: String): Usuario {
@@ -51,10 +64,56 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return usuarioRepository.findById(id).get()
     }
 
-    fun verificarEmailNoExistente(email: String) {
-        val usuario = usuarioRepository.getUsuarioByEmail(email)
-        if (usuario != null) {
+    fun altaUsuario(usuarioDto: UsuarioAltaRequestDto): Usuario {
+        val usuario = usuarioRepository.getUsuarioByEmail(usuarioDto.email)
+        if (usuario != null && usuario.estado != EstadoType.BAJA) {
             throw IllegalArgumentException("Ya existe un usuario registrado con el email proporcionado")
+        }
+        if (usuario != null && usuario.estado == EstadoType.BAJA) {
+            return reactivarUsuario(usuario, usuarioDto.roles)
+        }
+        return crearUsuario(usuarioDto)
+    }
+
+    fun reactivarUsuario(usuario: Usuario, roles: List<String>): Usuario {
+        usuario.estado = EstadoType.PENDIENTE
+        usuario.fechaBaja = null
+        usuario.ultimoIngresoAlSistema = null
+        val password = generarPassword()
+        usuario.password = encriptarPassword(password)
+        usuario.fechaAlta = LocalDate.now()
+        roles.forEach {
+            val rol = rolFactory.build(it, usuario)
+            usuario.asignarRol(rol)
+        }
+
+        enviarEmailBienvenida(usuario, password)
+
+        return save(usuario)
+
+    }
+
+    fun crearUsuario(usuarioDto: UsuarioAltaRequestDto): Usuario {
+        val usuario = UsuarioMapper.buildAltaUsuario(usuarioDto.email)
+
+        val password = generarPassword()
+        usuario.password = encriptarPassword(password)
+        usuario.fechaAlta = LocalDate.now()
+        usuarioDto.roles.forEach {
+            val rol = rolFactory.build(it, usuario)
+            usuario.asignarRol(rol)
+        }
+        val usuarioNuevo = save(usuario)
+        enviarEmailBienvenida(usuarioNuevo, password)
+        return usuarioNuevo
+    }
+
+    fun enviarEmailBienvenida(usuario: Usuario, password: String) {
+        try {
+            emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // TODO enviar notificacion de fallo al enviar el mail
         }
     }
 

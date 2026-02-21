@@ -11,11 +11,20 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 
     fun findOneByEmail(email: String): Usuario?
 
-    fun findAllByOrderByNombreAsc(): List<Usuario>
+    @Query(
+        """
+    SELECT u FROM Usuario u
+    WHERE u.fechaBaja IS NULL
+    ORDER BY u.nombre ASC
+    """
+    )
+    fun findAllActivos(): List<Usuario>
 
     fun getUsuarioByEmail(email: String): Usuario?
 
     fun existsByDni(dni: String): Boolean
+
+    fun existsByEmail(email: String): Boolean
 
     @Query(
         """

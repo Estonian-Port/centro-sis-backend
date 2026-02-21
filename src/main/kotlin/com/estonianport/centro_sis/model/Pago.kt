@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 @Entity
@@ -24,7 +25,7 @@ abstract class Pago(
     val registradoPor: Usuario,
 
     @Column(nullable = false)
-    val fecha: LocalDate = LocalDate.now(),
+    val fecha: LocalDateTime = LocalDateTime.now(),
 
     @Column
     var fechaBaja: LocalDate? = null,
@@ -57,7 +58,7 @@ abstract class Pago(
 class PagoCurso(
     monto: BigDecimal,
     registradoPor: Usuario,
-    fecha: LocalDate = LocalDate.now(ZoneId.of("America/Argentina/Buenos_Aires")),
+    fecha: LocalDateTime = LocalDateTime.now(ZoneId.of("America/Argentina/Buenos_Aires")),
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inscripcion_id", nullable = false)
@@ -67,7 +68,10 @@ class PagoCurso(
     val conRecargo: Boolean = false,
 
     @Column(nullable = false)
-    val beneficioAplicado: Int = 0
+    val beneficioAplicado: Int = 0,
+
+    @Column(name = "cuotas_para_liquidacion", nullable = false)
+    val cuotasParaLiquidacion: Int = 1
 
 ) : Pago(
     monto = monto,
@@ -81,6 +85,10 @@ class PagoCurso(
 
     fun getAlumno(): RolAlumno = inscripcion.alumno
     fun getCurso(): Curso = inscripcion.curso
+
+    fun calcularMontoPorMesParaLiquidacion(): BigDecimal {
+        return monto / BigDecimal(cuotasParaLiquidacion)
+    }
 
     fun calcularDescuentoAplicado(): BigDecimal {
         return inscripcion.tipoPagoSeleccionado.monto *
@@ -105,7 +113,7 @@ class PagoCurso(
 class PagoAlquiler(
     monto: BigDecimal,
     registradoPor: Usuario,
-    fecha: LocalDate = LocalDate.now(),
+    fecha: LocalDateTime = LocalDateTime.now(),
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "curso_id", nullable = false)
@@ -145,7 +153,7 @@ class PagoAlquiler(
 class PagoComision(
     monto: BigDecimal,
     registradoPor: Usuario,
-    fecha: LocalDate = LocalDate.now(),
+    fecha: LocalDateTime = LocalDateTime.now(),
 
 
     @ManyToOne(fetch = FetchType.LAZY)
