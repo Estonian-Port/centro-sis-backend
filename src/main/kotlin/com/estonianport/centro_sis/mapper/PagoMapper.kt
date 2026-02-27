@@ -9,7 +9,7 @@ object PagoMapper {
         return PagoResponseDto(
             id = pago.id,
             monto = pago.monto.toDouble(),
-            fecha = pago.fecha,
+            fecha = pago.fecha.toLocalDate(),
             fechaBaja = pago.fechaBaja
         )
     }

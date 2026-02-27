@@ -39,7 +39,9 @@ class CursoController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> {
         val curso = cursoService.getById(id)
-        val alumnosInscriptos = curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
+        val alumnosInscriptos = curso.inscripciones
+            .filter { it.estado == EstadoType.ACTIVO }
+            .map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
 
         return ResponseEntity.status(200).body(
             CustomResponse(
@@ -148,14 +150,11 @@ class CursoController(
         @PathVariable cursoId: Long,
         @RequestBody curso: CursoAlquilerProfeRequestDto
     ): ResponseEntity<CustomResponse> {
-        val horarios = curso.horarios.map {
-            HorarioMapper.buildHorario(it)
-        }
         val tiposDePago = curso.tiposPago.map {
             TipoPagoMapper.buildTipoPago(it)
         }
 
-        val cursoFinalizado = cursoService.finalizarAltaCursoAlquiler(cursoId, horarios, tiposDePago, curso.recargo)
+        val cursoFinalizado = cursoService.finalizarAltaCursoAlquiler(cursoId, tiposDePago, curso.recargo)
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso de alquiler finalizado correctamente",

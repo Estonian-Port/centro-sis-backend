@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.dto.response
 
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 data class PagoResponseDto(
     val id: Long,

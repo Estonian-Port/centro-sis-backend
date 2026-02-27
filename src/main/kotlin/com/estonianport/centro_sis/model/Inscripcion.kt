@@ -71,7 +71,8 @@ class Inscripcion(
      */
     fun registrarPago(
         registradoPor: Usuario,
-        aplicarRecargo: Boolean = false
+        aplicarRecargo: Boolean = false,
+        cuotasParaLiquidacion: Int = 1
     ): PagoCurso {
         require(puedeRegistrarPago()) {
             "No se pueden registrar más pagos. La inscripción está completa o dada de baja."
@@ -90,7 +91,8 @@ class Inscripcion(
             registradoPor = registradoPor,
             inscripcion = this,
             conRecargo = aplicarRecargo,
-            beneficioAplicado = beneficio
+            beneficioAplicado = beneficio,
+            cuotasParaLiquidacion = cuotasParaLiquidacion
         )
 
         pagos.add(pago)

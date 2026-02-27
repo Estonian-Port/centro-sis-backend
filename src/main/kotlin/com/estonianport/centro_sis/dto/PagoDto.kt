@@ -3,6 +3,7 @@ package com.estonianport.centro_sis.dto
 import com.estonianport.centro_sis.model.enums.TipoPagoConcepto
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 data class PagoDTO(
     val id: Long,

@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.controller
 
 import com.estonianport.centro_sis.dto.request.AsignarPuntosRequest
+import com.estonianport.centro_sis.dto.request.EditarBeneficioRequest
 import com.estonianport.centro_sis.dto.request.InscripcionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.InscripcionMapper
@@ -78,12 +79,12 @@ class InscripcionController(
     fun aplicarBeneficio(
         @PathVariable idInscripcion: Long,
         @PathVariable idUsuario: Long,
-        @RequestBody beneficio: Int
+        @RequestBody request: EditarBeneficioRequest
     ): ResponseEntity<CustomResponse> {
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Beneficio aplicado/modificado correctamente",
-                data = inscripcionService.editarBeneficio(idInscripcion, beneficio)
+                data = inscripcionService.editarBeneficio(idInscripcion, request.beneficio, idUsuario)
             )
         )
     }

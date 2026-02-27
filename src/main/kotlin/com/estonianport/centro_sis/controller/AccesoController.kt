@@ -3,6 +3,7 @@ package com.estonianport.centro_sis.controller
 import com.estonianport.centro_sis.dto.AccesoDTO
 import com.estonianport.centro_sis.dto.EstadisticasAccesoDTO
 import com.estonianport.centro_sis.dto.RegistrarAccesoDTO
+import com.estonianport.centro_sis.dto.RegistrarAccesoInvitadoRequest
 import com.estonianport.centro_sis.dto.RegistrarAccesoQRRequest
 import com.estonianport.centro_sis.dto.response.PageResponse
 import com.estonianport.centro_sis.model.enums.RolType
@@ -106,5 +107,18 @@ class AccesoController(
     fun getEstadisticasAccesos(): ResponseEntity<EstadisticasAccesoDTO> {
         val estadisticas = accesoService.getEstadisticasAccesos()
         return ResponseEntity.ok(estadisticas)
+    }
+
+    @PostMapping("/registrar-invitado/{registradoPorId}")
+    fun registrarAccesoInvitado(
+        @PathVariable registradoPorId: Long,
+        @RequestBody request: RegistrarAccesoInvitadoRequest
+    ): ResponseEntity<AccesoDTO> {
+        val acceso = accesoService.registrarAccesoInvitado(
+            dni = request.dni,
+            nombre = request.nombre,
+            registradoPorId = registradoPorId
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
     }
 }
