@@ -30,13 +30,17 @@ class EmailService {
 
     private fun sendEmailTool(textMessage: String, email: String, subject: String) {
         val message: MimeMessage = sender.createMimeMessage()
-        val helper = MimeMessageHelper(message)
+        val helper = MimeMessageHelper(message, true, "UTF-8")
+
         try {
+            helper.setFrom("Contacto <contacto@estonianport.com.ar>") // 👈 CLAVE
             helper.setTo(email)
-            helper.setText(textMessage, true)
             helper.setSubject(subject)
+            helper.setText(textMessage, true)
+
             sender.send(message)
         } catch (e: MessagingException) {
+            e.printStackTrace()
             throw BusinessException("No se pudo enviar el mail")
         }
     }
