@@ -103,9 +103,9 @@ class AccesoController(
     }
 
     // GET - Estadísticas de accesos
-    @GetMapping("/estadisticas")
-    fun getEstadisticasAccesos(): ResponseEntity<EstadisticasAccesoDTO> {
-        val estadisticas = accesoService.getEstadisticasAccesos()
+    @GetMapping("/estadisticas/{idPortero}")
+    fun getEstadisticasAccesos(@PathVariable idPortero : Long): ResponseEntity<EstadisticasAccesoDTO> {
+        val estadisticas = accesoService.getEstadisticasAccesos(idPortero)
         return ResponseEntity.ok(estadisticas)
     }
 
@@ -121,4 +121,13 @@ class AccesoController(
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
     }
+
+    @PostMapping("/comenzar-turno")
+    fun comenzarTurno(
+        @RequestBody dto: RegistrarAccesoDTO
+    ): ResponseEntity<AccesoDTO> {
+        val acceso = accesoService.comenzarTurno(dto)
+        return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
+    }
+
 }

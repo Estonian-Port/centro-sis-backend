@@ -41,6 +41,8 @@ data class EstadisticasAccesoDTO(
     val totalSemana : Int,
     val totalEsteMes: Int,
     val promedioDiario: Double,
+    val turnoRegistradoHoy: Boolean,
+    val horaTurnoHoy: LocalDateTime?  // null si no registró
 )
 
 data class RegistrarAccesoInvitadoRequest(

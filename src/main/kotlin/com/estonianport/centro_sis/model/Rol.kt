@@ -3,6 +3,7 @@ package com.estonianport.centro_sis.model
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.RolType
+import com.estonianport.centro_sis.model.enums.TipoAcceso
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -170,4 +171,13 @@ class RolPorteria(
     fun puedeVerAccesosRecientes(): Boolean {
         return usuario.estado == EstadoType.ACTIVO
     }
+
+    fun inicioTurnoHoy(): Acceso? {
+        val hoy = LocalDate.now()
+        return usuario.accesos
+            .asSequence()
+            .filter { it.fechaHora.toLocalDate() == hoy && it.tipoAcceso == TipoAcceso.TURNO }
+            .maxByOrNull { it.fechaHora }
+    }
+
 }
