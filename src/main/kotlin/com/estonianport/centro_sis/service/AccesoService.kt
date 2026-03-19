@@ -167,7 +167,7 @@ class AccesoService(
     // =============================================
 
     @Transactional(readOnly = true)
-    fun getEstadisticasAccesos(): EstadisticasAccesoDTO {
+    fun getEstadisticasAccesos(idPortero : Long? = null): EstadisticasAccesoDTO {
         val ahora = LocalDateTime.now()
         val hoy = ahora.toLocalDate().atStartOfDay()
         val ultimaSemana = ahora.minusDays(7)
@@ -181,11 +181,33 @@ class AccesoService(
 
         val promedioDiario = if (totalMes > 0) totalMes / 30.0 else 0.0
 
+        if (idPortero == null) {
+            return EstadisticasAccesoDTO(
+                totalHoy = totalHoy,
+                totalSemana = totalSemana,
+                totalEsteMes = totalMes,
+                promedioDiario = promedioDiario,
+                turnoRegistradoHoy = false,
+                horaTurnoHoy = null
+            )
+        }
+
+        val portero = usuarioRepository.findById(idPortero)
+            .orElseThrow { IllegalArgumentException("Usuario no encontrado") }
+
+        if (!portero.tieneRol(RolType.PORTERIA)) {
+            throw IllegalArgumentException("El usuario no tiene rol de portería")
+        }
+
+        val turnoHoy = portero.getRolPorteria().inicioTurnoHoy()
+
         return EstadisticasAccesoDTO(
             totalHoy = totalHoy,
             totalSemana = totalSemana,
             totalEsteMes = totalMes,
             promedioDiario = promedioDiario,
+            turnoRegistradoHoy = turnoHoy != null,
+            horaTurnoHoy = turnoHoy?.fechaHora
         )
     }
 
@@ -359,6 +381,33 @@ class AccesoService(
             alertaPagos = null,
             esInvitado = true
         )
+    }
+
+    // ========================================
+    // REGISTRAR TURNO (PORTERÍA)
+    // ========================================
+
+    @Transactional
+    fun comenzarTurno(
+        dto: RegistrarAccesoDTO
+    ): AccesoDTO {
+        val usuario = usuarioRepository.findById(dto.usuarioId)
+            .orElseThrow { IllegalArgumentException("Usuario a registrar no encontrado") }
+
+        if (!usuario.tieneRol(RolType.PORTERIA)) {
+            throw IllegalArgumentException("Solo los usuarios con rol PORTERIA pueden comenzar un turno")
+        }
+
+        // Crear el acceso
+        val acceso = Acceso(
+            usuario = usuario,
+            fechaHora = LocalDateTime.now(),
+            tipoAcceso = TipoAcceso.TURNO
+        )
+
+        val accesoGuardado = accesoRepository.save(acceso)
+
+        return mapAccesoToDTO(accesoGuardado)
     }
 
     // ========================================

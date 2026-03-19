@@ -310,10 +310,31 @@ class ReporteFinancieroService(
     }
 
     private fun calcularPorcentajeCambio(anterior: BigDecimal, actual: BigDecimal): BigDecimal {
+        // Anterior es exactamente cero
         if (anterior == BigDecimal.ZERO) {
-            return if (actual > BigDecimal.ZERO) BigDecimal(100) else BigDecimal.ZERO
+            return when {
+                actual > BigDecimal.ZERO -> BigDecimal(100)
+                actual < BigDecimal.ZERO -> BigDecimal(-100)
+                else -> BigDecimal.ZERO
+            }
         }
-        return ((actual - anterior) / anterior * BigDecimal(100))
-            .setScale(2, RoundingMode.HALF_UP)
+
+        // Anterior es muy cercano a cero
+        if (anterior.abs() < BigDecimal("0.01")) {
+            return when {
+                actual > anterior -> BigDecimal(100)
+                actual < anterior -> BigDecimal(-100)
+                else -> BigDecimal.ZERO
+            }
+        }
+
+        // Cálculo normal
+        return try {
+            ((actual - anterior) / anterior * BigDecimal(100))
+                .setScale(2, RoundingMode.HALF_UP)
+        } catch (e: ArithmeticException) {
+            // Fallback por si acaso
+            BigDecimal.ZERO
+        }
     }
 }
