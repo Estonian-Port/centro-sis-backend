@@ -15,7 +15,7 @@ class EmailService {
     private val httpClient = HttpClient.newHttpClient()
     private val resendApiKey = System.getenv("MAIL_PASS")
         ?: throw IllegalStateException("MAIL_PASS no definido")
-    private val fromEmail = "Contacto <contacto@estonianport.com.ar>"
+    private val fromEmail = "Centro-SIS <centro-sis@estonianport.com.ar>"
 
     fun isEmailValid(target: String): Boolean {
         return target.isNotEmpty() && EmailValidator.getInstance().isValid(target)
