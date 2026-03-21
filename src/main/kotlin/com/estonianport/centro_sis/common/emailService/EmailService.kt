@@ -92,12 +92,12 @@ class EmailService {
                 "usuario" to usuario.email,
                 "password" to password,
                 "action" to action,
-                "url_instagram" to "https://www.instagram.com/agendaza",
-                "url_web" to "https://estonian-port.github.io/estonianport-landingpage/",
-                "url_linkedin" to "https://www.linkedin.com/company/estonianport",
+                "url_instagram" to "https://www.instagram.com/centro_cultural_tenri",
+                "url_web" to "https://gakuseikai.tenri.com.ar",
+                "url_wpp" to "https://api.whatsapp.com/send/?phone=%2B5491126885059&text=&type=phone_number&app_absent=0&wame_ctl=1",
                 "imagen_ig" to "https://iili.io/3USINa4.png",
                 "imagen_web" to "https://iili.io/3USIh6G.png",
-                "imagen_linkedin" to "https://iili.io/3USIwFf.png",
+                "imagen_wpp" to "https://iili.io/3USIk92.png",
             )
         )
 
