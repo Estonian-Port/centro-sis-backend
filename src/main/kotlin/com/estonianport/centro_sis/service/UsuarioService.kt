@@ -16,6 +16,7 @@ import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.Rol
 import com.estonianport.centro_sis.model.RolFactory
+import com.estonianport.centro_sis.model.RolProfesor
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
@@ -250,6 +251,11 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         val usuario = getById(idUsuario)
         usuario.registrarAcceso(TipoAcceso.MANUAL)
         save(usuario)
+    }
+
+    fun actualizarEstadoProfesor(profesores: MutableSet<RolProfesor>) {
+        profesores.forEach { it.actualizarEstado() }
+        profesores.forEach { save(it.usuario) }
     }
 
 }

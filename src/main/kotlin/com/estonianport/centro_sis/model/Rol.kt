@@ -94,6 +94,10 @@ class RolProfesor(
         return cursos.filter { it.fechaBaja == null }
     }
 
+    fun actualizarEstado(){
+        usuario.estado = if (cursosActivos().isNotEmpty()) EstadoType.ACTIVO else EstadoType.INACTIVO
+    }
+
     // Pagos que el profesor REALIZÓ al instituto (alquileres)
     fun obtenerPagosRealizados(): List<PagoAlquiler> {
         return pagosAlquilerRealizados.filter { it.estaActivo() }

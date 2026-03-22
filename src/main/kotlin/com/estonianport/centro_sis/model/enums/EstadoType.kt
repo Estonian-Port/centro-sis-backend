@@ -11,7 +11,9 @@ enum class EstadoType {
 |---------------|
 | PARA USUARIOS |
 |---------------|
-ACTIVO: El usuario está activo y puede acceder a sus funcionalidades.
+ACTIVO: El usuario está activo y puede acceder a sus funcionalidades y
+roles Oficina, Administrados y Portero por defecto al logearse por primera vez
+
 INACTIVO: El usuario realizo el registro pero no esta en ningun curso.
 PENDIENTE: Un admin ha invitado al usuario via mail pero este aun no ha completado su registro.
 BAJA: El usuario ha sido dado de baja y no puede acceder a sus funcionalidades.

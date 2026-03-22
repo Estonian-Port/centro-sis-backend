@@ -97,6 +97,8 @@ class CursoController(
         val nuevoCursoAlquiler = CursoMapper.buildCursoAlquiler(cursoRequestDto, profesores)
         val cursoAgregado = cursoService.alta(nuevoCursoAlquiler)
 
+        usuarioService.actualizarEstadoProfesor(profesores)
+
         return ResponseEntity.status(201).body(
             CustomResponse(
                 message = "Curso creado correctamente",
@@ -117,6 +119,8 @@ class CursoController(
 
         val cursoAgregado = cursoService.alta(nuevoCursoComision)
 
+        usuarioService.actualizarEstadoProfesor(profesores)
+
         return ResponseEntity.status(201).body(
             CustomResponse(
                 message = "Curso creado correctamente",
@@ -134,6 +138,9 @@ class CursoController(
         val curso = cursoService.getById(cursoId)
         val nuevosProfesores = profesoresId
             .map { usuarioService.getById(it).getRolProfesor() }
+
+        usuarioService.actualizarEstadoProfesor(nuevosProfesores.toMutableSet())
+
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Profesores actualizados correctamente",

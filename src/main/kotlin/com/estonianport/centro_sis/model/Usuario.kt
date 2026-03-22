@@ -81,6 +81,10 @@ class Usuario(
         if (ultimoIngresoAlSistema != null) {
             estado = EstadoType.INACTIVO
         }
+        // Si tiene un rol distinto a alumno o profesor, pasa a activo al logearse
+        if(!tieneRol(RolType.ALUMNO) || !tieneRol(RolType.PROFESOR)){
+            estado = EstadoType.ACTIVO
+        }
     }
 
     fun esPrimerLogin(): Boolean {
@@ -235,6 +239,13 @@ class Usuario(
         return accesos.count { acceso ->
             val fecha = acceso.fechaHora.toLocalDate()
             !fecha.isBefore(desde) && !fecha.isAfter(hasta)
+        }
+    }
+
+    fun actualizarEstadoSegunActividad(tieneCursosAsignados: Boolean) {
+        // Si es profesor, su estado depende de si tiene cursos
+        if (tieneRol(RolType.PROFESOR)) {
+            this.estado = if (tieneCursosAsignados) EstadoType.ACTIVO else EstadoType.INACTIVO
         }
     }
 }
