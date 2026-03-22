@@ -197,6 +197,9 @@ class CursoController(
     ): ResponseEntity<CustomResponse> {
         val profesores = idsProfesores.map { usuarioService.getById(it).getRolProfesor() }
         val cursoActualizado = cursoService.actualizarProfesores(cursoId, profesores)
+
+        usuarioService.actualizarEstadoProfesor(profesores.toMutableSet())
+
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Nombre del curso actualizado correctamente",
