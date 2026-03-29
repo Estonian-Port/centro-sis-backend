@@ -11,14 +11,24 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 
     fun findOneByEmail(email: String): Usuario?
 
-    @Query(
-        """
-    SELECT u FROM Usuario u
-    WHERE u.fechaBaja IS NULL
-    ORDER BY u.nombre ASC
-    """
-    )
-    fun findAllActivos(): List<Usuario>
+    @Query("""
+        SELECT DISTINCT u FROM Usuario u 
+        LEFT JOIN FETCH u.listaRol r 
+        WHERE u.fechaBaja IS NULL 
+        AND u.id != :userId 
+        AND r.fechaBaja IS NULL
+        ORDER BY u.nombre ASC
+    """)
+    fun getAllActivosExcepto(userId: Long): Set<Usuario>
+
+    @Query("""
+        SELECT DISTINCT u FROM Usuario u 
+        LEFT JOIN FETCH u.listaRol r 
+        WHERE u.fechaBaja IS NULL 
+        AND r.fechaBaja IS NULL
+        ORDER BY u.nombre ASC
+    """)
+    fun findAllActivos(): Set<Usuario>
 
     fun getUsuarioByEmail(email: String): Usuario?
 
@@ -31,6 +41,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolProfesor
+    AND r.fechaBaja IS NULL
     ORDER BY u.nombre ASC
 """
     )
@@ -41,6 +52,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAlumno
+    AND r.fechaBaja IS NULL
     ORDER BY u.nombre ASC
 """
     )
@@ -51,6 +63,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAdmin
+    AND r.fechaBaja IS NULL
     ORDER BY u.nombre ASC
 """
     )
@@ -61,6 +74,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolOficina
+    AND r.fechaBaja IS NULL
     ORDER BY u.nombre ASC
 """
     )
@@ -71,6 +85,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     SELECT DISTINCT u FROM Usuario u
     INNER JOIN u.listaRol r
     WHERE TYPE(r) = com.estonianport.centro_sis.model.RolPorteria
+    AND r.fechaBaja IS NULL
     ORDER BY u.nombre ASC
 """
     )

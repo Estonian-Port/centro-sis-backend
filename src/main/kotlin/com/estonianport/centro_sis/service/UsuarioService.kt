@@ -52,8 +52,12 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
             .orElseThrow { NoSuchElementException("No se encontró un usuario con el ID proporcionado") }
     }
 
-    fun getAllUsuarios(): List<Usuario> {
+    fun getAllUsuarios(): Set<Usuario> {
         return usuarioRepository.findAllActivos()
+    }
+
+    fun getAllActivosExcepto(userId: Long): Set<Usuario> {
+        return usuarioRepository.getAllActivosExcepto(userId)
     }
 
     fun getUsuarioByEmail(email: String): Usuario {
