@@ -34,8 +34,6 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 
     fun existsByDni(dni: String): Boolean
 
-    fun existsByEmail(email: String): Boolean
-
     @Query(
         """
     SELECT DISTINCT u FROM Usuario u
@@ -90,7 +88,6 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 """
     )
     fun findPorteria(): List<Usuario>
-
-
+    
     override fun findById(id: Long): Optional<Usuario>
 }
