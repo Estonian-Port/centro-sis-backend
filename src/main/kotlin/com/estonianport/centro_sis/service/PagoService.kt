@@ -592,23 +592,24 @@ class PagoService(
         val hoy = LocalDate.now()
         val fechaFinCurso = inscripcion.curso.fechaFin
 
-        // Validar que el curso no haya terminado
-        if (hoy.isAfter(fechaFinCurso)) {
+        // 1. Validar que el curso no haya terminado (mismo mes o futuro)
+        // Si hoy es Abril y el curso terminó en Marzo, lanzamos error.
+        if (hoy.year > fechaFinCurso.year || (hoy.year == fechaFinCurso.year && hoy.monthValue > fechaFinCurso.monthValue)) {
             throw IllegalStateException(
                 "El curso finalizó el ${fechaFinCurso.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}. " +
                         "No se pueden registrar pagos totales en cursos finalizados."
             )
         }
 
-        // Calcular meses entre hoy y fin de curso
-        // Usamos withDayOfMonth(1) para comparar por mes completo
-        val mesesRestantes = ChronoUnit.MONTHS.between(
-            hoy.withDayOfMonth(1),
-            fechaFinCurso.withDayOfMonth(1)
-        ).toInt() + 1 // +1 para incluir el mes actual
+        // 2. Calcular la diferencia de meses "calendario"
+        // (AñoFin * 12 + MesFin) - (AñoHoy * 12 + MesHoy)
+        val mesesDiferencia = (fechaFinCurso.year * 12 + fechaFinCurso.monthValue) -
+                (hoy.year * 12 + hoy.monthValue)
 
-        // Asegurar mínimo 1 mes
-        return maxOf(mesesRestantes, 1)
+        // 3. Sumamos 1 porque el mes actual siempre cuenta como un mes a pagar/restante
+        val mesesTotales = mesesDiferencia + 1
+
+        return maxOf(mesesTotales, 1)
     }
 
     private fun mapPagoToDTO(pago: Pago): PagoDTO {
