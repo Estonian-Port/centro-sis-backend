@@ -98,7 +98,8 @@ class Usuario(
     fun nombreCompleto(): String = "$nombre $apellido"
 
     fun getRolTypes(): Set<RolType> =
-        listaRol.map {
+        listaRol.filter { it.fechaBaja == null }
+            .map {
             when (it) {
                 is RolAdmin -> RolType.ADMINISTRADOR
                 is RolOficina -> RolType.OFICINA

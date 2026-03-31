@@ -88,6 +88,13 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
 """
     )
     fun findPorteria(): List<Usuario>
-    
+
+    @Query("""
+        SELECT u 
+        FROM Usuario u 
+        LEFT JOIN FETCH u.listaRol r
+        WHERE u.id = :id
+        AND (r.fechaBaja IS NULL OR r IS NULL)
+        """)
     override fun findById(id: Long): Optional<Usuario>
 }
