@@ -10,6 +10,7 @@ import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class InscripcionService {
@@ -20,25 +21,26 @@ class InscripcionService {
     @Autowired
     lateinit var inscripcionRepository: InscripcionRepository
 
+    // Modificado para usar la query optimizada con FETCH
+    @Transactional(readOnly = true)
     fun getById(id: Long): Inscripcion {
-        return inscripcionRepository.findById(id)
-            .orElseThrow { NoSuchElementException("Inscripción con id $id no encontrada") }
+        return inscripcionRepository.findByIdWithCursoAndAlumno(id).getOrNull()
+            ?: throw NoSuchElementException("Inscripción con id $id no encontrada")
     }
 
+    @Transactional
     fun inscribirUsuarioACurso(usuario: Usuario, curso: Curso, inscripcion: InscripcionRequestDto): Inscripcion {
         val alumno = usuario.getRolAlumno()
 
-        // Verificar que el curso acepte ese tipo de pago
         val tipoPagoDisponible =
             curso.tiposPago.firstOrNull { it.tipo == PagoType.valueOf(inscripcion.tipoPagoSeleccionado) }
                 ?: throw IllegalArgumentException("El curso ${curso.nombre} no acepta el tipo de pago ${inscripcion.tipoPagoSeleccionado}")
 
-        // Ajustar cuotas según tipo de pago
         val tipoPagoAjustado = when (tipoPagoDisponible.tipo) {
             PagoType.TOTAL -> TipoPago(
                 tipo = tipoPagoDisponible.tipo,
                 monto = tipoPagoDisponible.monto,
-                cuotas = 1  // Pago TOTAL = 1 cuota para el alumno
+                cuotas = 1
             )
             PagoType.MENSUAL -> tipoPagoDisponible
         }
@@ -46,7 +48,7 @@ class InscripcionService {
         val nuevaInscripcion = Inscripcion(
             alumno = alumno,
             curso = curso,
-            tipoPagoSeleccionado = tipoPagoAjustado,  // ✅ Usar el ajustado
+            tipoPagoSeleccionado = tipoPagoAjustado,
             beneficio = inscripcion.beneficio,
         )
 
@@ -54,28 +56,30 @@ class InscripcionService {
         return inscripcionRepository.save(nuevaInscripcion)
     }
 
+    @Transactional
     fun asignarPuntos(idInscripcion: Long, puntos: Int, usuario: Usuario): Inscripcion {
         val inscripcion = getById(idInscripcion)
         inscripcion.darPuntos(usuario, puntos)
         return inscripcionRepository.save(inscripcion)
     }
 
+    @Transactional
     fun editarBeneficio(idInscripcion: Long, nuevoBeneficio: Int, idUsuario: Long): Inscripcion {
         val inscripcion = getById(idInscripcion)
-        // Verificar que el usuario tenga permiso para asignar beneficios
         val otorgadoPor = usuarioService.getById(idUsuario)
         inscripcion.verificarPermisoEdicion(otorgadoPor)
-        // Actualizar el beneficio
         inscripcion.aplicarBeneficio(nuevoBeneficio)
         return inscripcionRepository.save(inscripcion)
     }
 
+    @Transactional
     fun darDeBajaInscripcion(idInscripcion: Long) {
         val inscripcion = getById(idInscripcion)
         inscripcion.darDeBaja()
         inscripcionRepository.save(inscripcion)
     }
 
+    @Transactional(readOnly = true)
     fun obtenerPagosAlumno(alumnoId: Long, inscripcionId: Long): List<PagoCurso> {
         val inscripcion = getById(inscripcionId)
         if (inscripcion.alumno.id != alumnoId) {
@@ -84,9 +88,9 @@ class InscripcionService {
         return inscripcion.pagos
     }
 
+    // Solución radical al problema N+1 y al desborde de memoria
+    @Transactional(readOnly = true)
     fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoCurso> {
-        val inscripciones = inscripcionRepository.findAll().filter { it.alumno.id == alumnoId }
-        return inscripciones.flatMap { it.pagos }
+        return inscripcionRepository.findAllPagosByAlumnoId(alumnoId)
     }
-
 }
