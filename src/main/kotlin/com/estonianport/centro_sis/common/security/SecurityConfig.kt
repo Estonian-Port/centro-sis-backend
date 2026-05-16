@@ -36,6 +36,7 @@ class SecurityConfig(
                             .requestMatchers("/", "/index.html", "/styles.css", "/logo.png", "/favicon.ico").permitAll()
                             .requestMatchers("/actuator/prometheus").access(WebExpressionAuthorizationManager("hasIpAddress('127.0.0.1') or hasIpAddress('::1')"))
                             .requestMatchers("/usuario/altaAlumno").permitAll()
+                            .requestMatchers("/usuario/recuperar-password").permitAll()
                             .anyRequest().authenticated()
                 }
                 .sessionManagement { session ->

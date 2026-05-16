@@ -34,3 +34,7 @@ data class UsuarioUpdatePerfilRequestDto(
     val celular: Long,
     val email: String
 )
+
+data class RecuperarPasswordRequestDto(
+    val email: String
+)

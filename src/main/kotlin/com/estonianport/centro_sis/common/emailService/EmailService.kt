@@ -112,6 +112,37 @@ class EmailService {
         )
     }
 
+    fun enviarEmailRecuperarPassword(usuario: Usuario, password: String) {
+        if (!isEmailValid(usuario.email)) {
+            throw BusinessException("Email Inválido")
+        }
+
+        val template = loadHtmlTemplate("recuperar_password.html")
+
+        val content = renderTemplate(
+            template,
+            mapOf(
+                "empresa_logo" to "https://iili.io/feEOZWg.png",
+                "usuario" to usuario.email,
+                "password" to password,
+                "url_instagram" to "https://www.instagram.com/centro_cultural_tenri",
+                "url_web" to "https://gakuseikai.tenri.com.ar",
+                "url_wpp" to "https://api.whatsapp.com/send/?phone=%2B5491126885059&text=&type=phone_number&app_absent=0&wame_ctl=1",
+                "imagen_ig" to "https://iili.io/3USINa4.png",
+                "imagen_web" to "https://iili.io/3USIh6G.png",
+                "imagen_wpp" to "https://iili.io/3USIk92.png",
+            )
+        )
+
+        sendEmail(
+            Email(
+                email = usuario.email,
+                subject = "Recuperación de contraseña - CENTRO SIS",
+                content = content
+            )
+        )
+    }
+
     private fun jsonEscape(html: String): String {
         return "\"" + html
             .replace("\\", "\\\\")
