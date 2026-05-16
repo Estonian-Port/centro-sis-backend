@@ -24,7 +24,7 @@ class InscripcionService {
     // Modificado para usar la query optimizada con FETCH
     @Transactional(readOnly = true)
     fun getById(id: Long): Inscripcion {
-        return inscripcionRepository.findByIdWithCursoAndAlumno(id).getOrNull()
+        return inscripcionRepository.findByIdWithCursoAndAlumno(id).orElse(null)
             ?: throw NoSuchElementException("Inscripción con id $id no encontrada")
     }
 
