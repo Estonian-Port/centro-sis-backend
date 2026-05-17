@@ -3,7 +3,6 @@ package com.estonianport.centro_sis.common.security
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import java.util.*
@@ -13,8 +12,9 @@ class TokenUtils {
 
     companion object{
 
-        private val ACCESS_TOKEN_SECRET : String = Keys.secretKeyFor(SignatureAlgorithm.HS256).toString();
-        const val ACCESS_TOKEN_VALIDITY_SECONDS : Long = 259000
+        private val ACCESS_TOKEN_SECRET: String =
+            System.getenv("JWT_SECRET") ?: "dev-secret-change-in-production-min32chars!!"
+        const val ACCESS_TOKEN_VALIDITY_SECONDS: Long = 259200 // 72 horas
 
         fun createToken(nombre: String, username: String?): String {
             val expirationTime : Long = ACCESS_TOKEN_VALIDITY_SECONDS * 1000
