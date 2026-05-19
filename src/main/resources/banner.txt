@@ -1,0 +1,11 @@
+ _____            _                   _____ _____ _____  __  __  __
+/  __ \          | |                 /  ___|_   _/  ___| \ \ \ \ \ \
+| /  \/ ___ _ __ | |_ _ __ ___ ______\ `--.  | | \ `--.   \ \ \ \ \ \
+| |    / _ \ '_ \| __| '__/ _ \______|`--. \ | |  `--. \   > > > > > >
+| \__/\  __/ | | | |_| | | (_) |     /\__/ /_| |_/\__/ /  / / / / / /
+ \____/\___|_| |_|\__|_|  \___/      \____/ \___/\____/  /_/ /_/ /_/
+
+
+· ${AnsiColor.GREEN}:: ${spring.application.name} :: ${AnsiColor.DEFAULT}····················${AnsiStyle.BOLD}(v1.5.0) ${AnsiStyle.NORMAL}
+· ${AnsiColor.GREEN}:: Powered by Spring Boot :: ${AnsiColor.DEFAULT}······${AnsiStyle.BOLD}(v${spring-boot.version})${AnsiStyle.NORMAL}
+· ${AnsiColor.GREEN}:: Using Java :: ${AnsiColor.DEFAULT}··················${AnsiStyle.BOLD}(v${java.version})${AnsiStyle.NORMAL}

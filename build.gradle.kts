@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.estonianport"
-version = "0.0.1-SNAPSHOT"
+version = "1.5.0"
 description = "Centro – Student Information System (Backend)"
 
 java {
@@ -36,7 +36,6 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("commons-validator:commons-validator:1.7")
     implementation("io.prometheus:prometheus-metrics-core:1.0.0")
-    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
     implementation("org.apache.poi:poi:5.2.3")
     implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation("com.google.zxing:core:3.5.0")

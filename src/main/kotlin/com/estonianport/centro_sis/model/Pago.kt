@@ -30,7 +30,7 @@ abstract class Pago(
     @Column
     var fechaBaja: LocalDate? = null,
 
-    @Column(columnDefinition = "VARCHAR(500)")
+    @Column
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var observaciones: String? = null
 ) {

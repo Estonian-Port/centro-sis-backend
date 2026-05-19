@@ -16,22 +16,22 @@ class Usuario(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(nullable = false, columnDefinition = "VARCHAR(255)")
+    @Column(nullable = false)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var nombre: String,
 
-    @Column(nullable = false, columnDefinition = "VARCHAR(255)")
+    @Column(nullable = false)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var apellido: String,
 
     @Column(nullable = false)
     var celular: Long,
 
-    @Column(nullable = false, unique = true, columnDefinition = "VARCHAR(255)")
+    @Column(nullable = false, unique = true)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var email: String,
 
-    @Column(nullable = false, columnDefinition = "VARCHAR(50)")
+    @Column(nullable = false)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var dni: String,
 
@@ -59,7 +59,7 @@ class Usuario(
 
 ) {
 
-    @Column(columnDefinition = "VARCHAR(255)")
+    @Column
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var password: String? = null
 

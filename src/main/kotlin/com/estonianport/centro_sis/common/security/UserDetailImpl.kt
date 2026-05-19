@@ -15,7 +15,7 @@ class UserDetailImpl(var usuario : Usuario) : UserDetails{
         return usuario.password
     }
 
-    override fun getUsername(): String? {
+    override fun getUsername(): String {
         return usuario.email
     }
 

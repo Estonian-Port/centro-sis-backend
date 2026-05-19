@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.security.authentication.AuthenticationServiceException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
@@ -19,20 +20,23 @@ class JWTAuthenticationFilter(
 ) : UsernamePasswordAuthenticationFilter() {
 
     override fun attemptAuthentication(request: HttpServletRequest, response: HttpServletResponse?): Authentication? {
-        var authCredentials = AuthCredentials()
-
-        try {
-            authCredentials = ObjectMapper().readValue(
-                request.reader,
-                AuthCredentials::class.java
-            )
-        } catch (_: IOException) {
+        val authCredentials = try {
+            ObjectMapper().readValue(request.reader, AuthCredentials::class.java)
+        } catch (e: Exception) {
+            // Si el JSON es inválido o el body está vacío, evitamos que siga
+            throw AuthenticationServiceException("Error en parseo de las credenciales de acceso", e)
         }
+
+        if (authCredentials?.username.isNullOrBlank() || authCredentials.password.isNullOrBlank()) {
+            throw AuthenticationServiceException("Username o password no provistos")
+        }
+
         val usernamePAT = UsernamePasswordAuthenticationToken(
             authCredentials.username,
             authCredentials.password,
             emptyList()
         )
+
         return authenticationManager.authenticate(usernamePAT)
     }
 
