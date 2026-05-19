@@ -13,12 +13,11 @@ class TokenUtils {
     companion object{
 
         private val ACCESS_TOKEN_SECRET: String =
-            System.getenv("JWT_SECRET") ?: "dev-secret-change-in-production-min32chars!!"
-        const val ACCESS_TOKEN_VALIDITY_SECONDS: Long = 259200 // 72 horas
+            System.getenv("JWT_SECRET")
+        const val ACCESS_TOKEN_VALIDITY_SECONDS: Long = 5184000
 
         fun createToken(nombre: String, username: String?): String {
-            val expirationTime : Long = ACCESS_TOKEN_VALIDITY_SECONDS * 1000
-            val expirationDate : Date = Date(System.currentTimeMillis() + expirationTime)
+            val expirationDate : Date = Date(System.currentTimeMillis() + ACCESS_TOKEN_VALIDITY_SECONDS)
 
             val extra: MutableMap<String, Any> = HashMap()
             extra["nombre"] = nombre
