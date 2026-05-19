@@ -3,7 +3,6 @@ package com.estonianport.centro_sis.common.security
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import java.util.*
@@ -13,12 +12,12 @@ class TokenUtils {
 
     companion object{
 
-        private val ACCESS_TOKEN_SECRET : String = Keys.secretKeyFor(SignatureAlgorithm.HS256).toString();
-        const val ACCESS_TOKEN_VALIDITY_SECONDS : Long = 259000
+        private val ACCESS_TOKEN_SECRET: String =
+            System.getenv("JWT_SECRET")
+        const val ACCESS_TOKEN_VALIDITY_SECONDS: Long = 5184000
 
         fun createToken(nombre: String, username: String?): String {
-            val expirationTime : Long = ACCESS_TOKEN_VALIDITY_SECONDS * 1000
-            val expirationDate : Date = Date(System.currentTimeMillis() + expirationTime)
+            val expirationDate : Date = Date(System.currentTimeMillis() + ACCESS_TOKEN_VALIDITY_SECONDS)
 
             val extra: MutableMap<String, Any> = HashMap()
             extra["nombre"] = nombre

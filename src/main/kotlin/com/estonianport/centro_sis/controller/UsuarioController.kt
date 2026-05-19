@@ -10,6 +10,7 @@ import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
+import com.estonianport.centro_sis.dto.request.RecuperarPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
@@ -568,6 +569,18 @@ class UsuarioController(
             CustomResponse(
                 message = "Rol asignado correctamente",
                 data = UsuarioMapper.buildUsuarioResponseDto(usuario)
+            )
+        )
+    }
+
+    // Solicitar recuperación de contraseña por email
+    @PostMapping("/recuperar-password")
+    fun recuperarPassword(@RequestBody request: RecuperarPasswordRequestDto): ResponseEntity<CustomResponse> {
+        usuarioService.solicitarRecuperarPassword(request.email)
+        return ResponseEntity.status(200).body(
+            CustomResponse(
+                message = "Si el email está registrado, recibirás las instrucciones para restablecer tu contraseña.",
+                data = null
             )
         )
     }

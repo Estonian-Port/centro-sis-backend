@@ -257,6 +257,23 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         save(usuario)
     }
 
+    fun solicitarRecuperarPassword(email: String) {
+        val usuario = usuarioRepository.getUsuarioByEmail(email) ?: return
+        if (usuario.estado == EstadoType.BAJA) return
+
+        val nuevaPassword = generarPassword()
+        usuario.password = encriptarPassword(nuevaPassword)
+        usuario.estado = EstadoType.PENDIENTE
+        usuario.ultimoIngresoAlSistema = null
+        save(usuario)
+
+        try {
+            emailService.enviarEmailRecuperarPassword(usuario, nuevaPassword)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun actualizarEstadoProfesor(profesores: MutableSet<RolProfesor>) {
         profesores.forEach { it.actualizarEstado() }
         profesores.forEach { save(it.usuario) }

@@ -136,23 +136,24 @@ class Inscripcion(
     }
 
 
-    // Para pago mensual: 1 cuota por cada mes transcurrido desde el inicio
+    // Para pago mensual: 1 cuota por cada mes transcurrido desde la inscripción
 
     private fun calcularCuotasEsperadasMensuales(): Int {
         val hoy = LocalDate.now()
-        val inicioCurso = curso.fechaInicio
+        // Si el alumno se inscribió después del inicio del curso, contamos desde su inscripción
+        val inicioReferencia = maxOf(curso.fechaInicio, fechaInscripcion)
 
-        // Si el curso no empezó, no se espera ninguna cuota
-        if (hoy.isBefore(inicioCurso)) return 0
+        // Si el curso no empezó o aún no llegó la fecha de inscripción, no se espera ninguna cuota
+        if (hoy.isBefore(inicioReferencia)) return 0
 
         // Si el curso terminó, se esperan todas las cuotas
         if (hoy.isAfter(curso.fechaFin)) {
             return tipoPagoSeleccionado.cuotas
         }
 
-        // Calcular meses transcurridos COMPLETOS
+        // Calcular meses transcurridos desde la inscripción (o inicio del curso, lo que sea posterior)
         val mesesTranscurridos = ChronoUnit.MONTHS.between(
-            YearMonth.from(inicioCurso),
+            YearMonth.from(inicioReferencia),
             YearMonth.from(hoy)
         ).toInt() + 1 // +1 porque el mes actual ya empezó
 
