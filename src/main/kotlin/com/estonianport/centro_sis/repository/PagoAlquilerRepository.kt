@@ -11,18 +11,6 @@ import java.time.LocalDateTime
 @Repository
 interface PagoAlquilerRepository : JpaRepository<PagoAlquiler, Long> {
 
-    // Buscar por curso
-    fun findByCursoIdAndFechaBajaIsNull(cursoId: Long): List<PagoAlquiler>
-
-    // Buscar por profesor
-    fun findByProfesorIdAndFechaBajaIsNull(profesorId: Long): List<PagoAlquiler>
-
-    // Buscar por periodo (mes/año)
-    fun findByMesPagoAndAnioPagoAndFechaBajaIsNull(
-        mes: Int,
-        anio: Int
-    ): List<PagoAlquiler>
-
     // Buscar por rango de fechas
     @Query("""
         SELECT pa FROM PagoAlquiler pa

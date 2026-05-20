@@ -11,12 +11,6 @@ import java.time.LocalDateTime
 @Repository
 interface PagoCursoRepository : JpaRepository<PagoCurso, Long> {
 
-    // Buscar por inscripción
-    fun findByInscripcionId(inscripcionId: Long): List<PagoCurso>
-
-    // Buscar activos por inscripción
-    fun findByInscripcionIdAndFechaBajaIsNull(inscripcionId: Long): List<PagoCurso>
-
     // Buscar por rango de fechas
     @Query("""
         SELECT pc FROM PagoCurso pc
