@@ -3,6 +3,7 @@ package com.estonianport.centro_sis.service
 import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.common.codeGeneratorUtil.CodeGeneratorUtil
 import com.estonianport.centro_sis.common.emailService.EmailService
+import com.estonianport.centro_sis.common.errors.ConflictException
 import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.repository.UsuarioRepository
@@ -72,7 +73,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     fun altaUsuario(usuarioDto: UsuarioAltaRequestDto): Usuario {
         val usuario = usuarioRepository.getUsuarioByEmail(usuarioDto.email)
         if (usuario != null && usuario.estado != EstadoType.BAJA) {
-            throw IllegalArgumentException("Ya existe un usuario registrado con el email proporcionado")
+            throw ConflictException("Ya existe un usuario registrado con el email proporcionado")
         }
         if (usuario != null && usuario.estado == EstadoType.BAJA) {
             return reactivarUsuario(usuario, usuarioDto.roles)
