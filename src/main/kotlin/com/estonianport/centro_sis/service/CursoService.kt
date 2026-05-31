@@ -119,4 +119,9 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         curso.tomarAsistencia(usuario, fecha ?: LocalDate.now())
         return save(curso)
     }
+
+    fun obtenerCursosProfesorId(idProfe: Long): List<Curso> {
+        return cursoRepository.findCursosActivosPorProfesorId(idProfe)
+    }
+}
 }

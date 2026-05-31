@@ -427,14 +427,12 @@ class UsuarioController(
     // Obtener todas los cursos de un alumno
     @GetMapping("/cursos-alumno/{idAlumno}")
     fun obtenerCursosActivosDelAlumno(@PathVariable idAlumno: Long): ResponseEntity<CustomResponse> {
-        val inscripciones = usuarioService.obtenerInscripcionesPorAlumno(idAlumno)
+        val inscripciones = inscripcionService.obtenerInscripcionesPorAlumno(idAlumno)
 
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Cursos obtenidos correctamente",
-                data = inscripciones.map {
-                    CursoMapper.buildCursoAlumnoResponseDto(it)
-                }
+                data = inscripciones.map { CursoMapper.buildCursoAlumnoResponseDto(it) }
             )
         )
     }
@@ -442,17 +440,12 @@ class UsuarioController(
     // Obtener todos los cursos dictados por un profesor
     @GetMapping("/cursos-profesor/{profesorId}")
     fun obtenerCursosDictadosPorProfesor(@PathVariable profesorId: Long): ResponseEntity<CustomResponse> {
-        val listaCursosProfesor = usuarioService.obtenerCursosProfesor(profesorId)
+        val listaCursosProfesor = cursoService.obtenerCursosProfesorId(profesorId)
 
         return ResponseEntity.status(200).body(
             CustomResponse(
-                message = "Curso obtenido correctamente",
-                data = listaCursosProfesor.map { curso ->
-                    CursoMapper.buildCursoResponseDto(
-                        curso,
-                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
-                    )
-                }
+                message = "Cursos obtenidos correctamente",
+                data = listaCursosProfesor.map { CursoMapper.buildCursoResponseDto(it) }
             )
         )
     }
@@ -541,7 +534,7 @@ class UsuarioController(
             cursosDictados.addAll(cursos)
         }
         if (usuario.tieneRol(RolType.ALUMNO)) {
-            val inscripciones = usuarioService.obtenerInscripcionesPorAlumno(usuarioId)
+            val inscripciones = inscripcionService.obtenerInscripcionesPorAlumno(usuarioId)
             val cursos = inscripciones.map {
                 CursoMapper.buildCursoAlumnoResponseDto(it)
             }

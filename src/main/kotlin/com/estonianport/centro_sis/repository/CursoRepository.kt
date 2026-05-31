@@ -5,6 +5,7 @@ import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.ParteAsistencia
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -37,4 +38,16 @@ interface CursoRepository : CrudRepository<Curso, Long> {
     @Query("SELECT pa FROM ParteAsistencia pa WHERE pa.curso.id = :cursoId")
     fun findPartesAsistenciaByCursoId(cursoId: Long): List<ParteAsistencia>
 
+
+    @Query("""
+    SELECT DISTINCT c FROM Curso c
+    LEFT JOIN FETCH c.horarios
+    LEFT JOIN FETCH c.tiposPago
+    LEFT JOIN FETCH c.profesores p
+    LEFT JOIN FETCH p.usuario
+    JOIN c.profesores p2 
+    WHERE p2.usuario.id = :idProfe
+    AND c.fechaBaja IS NULL
+""")
+    fun findCursosActivosPorProfesorId(@Param("idProfe") idProfe: Long): List<Curso>
 }

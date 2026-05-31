@@ -16,30 +16,27 @@ import java.time.LocalDate
 
 object CursoMapper {
 
-    fun buildCursoResponseDto(curso: Curso, alumnos: List<AlumnoResponseDto>): CursoResponseDto {
+    fun buildCursoResponseDto(curso: Curso): CursoResponseDto {
+
+        val inscripcionesActivas = curso.inscripciones
+            .filter { it.estado == EstadoType.ACTIVO }
+            .sortedWith(compareBy({ it.alumno.usuario.nombre }, { it.alumno.usuario.apellido }))
+
         return CursoResponseDto(
             id = curso.id,
             nombre = curso.nombre,
             horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
-            alumnosInscriptos = alumnos,
+            // Extraemos los alumnos directamente de la lista filtrada para no iterar dos veces
+            alumnosInscriptos = inscripcionesActivas.map { UsuarioMapper.buildAlumno(it.alumno.usuario) },
             fechaInicio = curso.fechaInicio.toString(),
             fechaFin = curso.fechaFin.toString(),
             estado = curso.estado.name,
             estadoAlta = curso.estadoAlta.name,
             profesores = curso.profesores.map { UsuarioMapper.buildUsuarioResponseDto(it.usuario) }.toSet(),
             tiposPago = curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
-            inscripciones = curso.inscripciones
-                .filter {it.estado == EstadoType.ACTIVO}
-                .sortedWith(
-                    compareBy(
-                    { it.alumno.usuario.nombre },
-                    { it.alumno.usuario.apellido }
-                ))
-                .map { InscripcionMapper.buildInscripcionResponseDto(it) },
-            recargoPorAtraso = curso.recargoAtraso
-                .minus(BigDecimal.ONE)
-                .multiply(BigDecimal(100))
-                .toDouble(),
+            // Reutilizamos la lista que ya filtramos y ordenamos
+            inscripciones = inscripcionesActivas.map { InscripcionMapper.buildInscripcionResponseDto(it) },
+            recargoPorAtraso = curso.recargoAtraso.minus(BigDecimal.ONE).multiply(BigDecimal(100)).toDouble(),
             tipoCurso = curso.tipoCurso.name,
             montoAlquiler = if (curso is CursoAlquiler) curso.precioAlquiler.toDouble() else null,
             cuotasAlquiler = if (curso is CursoAlquiler) curso.cuotasAlquiler else null

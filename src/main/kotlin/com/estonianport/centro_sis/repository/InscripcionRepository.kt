@@ -18,4 +18,19 @@ interface InscripcionRepository : CrudRepository<Inscripcion, Long> {
     // Directamente delega la consulta a la base de datos para traer solo los pagos del alumno específico
     @Query("SELECT p FROM Inscripcion i JOIN i.pagos p WHERE i.alumno.id = :alumnoId")
     fun findAllPagosByAlumnoId(@Param("alumnoId") alumnoId: Long): List<PagoCurso>
-}
+
+    @Query("""
+        SELECT i FROM Inscripcion i
+        JOIN FETCH i.curso c
+        LEFT JOIN FETCH c.horarios
+        LEFT JOIN FETCH c.profesores p
+        LEFT JOIN FETCH p.usuario 
+        LEFT JOIN FETCH c.tiposPago
+        JOIN FETCH i.alumno a
+        JOIN FETCH a.usuario
+        LEFT JOIN FETCH i.tipoPagoSeleccionado
+        LEFT JOIN FETCH i.pagos
+        WHERE a.usuario.id = :idAlumno
+        AND i.fechaBaja IS NULL
+    """)
+    fun findInscripcionesActivasConDetallesPorAlumnoId(@Param("idAlumno") idAlumno: Long): Set<Inscripcion>}

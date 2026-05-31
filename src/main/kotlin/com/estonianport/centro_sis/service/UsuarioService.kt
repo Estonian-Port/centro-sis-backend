@@ -126,14 +126,14 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     fun verificarEmailEnUso(email: String, id: Long) {
         val usuario = usuarioRepository.getUsuarioByEmail(email)
         if (usuario != null && usuario.id != id) {
-            throw IllegalArgumentException("Ya existe un usuario registrado con el email proporcionado")
+            throw ConflictException("Ya existe un usuario registrado con el email proporcionado")
         }
     }
 
     fun verficarDniNoExiste(dni: String, id: Long) {
         val usuario = usuarioRepository.findAll().toList().find { it.dni == dni }
         if (usuario != null && usuario.id != id) {
-            throw IllegalArgumentException("Ya existe un usuario registrado con el DNI proporcionado")
+            throw ConflictException("Ya existe un usuario registrado con el DNI proporcionado")
         }
     }
 
@@ -184,7 +184,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     fun puedeEliminar(eliminadoPorId: Long) {
         val usuarioEliminador = getById(eliminadoPorId)
         if (!usuarioEliminador.tieneRol(RolType.ADMINISTRADOR) && !usuarioEliminador.tieneRol(RolType.OFICINA)) {
-            throw IllegalAccessException("El usuario no tiene permisos para eliminar usuarios")
+            throw ConflictException("El usuario no tiene permisos para eliminar usuarios")
         }
     }
 
@@ -205,13 +205,13 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     fun updatePassword(usuarioDto: UsuarioCambioPasswordRequestDto, id: Long): Usuario {
         val usuario = getById(id)
         if (!BCryptPasswordEncoder().matches(usuarioDto.passwordActual, usuario.password)) {
-            throw IllegalArgumentException("La contraseña actual es incorrecta")
+            throw ConflictException("La contraseña actual es incorrecta")
         }
         if (usuarioDto.nuevoPassword != usuarioDto.confirmacionPassword) {
-            throw IllegalArgumentException("La confirmación de la nueva contraseña no coincide")
+            throw ConflictException("La confirmación de la nueva contraseña no coincide")
         }
         if (BCryptPasswordEncoder().matches(usuarioDto.nuevoPassword, usuario.password)) {
-            throw IllegalArgumentException("La nueva contraseña no puede ser igual a la actual")
+            throw ConflictException("La nueva contraseña no puede ser igual a la actual")
         }
         usuario.password = encriptarPassword(usuarioDto.nuevoPassword)
         save(usuario)
@@ -226,18 +226,10 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return rolRepository.countDistinctUsuariosProfesorByEstado(EstadoType.ACTIVO)
     }
 
-    fun obtenerInscripcionesPorAlumno(idAlumno: Long): List<Inscripcion> {
-        val usuario = getById(idAlumno)
-        if (!usuario.tieneRol(RolType.ALUMNO)) {
-            throw IllegalArgumentException("El usuario con ID $idAlumno no es un alumno.")
-        }
-        return usuario.getRolAlumno().getInscripcionesActivas()
-    }
-
     fun obtenerCursosProfesor(idProfe: Long): List<Curso> {
         val usuario = getById(idProfe)
         if (!usuario.tieneRol(RolType.PROFESOR)) {
-            throw IllegalArgumentException("El usuario con ID $idProfe no es un profesor.")
+            throw ConflictException("El usuario con ID $idProfe no es un profesor.")
         }
         return usuario.getRolProfesor().cursosActivos()
     }

@@ -88,9 +88,12 @@ class InscripcionService {
         return inscripcion.pagos
     }
 
-    // Solución radical al problema N+1 y al desborde de memoria
     @Transactional(readOnly = true)
     fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoCurso> {
         return inscripcionRepository.findAllPagosByAlumnoId(alumnoId)
     }
-}
+
+    @Transactional(readOnly = true)
+    fun obtenerInscripcionesPorAlumno(idAlumno: Long): Set<Inscripcion> {
+        return inscripcionRepository.findInscripcionesActivasConDetallesPorAlumnoId(idAlumno)
+    }}
