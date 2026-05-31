@@ -39,16 +39,11 @@ class CursoController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> {
         val curso = cursoService.getById(id)
-        val alumnosInscriptos = curso.inscripciones
-            .filter { it.estado == EstadoType.ACTIVO }
-            .map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
 
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso obtenido correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    curso, alumnosInscriptos
-                )
+                data = CursoMapper.buildCursoResponseDto(curso)
             )
         )
     }
@@ -57,14 +52,11 @@ class CursoController(
     @GetMapping("/inscripciones/{id}")
     fun getCursoConInscripciones(@PathVariable id: Long): ResponseEntity<CustomResponse> {
         val curso = cursoService.getById(id)
-        val alumnosInscriptos = curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
 
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso obtenido correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    curso, alumnosInscriptos
-                )
+                data = CursoMapper.buildCursoResponseDto(curso)
             )
         )
     }
@@ -76,12 +68,9 @@ class CursoController(
 
         return ResponseEntity.status(200).body(
             CustomResponse(
-                message = "Curso obtenido correctamente",
+                message = "Cursos obtenidos correctamente",
                 data = cursos.map { curso ->
-                    CursoMapper.buildCursoResponseDto(
-                        curso,
-                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
-                    )
+                    CursoMapper.buildCursoResponseDto(curso)
                 }
             )
         )
@@ -91,8 +80,7 @@ class CursoController(
     @PostMapping("/alta-alquiler")
     fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerAdminRequestDto): ResponseEntity<CustomResponse> {
         val profesores = cursoRequestDto.profesoresId
-            .map { usuarioService.getById(it).getRolProfesor() }
-            .toMutableSet()
+            .map { usuarioService.getById(it).getRolProfesor() }.toMutableList()
 
         val nuevoCursoAlquiler = CursoMapper.buildCursoAlquiler(cursoRequestDto, profesores)
         val cursoAgregado = cursoService.alta(nuevoCursoAlquiler)
@@ -111,8 +99,7 @@ class CursoController(
     @PostMapping("/alta-comision")
     fun altaComision(@RequestBody cursoRequestDto: CursoComisionRequestDto): ResponseEntity<CustomResponse> {
         val profesores = cursoRequestDto.profesoresId
-            .map { usuarioService.getById(it).getRolProfesor() }
-            .toMutableSet()
+            .map { usuarioService.getById(it).getRolProfesor() }.toMutableList()
 
         val nuevoCursoComision = CursoMapper.buildCursoComision(cursoRequestDto, profesores)
         nuevoCursoComision.estadoAlta = EstadoType.ACTIVO
@@ -136,17 +123,16 @@ class CursoController(
         @RequestBody profesoresId: List<Long>
     ): ResponseEntity<CustomResponse> {
         val curso = cursoService.getById(cursoId)
-        val nuevosProfesores = profesoresId
-            .map { usuarioService.getById(it).getRolProfesor() }
+        val nuevosProfesores = usuarioService.obtenerVariosPorId(profesoresId)
+            .map { it.getRolProfesor() }.toMutableList()
 
-        usuarioService.actualizarEstadoProfesor(nuevosProfesores.toMutableSet())
+        usuarioService.actualizarEstadoProfesor(nuevosProfesores)
+        val cursoActualizado = cursoService.actualizarProfesoresDelCurso(curso, nuevosProfesores)
 
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Profesores actualizados correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    cursoService.actualizarProfesoresDelCurso(curso, nuevosProfesores),
-                    curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
+                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
             )
         )
     }
@@ -157,60 +143,61 @@ class CursoController(
         @PathVariable cursoId: Long,
         @RequestBody curso: CursoAlquilerProfeRequestDto
     ): ResponseEntity<CustomResponse> {
+
         val tiposDePago = curso.tiposPago.map {
             TipoPagoMapper.buildTipoPago(it)
         }
 
         val cursoFinalizado = cursoService.finalizarAltaCursoAlquiler(cursoId, tiposDePago, curso.recargo)
+
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Curso de alquiler finalizado correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    cursoFinalizado,
-                    cursoFinalizado.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
+                data = CursoMapper.buildCursoResponseDto(cursoFinalizado)
             )
         )
     }
 
-    //Endpoint para actualizar el nombre de un curso
+    // Endpoint para actualizar el nombre de un curso
     @PutMapping("/{cursoId}/nombre")
     fun actualizarNombreCurso(
         @PathVariable cursoId: Long,
         @RequestParam nuevoNombre: String
     ): ResponseEntity<CustomResponse> {
         val cursoActualizado = cursoService.actualizarNombreCurso(cursoId, nuevoNombre)
+
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Nombre del curso actualizado correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    cursoActualizado,
-                    cursoActualizado.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
+                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
             )
         )
     }
 
-    //Endpoint para actualizar los profesores de un curso
+    // Endpoint para actualizar los profesores de un curso
     @PutMapping("/{cursoId}/profesores")
-    fun actualizarNombreCurso(
+    fun actualizarProfesoresCurso( // Corregido el nombre de la función
         @PathVariable cursoId: Long,
         @RequestBody idsProfesores: List<Long>
     ): ResponseEntity<CustomResponse> {
-        val profesores = idsProfesores.map { usuarioService.getById(it).getRolProfesor() }
-        val cursoActualizado = cursoService.actualizarProfesores(cursoId, profesores)
 
-        usuarioService.actualizarEstadoProfesor(profesores.toMutableSet())
+        val profesores = usuarioService.obtenerVariosPorId(idsProfesores)
+            .map { it.getRolProfesor() }
+            .toMutableList()
+
+        val cursoActualizado = cursoService.actualizarProfesores(cursoId, profesores.toMutableList())
+
+        usuarioService.actualizarEstadoProfesor(profesores)
 
         return ResponseEntity.status(200).body(
             CustomResponse(
-                message = "Nombre del curso actualizado correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    cursoActualizado,
-                    cursoActualizado.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
+                message = "Profesores del curso actualizados correctamente",
+                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
             )
         )
     }
 
-    //Endpoint para editar los horarios de un curso
+    // Endpoint para editar los horarios de un curso
     @PutMapping("/{cursoId}/horarios")
     fun actualizarHorariosCurso(
         @PathVariable cursoId: Long,
@@ -220,17 +207,16 @@ class CursoController(
             cursoId,
             nuevosHorarios.map { HorarioMapper.buildHorario(it) }
         )
+
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Horarios del curso actualizados correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    cursoActualizado,
-                    cursoActualizado.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
+                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
             )
         )
     }
 
-    //Endpoint para editar montos de las modalidades de pago permitidas en un curso
+    // Endpoint para editar montos de las modalidades de pago permitidas en un curso
     @PutMapping("/{cursoId}/modalidades-pago")
     fun actualizarMontosTiposPagoCurso(
         @PathVariable cursoId: Long,
@@ -240,12 +226,11 @@ class CursoController(
             cursoId,
             montosActualizados.map { TipoPagoMapper.buildTipoPago(it) }
         )
+
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Montos de las modalidades de pago actualizados correctamente",
-                data = CursoMapper.buildCursoResponseDto(
-                    cursoActualizado,
-                    cursoActualizado.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) })
+                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
             )
         )
     }

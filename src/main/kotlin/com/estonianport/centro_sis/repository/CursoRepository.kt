@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.util.Optional
 
 @Repository
 interface CursoRepository : CrudRepository<Curso, Long> {
@@ -50,4 +51,14 @@ interface CursoRepository : CrudRepository<Curso, Long> {
     AND c.fechaBaja IS NULL
 """)
     fun findCursosActivosPorProfesorId(@Param("idProfe") idProfe: Long): List<Curso>
+
+    @Query("""
+        SELECT c FROM Curso c
+        LEFT JOIN FETCH c.horarios
+        LEFT JOIN FETCH c.profesores p
+        LEFT JOIN FETCH p.usuario
+        LEFT JOIN FETCH c.tiposPago
+        WHERE c.id = :id
+    """)
+    fun findByIdConDetalles(@Param("id") id: Long): Optional<Curso>
 }

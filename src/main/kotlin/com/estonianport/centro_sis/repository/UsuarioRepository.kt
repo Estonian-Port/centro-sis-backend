@@ -3,6 +3,7 @@ package com.estonianport.centro_sis.repository
 import com.estonianport.centro_sis.model.Usuario
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.util.*
 
@@ -97,4 +98,11 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
         AND (r.fechaBaja IS NULL OR r IS NULL)
         """)
     override fun findById(id: Long): Optional<Usuario>
-}
+
+
+    @Query("""
+        SELECT DISTINCT u FROM Usuario u
+        LEFT JOIN FETCH u.listaRol
+        WHERE u.id IN :ids
+    """)
+    fun findAllWithRolesByIds(@Param("ids") ids: List<Long>): List<Usuario>}

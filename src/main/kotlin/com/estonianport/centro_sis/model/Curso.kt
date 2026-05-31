@@ -30,7 +30,7 @@ abstract class Curso(
         joinColumns = [JoinColumn(name = "curso_id")],
         inverseJoinColumns = [JoinColumn(name = "profesor_id")]
     )
-    val profesores: MutableSet<RolProfesor> = mutableSetOf(),
+    val profesores: MutableList<RolProfesor> = mutableListOf(),
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -220,7 +220,7 @@ abstract class Curso(
 class CursoAlquiler(
     id: Long = 0,
     nombre: String,
-    profesores: MutableSet<RolProfesor> = mutableSetOf(),
+    profesores: MutableList<RolProfesor> = mutableListOf(),
     horarios: MutableList<Horario> = mutableListOf(),
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,
@@ -290,7 +290,7 @@ class CursoAlquiler(
 class CursoComision(
     id: Long = 0,
     nombre: String,
-    profesores: MutableSet<RolProfesor> = mutableSetOf(),
+    profesores: MutableList<RolProfesor> = mutableListOf(),
     horarios: MutableList<Horario> = mutableListOf(),
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,

@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.GenericServiceImpl
+import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Horario
 import com.estonianport.centro_sis.model.ParteAsistencia
@@ -11,10 +12,12 @@ import com.estonianport.centro_sis.repository.CursoRepository
 import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional // Import agregado
 import java.math.BigDecimal
 import java.time.LocalDate
 
 @Service
+@Transactional(readOnly = true)
 class CursoService : GenericServiceImpl<Curso, Long>() {
 
     @Autowired
@@ -22,9 +25,6 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     @Autowired
     lateinit var cursoRepository: CursoRepository
-
-    @Autowired
-    lateinit var inscripcionRepository: InscripcionRepository
 
     override val dao: CursoRepository
         get() = cursoRepository
@@ -34,29 +34,34 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     }
 
     fun getById(id: Long): Curso {
-        return cursoRepository.findById(id).orElseThrow { Exception("Curso no encontrado") }
+        return cursoRepository.findByIdConDetalles(id)
+            .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
     }
 
     fun getAllCursos(): List<Curso> {
         return cursoRepository.findAllOrdenados()
     }
 
+    @Transactional
     fun alta(nuevoCurso: Curso): Curso {
         return cursoRepository.save(nuevoCurso)
     }
 
+    @Transactional
     override fun delete(id: Long) {
         val curso: Curso = cursoRepository.findById(id).get()
         curso.darDeBaja()
         cursoRepository.save(curso)
     }
 
+    @Transactional
     fun actualizarProfesoresDelCurso(curso: Curso, nuevosProfesores: List<RolProfesor>): Curso {
         curso.profesores.clear()
         curso.profesores.addAll(nuevosProfesores)
         return save(curso)
     }
 
+    @Transactional
     fun finalizarAltaCursoAlquiler(
         cursoId: Long,
         tiposPago: List<TipoPago>,
@@ -71,12 +76,14 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         return save(curso)
     }
 
+    @Transactional
     fun actualizarNombreCurso(cursoId: Long, nuevoNombre: String): Curso {
         val curso = getById(cursoId)
         curso.nombre = nuevoNombre
         return save(curso)
     }
 
+    @Transactional
     fun actualizarProfesores(cursoId: Long, nuevosProfesores: List<RolProfesor>): Curso {
         val curso = getById(cursoId)
         //Agregar a los profesores que no estaban previamente asignados
@@ -95,6 +102,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         return save(curso)
     }
 
+    @Transactional
     fun actualizarHorariosCurso(cursoId: Long, nuevosHorarios: List<Horario>): Curso {
         val curso = getById(cursoId)
         curso.horarios.clear()
@@ -106,6 +114,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         return cursoRepository.findPartesAsistenciaByCursoId(cursoId)
     }
 
+    @Transactional
     fun actualizarMontosTiposPagoCurso(cursoId: Long, nuevosTiposPago: List<TipoPago>): Curso {
         val curso = getById(cursoId)
         curso.tiposPago.clear()
@@ -113,6 +122,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         return save(curso)
     }
 
+    @Transactional
     fun tomarAsistenciaAutomatica(cursoId: Long, usuarioId: Long, fecha: LocalDate?): Curso {
         val curso = getById(cursoId)
         val usuario = usuarioService.getById(usuarioId)
@@ -123,5 +133,4 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     fun obtenerCursosProfesorId(idProfe: Long): List<Curso> {
         return cursoRepository.findCursosActivosPorProfesorId(idProfe)
     }
-}
 }

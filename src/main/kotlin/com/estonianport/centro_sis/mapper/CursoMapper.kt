@@ -73,7 +73,7 @@ object CursoMapper {
 
     fun buildCursoAlquiler(
         cursoDto: CursoAlquilerAdminRequestDto,
-        profesores: MutableSet<RolProfesor> = mutableSetOf()
+        profesores: MutableList<RolProfesor> = mutableListOf()
     ): CursoAlquiler {
         return CursoAlquiler(
             id = cursoDto.id,
@@ -89,7 +89,7 @@ object CursoMapper {
 
     fun buildCursoComision(
         cursoDto: CursoComisionRequestDto,
-        profesores: MutableSet<RolProfesor> = mutableSetOf()
+        profesores: MutableList<RolProfesor> = mutableListOf()
     ): CursoComision {
         return CursoComision(
             id = cursoDto.id,

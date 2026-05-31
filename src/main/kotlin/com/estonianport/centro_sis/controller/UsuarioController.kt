@@ -521,18 +521,18 @@ class UsuarioController(
     @GetMapping("/detalle/{usuarioId}")
     fun getUsuarioById(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
         val usuario = usuarioService.findById(usuarioId) ?: throw NoSuchElementException("Usuario no encontrado")
+
         val cursosDictados = mutableListOf<CursoResponseDto>()
         val cursosInscriptos = mutableListOf<CursoAlumnoResponseDto>()
+
         if (usuario.tieneRol(RolType.PROFESOR)) {
-            val cursos = usuarioService.obtenerCursosProfesor(usuarioId)
+            val cursos = cursoService.obtenerCursosProfesorId(usuarioId)
                 .map { curso ->
-                    CursoMapper.buildCursoResponseDto(
-                        curso,
-                        curso.inscripciones.map { UsuarioMapper.buildAlumno(it.alumno.usuario) }
-                    )
+                    CursoMapper.buildCursoResponseDto(curso)
                 }
             cursosDictados.addAll(cursos)
         }
+
         if (usuario.tieneRol(RolType.ALUMNO)) {
             val inscripciones = inscripcionService.obtenerInscripcionesPorAlumno(usuarioId)
             val cursos = inscripciones.map {
@@ -540,6 +540,7 @@ class UsuarioController(
             }
             cursosInscriptos.addAll(cursos)
         }
+
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Usuario obtenido correctamente",

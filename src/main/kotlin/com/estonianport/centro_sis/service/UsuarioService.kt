@@ -22,6 +22,7 @@ import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
 import com.estonianport.centro_sis.repository.RolRepository
+import jakarta.transaction.Transactional
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.CrudRepository
 import org.springframework.http.ResponseEntity
@@ -226,14 +227,6 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         return rolRepository.countDistinctUsuariosProfesorByEstado(EstadoType.ACTIVO)
     }
 
-    fun obtenerCursosProfesor(idProfe: Long): List<Curso> {
-        val usuario = getById(idProfe)
-        if (!usuario.tieneRol(RolType.PROFESOR)) {
-            throw ConflictException("El usuario con ID $idProfe no es un profesor.")
-        }
-        return usuario.getRolProfesor().cursosActivos()
-    }
-
     fun getUsuariosPorRol(rolTipo: RolType): List<Usuario> {
         return when (rolTipo) {
             RolType.PROFESOR -> usuarioRepository.findProfesores()
@@ -267,9 +260,21 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         }
     }
 
-    fun actualizarEstadoProfesor(profesores: MutableSet<RolProfesor>) {
+    fun actualizarEstadoProfesor(profesores: MutableList<RolProfesor>) {
         profesores.forEach { it.actualizarEstado() }
         profesores.forEach { save(it.usuario) }
     }
 
+    @Transactional
+    fun obtenerVariosPorId(ids: List<Long>): List<Usuario> {
+        if (ids.isEmpty()) return emptyList()
+
+        val usuarios = usuarioRepository.findAllWithRolesByIds(ids)
+
+        if (usuarios.size != ids.distinct().size) {
+            throw NoSuchElementException("Uno o más IDs de usuario proporcionados no existen.")
+        }
+
+        return usuarios
+    }
 }
