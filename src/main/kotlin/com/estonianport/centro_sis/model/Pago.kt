@@ -105,6 +105,37 @@ class PagoCurso(
 }
 
 // ========================================
+// Pago anual de alumno al instituto (matrícula)
+// ========================================
+@Entity
+@DiscriminatorValue("MATRICULA")
+@Table(name = "pago_matricula")
+class PagoMatricula(
+    monto: BigDecimal,
+    registradoPor: Usuario,
+    fecha: LocalDateTime = LocalDateTime.now(ZoneId.of("America/Argentina/Buenos_Aires")),
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "alumno_id", nullable = false)
+    val alumno: RolAlumno,
+
+    @Column(nullable = false)
+    val anio: Int
+
+) : Pago(
+    monto = monto,
+    registradoPor = registradoPor,
+    fecha = fecha
+) {
+    // NO guardar en BD - solo código
+    @get:Transient
+    override val tipo: TipoPagoConcepto
+        get() = TipoPagoConcepto.MATRICULA
+
+    fun esDelAnio(anio: Int): Boolean = this.anio == anio
+}
+
+// ========================================
 // Pago de profesor al instituto (alquiler)
 // ========================================
 @Entity
