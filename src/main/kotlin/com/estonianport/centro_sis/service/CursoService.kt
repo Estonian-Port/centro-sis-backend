@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.service
 
+import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.model.Curso
@@ -126,7 +127,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     fun tomarAsistenciaAutomatica(cursoId: Long, usuarioId: Long, fecha: LocalDate?): Curso {
         val curso = getById(cursoId)
         val usuario = usuarioService.getById(usuarioId)
-        curso.tomarAsistencia(usuario, fecha ?: LocalDate.now())
+        curso.tomarAsistencia(usuario, fecha ?: AppTime.hoy())
         return save(curso)
     }
 

@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.model.enums.CursoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.EstadoCursoType
@@ -86,7 +87,7 @@ abstract class Curso(
         if (estadoAlta == EstadoType.BAJA) {
             return EstadoCursoType.FINALIZADO
         }
-        val hoy = LocalDate.now()
+        val hoy = AppTime.hoy()
         return when {
             hoy.isBefore(fechaInicio) -> EstadoCursoType.POR_COMENZAR
             hoy.isAfter(fechaFin) -> EstadoCursoType.FINALIZADO
@@ -145,19 +146,19 @@ abstract class Curso(
         profesor.cursos.remove(this)
     }
 
-    fun validarTomaAsistencia(fecha: LocalDate = LocalDate.now()) {
+    fun validarTomaAsistencia(fecha: LocalDate = AppTime.hoy()) {
         if (yaSeTomoAsistencia(fecha)) {
             throw IllegalStateException("Ya se tomó asistencia para el $fecha")
         }
     }
 
-    fun yaSeTomoAsistencia(fecha: LocalDate = LocalDate.now()): Boolean {
+    fun yaSeTomoAsistencia(fecha: LocalDate = AppTime.hoy()): Boolean {
         return partesDeAsistencia.any { it.fecha == fecha }
     }
 
     fun tomarAsistencia(
         tomadoPor: Usuario,
-        fecha: LocalDate = LocalDate.now()
+        fecha: LocalDate = AppTime.hoy()
     ): ParteAsistencia {
         validarTomaAsistencia(fecha)
 
@@ -208,7 +209,7 @@ abstract class Curso(
     }
 
     fun darDeBaja() {
-        fechaBaja = LocalDate.now()
+        fechaBaja = AppTime.hoy()
         estadoAlta = EstadoType.BAJA
     }
 
@@ -339,7 +340,7 @@ class CursoComision(
         val pago = PagoComision(
             curso = this,
             monto = calcularPagoProfesor(),
-            fecha = LocalDateTime.now(),
+            fecha = AppTime.ahora(),
             profesor = profesor,
             registradoPor = recibioPago
         )

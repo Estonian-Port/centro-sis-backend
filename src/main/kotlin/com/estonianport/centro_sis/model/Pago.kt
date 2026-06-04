@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.model.enums.TipoPagoConcepto
 import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
@@ -7,7 +8,6 @@ import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -58,7 +58,7 @@ abstract class Pago(
 class PagoCurso(
     monto: BigDecimal,
     registradoPor: Usuario,
-    fecha: LocalDateTime = LocalDateTime.now(ZoneId.of("America/Argentina/Buenos_Aires")),
+    fecha: LocalDateTime = AppTime.ahora(),
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inscripcion_id", nullable = false)
@@ -113,7 +113,7 @@ class PagoCurso(
 class PagoMatricula(
     monto: BigDecimal,
     registradoPor: Usuario,
-    fecha: LocalDateTime = LocalDateTime.now(ZoneId.of("America/Argentina/Buenos_Aires")),
+    fecha: LocalDateTime = AppTime.ahora(),
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id", nullable = false)

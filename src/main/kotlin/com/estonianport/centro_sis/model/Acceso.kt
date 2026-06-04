@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.model.enums.TipoAcceso
 import jakarta.persistence.*
 import java.time.LocalDate
@@ -23,7 +24,7 @@ class Acceso(
     val usuario: Usuario? = null,
 
     @Column(name = "fecha_hora", nullable = false)
-    val fechaHora: LocalDateTime = LocalDateTime.now(),
+    val fechaHora: LocalDateTime = AppTime.ahora(),
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_acceso")
