@@ -83,7 +83,7 @@ object CursoMapper {
             cuotasAlquiler = cursoDto.cuotasAlquiler,
             fechaInicio = LocalDate.parse(cursoDto.fechaInicio),
             fechaFin = LocalDate.parse(cursoDto.fechaFin),
-            horarios = cursoDto.horarios.map { HorarioMapper.buildHorario(it) }.toMutableList(),
+            horarios = cursoDto.horarios.map { HorarioMapper.buildHorario(it) }.toMutableSet(),
         )
     }
 
@@ -95,7 +95,7 @@ object CursoMapper {
             id = cursoDto.id,
             nombre = cursoDto.nombre,
             profesores = profesores,
-            horarios = cursoDto.horarios.map { HorarioMapper.buildHorario(it) }.toMutableList(),
+            horarios = cursoDto.horarios.map { HorarioMapper.buildHorario(it) }.toMutableSet(),
             tiposPago = cursoDto.tipoPago.map { TipoPagoMapper.buildTipoPago(it) }.toMutableSet(),
             recargoAtraso = cursoDto.recargo
                 ?.toBigDecimal()
