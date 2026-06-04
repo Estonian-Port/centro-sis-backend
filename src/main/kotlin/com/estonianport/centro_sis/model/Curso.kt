@@ -37,7 +37,7 @@ abstract class Curso(
         name = "curso_horarios",
         joinColumns = [JoinColumn(name = "curso_id")]
     )
-    var horarios: MutableList<Horario> = mutableListOf(),
+    var horarios: MutableSet<Horario> = mutableSetOf(),
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -221,7 +221,7 @@ class CursoAlquiler(
     id: Long = 0,
     nombre: String,
     profesores: MutableList<RolProfesor> = mutableListOf(),
-    horarios: MutableList<Horario> = mutableListOf(),
+    horarios: MutableSet<Horario> = mutableSetOf(),
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,
     fechaFin: LocalDate,
@@ -291,7 +291,7 @@ class CursoComision(
     id: Long = 0,
     nombre: String,
     profesores: MutableList<RolProfesor> = mutableListOf(),
-    horarios: MutableList<Horario> = mutableListOf(),
+    horarios: MutableSet<Horario> = mutableSetOf(),
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,
     fechaFin: LocalDate,
