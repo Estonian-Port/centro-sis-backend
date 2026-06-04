@@ -39,3 +39,11 @@ out/
 ### Kotlin ###
 .kotlin
 /.env
+
+### Nix / direnv (local dev environment) ###
+.direnv/
+.envrc
+flake.nix
+flake.lock
+result
+result-*
