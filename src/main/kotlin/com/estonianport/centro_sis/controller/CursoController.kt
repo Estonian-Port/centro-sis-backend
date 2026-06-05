@@ -10,10 +10,8 @@ import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.HorarioMapper
 import com.estonianport.centro_sis.mapper.ParteAsistenciaMapper
 import com.estonianport.centro_sis.mapper.TipoPagoMapper
-import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
-import com.estonianport.centro_sis.service.UsuarioService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -31,9 +29,7 @@ import java.time.LocalDate
 @RequestMapping("/curso")
 @CrossOrigin("*")
 class CursoController(
-    private val cursoService: CursoService,
-    private val usuarioService: UsuarioService,
-) {
+    private val cursoService: CursoService) {
 
     //Obtener un curso por id
     @GetMapping("/{id}")
@@ -79,13 +75,8 @@ class CursoController(
     //Crear un nuevo curso alquiler
     @PostMapping("/alta-alquiler")
     fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerAdminRequestDto): ResponseEntity<CustomResponse> {
-        val profesores = cursoRequestDto.profesoresId
-            .map { usuarioService.getById(it).getRolProfesor() }.toMutableList()
-
-        val nuevoCursoAlquiler = CursoMapper.buildCursoAlquiler(cursoRequestDto, profesores)
-        val cursoAgregado = cursoService.alta(nuevoCursoAlquiler)
-
-        usuarioService.actualizarEstadoProfesor(profesores)
+        // Lógica delegada al servicio para mantener transaccionalidad
+        val cursoAgregado = cursoService.crearCursoAlquiler(cursoRequestDto)
 
         return ResponseEntity.status(201).body(
             CustomResponse(
@@ -98,15 +89,7 @@ class CursoController(
     //Crear un nuevo curso comision
     @PostMapping("/alta-comision")
     fun altaComision(@RequestBody cursoRequestDto: CursoComisionRequestDto): ResponseEntity<CustomResponse> {
-        val profesores = cursoRequestDto.profesoresId
-            .map { usuarioService.getById(it).getRolProfesor() }.toMutableList()
-
-        val nuevoCursoComision = CursoMapper.buildCursoComision(cursoRequestDto, profesores)
-        nuevoCursoComision.estadoAlta = EstadoType.ACTIVO
-
-        val cursoAgregado = cursoService.alta(nuevoCursoComision)
-
-        usuarioService.actualizarEstadoProfesor(profesores)
+        val cursoAgregado = cursoService.crearCursoComision(cursoRequestDto)
 
         return ResponseEntity.status(201).body(
             CustomResponse(
@@ -122,12 +105,7 @@ class CursoController(
         @PathVariable cursoId: Long,
         @RequestBody profesoresId: List<Long>
     ): ResponseEntity<CustomResponse> {
-        val curso = cursoService.getById(cursoId)
-        val nuevosProfesores = usuarioService.obtenerVariosPorId(profesoresId)
-            .map { it.getRolProfesor() }.toMutableList()
-
-        usuarioService.actualizarEstadoProfesor(nuevosProfesores)
-        val cursoActualizado = cursoService.actualizarProfesoresDelCurso(curso, nuevosProfesores)
+        val cursoActualizado = cursoService.reemplazarProfesoresPorId(cursoId, profesoresId)
 
         return ResponseEntity.status(200).body(
             CustomResponse(
@@ -146,7 +124,7 @@ class CursoController(
 
         val tiposDePago = curso.tiposPago.map {
             TipoPagoMapper.buildTipoPago(it)
-        }
+        }.toSet()
 
         val cursoFinalizado = cursoService.finalizarAltaCursoAlquiler(cursoId, tiposDePago, curso.recargo)
 
@@ -176,18 +154,11 @@ class CursoController(
 
     // Endpoint para actualizar los profesores de un curso
     @PutMapping("/{cursoId}/profesores")
-    fun actualizarProfesoresCurso( // Corregido el nombre de la función
+    fun actualizarProfesoresCurso(
         @PathVariable cursoId: Long,
         @RequestBody idsProfesores: List<Long>
     ): ResponseEntity<CustomResponse> {
-
-        val profesores = usuarioService.obtenerVariosPorId(idsProfesores)
-            .map { it.getRolProfesor() }
-            .toMutableList()
-
-        val cursoActualizado = cursoService.actualizarProfesores(cursoId, profesores.toMutableList())
-
-        usuarioService.actualizarEstadoProfesor(profesores)
+        val cursoActualizado = cursoService.reemplazarProfesoresPorId(cursoId, idsProfesores)
 
         return ResponseEntity.status(200).body(
             CustomResponse(
@@ -205,7 +176,7 @@ class CursoController(
     ): ResponseEntity<CustomResponse> {
         val cursoActualizado = cursoService.actualizarHorariosCurso(
             cursoId,
-            nuevosHorarios.map { HorarioMapper.buildHorario(it) }
+            nuevosHorarios.map { HorarioMapper.buildHorario(it) }.toSet()
         )
 
         return ResponseEntity.status(200).body(
@@ -224,7 +195,7 @@ class CursoController(
     ): ResponseEntity<CustomResponse> {
         val cursoActualizado = cursoService.actualizarMontosTiposPagoCurso(
             cursoId,
-            montosActualizados.map { TipoPagoMapper.buildTipoPago(it) }
+            montosActualizados.map { TipoPagoMapper.buildTipoPago(it) }.toSet()
         )
 
         return ResponseEntity.status(200).body(
