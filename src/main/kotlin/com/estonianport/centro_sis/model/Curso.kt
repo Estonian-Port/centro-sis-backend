@@ -31,7 +31,7 @@ abstract class Curso(
         joinColumns = [JoinColumn(name = "curso_id")],
         inverseJoinColumns = [JoinColumn(name = "profesor_id")]
     )
-    val profesores: MutableList<RolProfesor> = mutableListOf(),
+    val profesores: MutableSet<RolProfesor> = mutableSetOf(),
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -156,8 +156,10 @@ abstract class Curso(
         return partesDeAsistencia.any { it.fecha == fecha }
     }
 
+    // Optimización: Recibe los IDs de los alumnos presentes para evitar N+1 en la entidad
     fun tomarAsistencia(
         tomadoPor: Usuario,
+        alumnosPresentesIds: Set<Long>,
         fecha: LocalDate = AppTime.hoy()
     ): ParteAsistencia {
         validarTomaAsistencia(fecha)
@@ -172,14 +174,12 @@ abstract class Curso(
         // Obtener alumnos activos del curso
         val alumnosActivos = getInscripcionesActivas().map { it.alumno }
 
-        // Crear un registro por cada alumno
+        // Crear un registro por cada alumno sin llamar a métodos externos/DB
         alumnosActivos.forEach { alumno ->
-            val tuvoAcceso = alumno.usuario.tuvoAccesoEnFecha(fecha)
-
             val registro = RegistroAsistencia(
                 parteAsistencia = parte,
                 alumno = alumno,
-                presente = tuvoAcceso
+                presente = alumnosPresentesIds.contains(alumno.id)
             )
 
             parte.registros.add(registro)
@@ -221,8 +221,8 @@ abstract class Curso(
 class CursoAlquiler(
     id: Long = 0,
     nombre: String,
-    profesores: MutableList<RolProfesor> = mutableListOf(),
-    horarios: MutableSet<Horario> = mutableSetOf(),
+    profesores: MutableSet<RolProfesor> = mutableSetOf(),
+    horarios: MutableSet<Horario> = mutableSetOf(), // Modificado a Set
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,
     fechaFin: LocalDate,
@@ -291,8 +291,8 @@ class CursoAlquiler(
 class CursoComision(
     id: Long = 0,
     nombre: String,
-    profesores: MutableList<RolProfesor> = mutableListOf(),
-    horarios: MutableSet<Horario> = mutableSetOf(),
+    profesores: MutableSet<RolProfesor> = mutableSetOf(),
+    horarios: MutableSet<Horario> = mutableSetOf(), // Modificado a Set
     tiposPago: MutableSet<TipoPago> = mutableSetOf(),
     fechaInicio: LocalDate,
     fechaFin: LocalDate,

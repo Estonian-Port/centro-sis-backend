@@ -260,7 +260,7 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         }
     }
 
-    fun actualizarEstadoProfesor(profesores: MutableList<RolProfesor>) {
+    fun actualizarEstadoProfesor(profesores: MutableSet<RolProfesor>) {
         profesores.forEach { it.actualizarEstado() }
         profesores.forEach { save(it.usuario) }
     }

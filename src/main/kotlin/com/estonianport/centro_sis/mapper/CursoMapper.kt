@@ -26,7 +26,6 @@ object CursoMapper {
             id = curso.id,
             nombre = curso.nombre,
             horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
-            // Extraemos los alumnos directamente de la lista filtrada para no iterar dos veces
             alumnosInscriptos = inscripcionesActivas.map { UsuarioMapper.buildAlumno(it.alumno.usuario) },
             fechaInicio = curso.fechaInicio.toString(),
             fechaFin = curso.fechaFin.toString(),
@@ -34,7 +33,6 @@ object CursoMapper {
             estadoAlta = curso.estadoAlta.name,
             profesores = curso.profesores.map { UsuarioMapper.buildUsuarioResponseDto(it.usuario) }.toSet(),
             tiposPago = curso.tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
-            // Reutilizamos la lista que ya filtramos y ordenamos
             inscripciones = inscripcionesActivas.map { InscripcionMapper.buildInscripcionResponseDto(it) },
             recargoPorAtraso = curso.recargoAtraso.minus(BigDecimal.ONE).multiply(BigDecimal(100)).toDouble(),
             tipoCurso = curso.tipoCurso.name,
@@ -73,7 +71,7 @@ object CursoMapper {
 
     fun buildCursoAlquiler(
         cursoDto: CursoAlquilerAdminRequestDto,
-        profesores: MutableList<RolProfesor> = mutableListOf()
+        profesores: MutableSet<RolProfesor> = mutableSetOf()
     ): CursoAlquiler {
         return CursoAlquiler(
             id = cursoDto.id,
@@ -89,7 +87,7 @@ object CursoMapper {
 
     fun buildCursoComision(
         cursoDto: CursoComisionRequestDto,
-        profesores: MutableList<RolProfesor> = mutableListOf()
+        profesores: MutableSet<RolProfesor> = mutableSetOf()
     ): CursoComision {
         return CursoComision(
             id = cursoDto.id,
