@@ -13,8 +13,8 @@ data class PagoDTO(
     val observaciones: String?,
     val tipo: TipoPagoConcepto,
 
-    // Información del curso
-    val cursoId: Long,
+    // Información del curso (null para matrícula, que no está atada a un curso)
+    val cursoId: Long?,
     val cursoNombre: String,
 
     // Información del usuario que paga (puede ser alumno o profesor)
@@ -112,4 +112,44 @@ data class PagoComisionPreviewDTO(
 data class RegistrarPagoComisionRequest(
     val cursoId: Long,
     val profesorId: Long
+)
+
+// ========================================
+// MATRÍCULA (pago anual del alumno al instituto)
+// ========================================
+
+// Preview / registrar matrícula. Si anio es null se usa el año actual.
+data class PagoMatriculaRequest(
+    val alumnoId: Long,
+    val anio: Int? = null
+)
+
+data class PagoMatriculaPreviewDTO(
+    val alumnoId: Long,
+    val alumnoNombre: String,
+    val anio: Int,
+    val monto: BigDecimal?,        // null si no hay monto configurado para el año
+    val yaPago: Boolean,           // ya tiene matrícula activa para ese año
+    val puedeRegistrar: Boolean,
+    val mensajeError: String? = null
+)
+
+// Estado de la matrícula de un alumno para un año (pagada / pendiente)
+data class EstadoMatriculaDTO(
+    val alumnoId: Long,
+    val anio: Int,
+    val pagada: Boolean,
+    val monto: BigDecimal?,        // monto pagado si está pagada, o el configurado si no
+    val fechaPago: LocalDate?
+)
+
+// Configuración del monto anual de la matrícula
+data class ConfiguracionMatriculaDTO(
+    val anio: Int,
+    val monto: BigDecimal?         // null si todavía no se configuró para ese año
+)
+
+data class ConfiguracionMatriculaRequest(
+    val anio: Int,
+    val monto: BigDecimal
 )

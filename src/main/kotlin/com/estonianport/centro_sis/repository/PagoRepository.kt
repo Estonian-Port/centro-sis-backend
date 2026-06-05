@@ -31,13 +31,21 @@ interface PagoRepository : JpaRepository<Pago, Long> {
                      OR pc.inscripcion.alumno.usuario.apellido LIKE %:search%)
             )))
             OR
-            (TYPE(p) = com.estonianport.centro_sis.model.PagoAlquiler 
+            (TYPE(p) = com.estonianport.centro_sis.model.PagoAlquiler
              AND (:search IS NULL OR EXISTS (
-                SELECT 1 FROM PagoAlquiler pa 
+                SELECT 1 FROM PagoAlquiler pa
                 WHERE pa.id = p.id
                 AND (pa.curso.nombre LIKE %:search%
                      OR pa.profesor.usuario.nombre LIKE %:search%
                      OR pa.profesor.usuario.apellido LIKE %:search%)
+            )))
+            OR
+            (TYPE(p) = com.estonianport.centro_sis.model.PagoMatricula
+             AND (:search IS NULL OR EXISTS (
+                SELECT 1 FROM PagoMatricula pm
+                WHERE pm.id = p.id
+                AND (pm.alumno.usuario.nombre LIKE %:search%
+                     OR pm.alumno.usuario.apellido LIKE %:search%)
             )))
         )
         AND (:tipos IS NULL OR TYPE(p) IN :tipos)
@@ -158,17 +166,27 @@ interface PagoRepository : JpaRepository<Pago, Long> {
     @Query("""
         SELECT p.id FROM Pago p
         WHERE p.fechaBaja IS NULL
-        AND TYPE(p) = com.estonianport.centro_sis.model.PagoCurso
-        AND EXISTS (
-            SELECT 1 FROM PagoCurso pc
-            WHERE pc.id = p.id
-            AND pc.inscripcion.alumno.id = :alumnoId
+        AND (
+            (TYPE(p) = com.estonianport.centro_sis.model.PagoCurso
+             AND EXISTS (
+                SELECT 1 FROM PagoCurso pc
+                WHERE pc.id = p.id
+                AND pc.inscripcion.alumno.id = :alumnoId
+             )
+             AND (:search IS NULL OR EXISTS (
+                SELECT 1 FROM PagoCurso pc
+                WHERE pc.id = p.id
+                AND pc.inscripcion.curso.nombre LIKE %:search%
+             )))
+            OR
+            (TYPE(p) = com.estonianport.centro_sis.model.PagoMatricula
+             AND :search IS NULL
+             AND EXISTS (
+                SELECT 1 FROM PagoMatricula pm
+                WHERE pm.id = p.id
+                AND pm.alumno.id = :alumnoId
+             ))
         )
-        AND (:search IS NULL OR EXISTS (
-            SELECT 1 FROM PagoCurso pc
-            WHERE pc.id = p.id
-            AND pc.inscripcion.curso.nombre LIKE %:search%
-        ))
         AND (:meses IS NULL OR EXTRACT(MONTH FROM p.fecha) IN :meses)
     """)
     fun findRealizadosIdsForAlumno(

@@ -37,6 +37,7 @@ data class ResumenFinancieroDTO(
 data class DetalleIngresosDTO(
     val pagosAlumnos: ConceptoFinancieroDTO,
     val alquileresProfesores: ConceptoFinancieroDTO,
+    val matriculasAlumnos: ConceptoFinancieroDTO,
     val total: BigDecimal
 )
 
@@ -79,7 +80,8 @@ enum class TipoMovimiento {
 enum class CategoriaMovimiento {
     PAGO_ALUMNO,
     ALQUILER_PROFESOR,
-    COMISION_PROFESOR
+    COMISION_PROFESOR,
+    MATRICULA_ALUMNO
 }
 
 // ============================================

@@ -13,11 +13,13 @@ import com.estonianport.centro_sis.model.CursoComision
 import com.estonianport.centro_sis.model.PagoAlquiler
 import com.estonianport.centro_sis.model.PagoComision
 import com.estonianport.centro_sis.model.PagoCurso
+import com.estonianport.centro_sis.model.PagoMatricula
 import com.estonianport.centro_sis.model.enums.CursoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.repository.PagoAlquilerRepository
 import com.estonianport.centro_sis.repository.PagoComisionRepository
 import com.estonianport.centro_sis.repository.PagoCursoRepository
+import com.estonianport.centro_sis.repository.PagoMatriculaRepository
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -32,6 +34,7 @@ class ReporteFinancieroService(
     private val pagoCursoRepository: PagoCursoRepository,
     private val pagoAlquilerRepository: PagoAlquilerRepository,
     private val pagoComisionRepository: PagoComisionRepository,
+    private val pagoMatriculaRepository: PagoMatriculaRepository,
     private val usuarioRepository: UsuarioRepository
 ) {
 
@@ -125,8 +128,13 @@ class ReporteFinancieroService(
         val totalAlquileres = pagosAlquiler.sumOf { it.monto }
         val cantidadAlquileres = pagosAlquiler.size
 
+        // 3. Matrículas pagadas por alumnos (van al instituto)
+        val pagosMatricula = pagoMatriculaRepository.findByFechaBetweenAndFechaBajaIsNull(desde, hasta)
+        val totalMatriculas = pagosMatricula.sumOf { it.monto }
+        val cantidadMatriculas = pagosMatricula.size
+
         // Total ingresos
-        val totalIngresos = totalPagosAlumnos + totalAlquileres
+        val totalIngresos = totalPagosAlumnos + totalAlquileres + totalMatriculas
 
         return DetalleIngresosDTO(
             pagosAlumnos = ConceptoFinancieroDTO(
@@ -138,6 +146,11 @@ class ReporteFinancieroService(
                 concepto = "Alquileres de Profesores",
                 cantidad = cantidadAlquileres,
                 subtotal = totalAlquileres
+            ),
+            matriculasAlumnos = ConceptoFinancieroDTO(
+                concepto = "Matrículas de Alumnos",
+                cantidad = cantidadMatriculas,
+                subtotal = totalMatriculas
             ),
             total = totalIngresos
         )
@@ -191,6 +204,12 @@ class ReporteFinancieroService(
             movimientos.add(mapearPagoComision(pago))
         }
 
+        // 4. Matrículas
+        val pagosMatricula = pagoMatriculaRepository.findByFechaBetweenAndFechaBajaIsNull(desde, hasta)
+        pagosMatricula.forEach { pago ->
+            movimientos.add(mapearPagoMatricula(pago))
+        }
+
         // Ordenar por fecha descendente
         return movimientos
             .sortedByDescending { it.fecha }
@@ -229,6 +248,22 @@ class ReporteFinancieroService(
             alumno = null,
             profesor = "${profesor.nombre} ${profesor.apellido}",
             curso = curso.nombre
+        )
+    }
+
+    private fun mapearPagoMatricula(pago: PagoMatricula): MovimientoFinancieroDTO {
+        val alumno = pago.alumno.usuario
+
+        return MovimientoFinancieroDTO(
+            id = pago.id,
+            fecha = pago.fecha.toLocalDate(),
+            tipo = TipoMovimiento.INGRESO,
+            categoria = CategoriaMovimiento.MATRICULA_ALUMNO,
+            concepto = "Matrícula ${pago.anio} - ${alumno.nombre} ${alumno.apellido}",
+            monto = pago.monto,
+            alumno = "${alumno.nombre} ${alumno.apellido}",
+            profesor = null,
+            curso = null
         )
     }
 

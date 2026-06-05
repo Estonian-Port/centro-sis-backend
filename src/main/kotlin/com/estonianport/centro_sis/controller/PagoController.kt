@@ -145,6 +145,65 @@ class PagoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(pago)
     }
 
+    // ========================================
+    // MATRÍCULA (pago anual del alumno al instituto)
+    // ========================================
+
+    // Preview de matrícula (monto + si ya pagó)
+    @PostMapping("/matricula/preview/{idUsuario}")
+    fun calcularPreviewMatricula(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: PagoMatriculaRequest
+    ): ResponseEntity<PagoMatriculaPreviewDTO> {
+        val preview = pagoService.calcularPreviewMatricula(
+            usuarioId = idUsuario,
+            alumnoId = request.alumnoId,
+            anio = request.anio
+        )
+        return ResponseEntity.ok(preview)
+    }
+
+    // Registrar pago de matrícula (alumno → instituto)
+    @PostMapping("/matricula/{idUsuario}")
+    fun registrarPagoMatricula(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: PagoMatriculaRequest
+    ): ResponseEntity<PagoDTO> {
+        val pago = pagoService.registrarPagoMatricula(
+            usuarioId = idUsuario,
+            alumnoId = request.alumnoId,
+            anio = request.anio
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(pago)
+    }
+
+    // Estado de la matrícula de un alumno (pagada / pendiente) para un año
+    @GetMapping("/matricula/estado/{alumnoId}")
+    fun getEstadoMatricula(
+        @PathVariable alumnoId: Long,
+        @RequestParam(required = false) anio: Int?
+    ): ResponseEntity<EstadoMatriculaDTO> {
+        return ResponseEntity.ok(pagoService.getEstadoMatricula(alumnoId, anio))
+    }
+
+    // Consultar el monto de matrícula configurado para un año
+    @GetMapping("/matricula/config")
+    fun getConfiguracionMatricula(
+        @RequestParam(required = false) anio: Int?
+    ): ResponseEntity<ConfiguracionMatriculaDTO> {
+        val anioObjetivo = anio ?: java.time.LocalDate.now().year
+        return ResponseEntity.ok(pagoService.getConfiguracionMatricula(anioObjetivo))
+    }
+
+    // Configurar el monto de matrícula de un año (solo Admin)
+    @PostMapping("/matricula/config/{idUsuario}")
+    fun setConfiguracionMatricula(
+        @PathVariable idUsuario: Long,
+        @RequestBody request: ConfiguracionMatriculaRequest
+    ): ResponseEntity<ConfiguracionMatriculaDTO> {
+        return ResponseEntity.ok(pagoService.setConfiguracionMatricula(idUsuario, request))
+    }
+
     // Anular un pago (solo Admin)
     @PostMapping("/{pagoId}/anular/{idUsuario}")
     fun anularPago(

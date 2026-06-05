@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.model
 
+import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
@@ -64,7 +65,7 @@ class Usuario(
     var password: String? = null
 
     @Column(nullable = false)
-    var fechaAlta: LocalDate = LocalDate.now()
+    var fechaAlta: LocalDate = AppTime.hoy()
 
     @Column
     var fechaBaja: LocalDate? = null
@@ -73,7 +74,7 @@ class Usuario(
     var ultimoIngresoAlSistema: LocalDateTime? = null
 
     fun registrarIngresoAlSistema() {
-        ultimoIngresoAlSistema = LocalDateTime.now()
+        ultimoIngresoAlSistema = AppTime.ahora()
     }
 
     fun confirmarPrimerLogin() {
@@ -92,7 +93,7 @@ class Usuario(
     }
 
     fun esMenorDeEdad(): Boolean {
-        return fechaNacimiento.plusYears(18).isAfter(LocalDate.now())
+        return fechaNacimiento.plusYears(18).isAfter(AppTime.hoy())
     }
 
     fun nombreCompleto(): String = "$nombre $apellido"
@@ -127,7 +128,7 @@ class Usuario(
                 RolType.PORTERIA -> it is RolPorteria
             }
         }
-        rolAEliminar.fechaBaja = LocalDate.now()
+        rolAEliminar.fechaBaja = AppTime.hoy()
         listaRol.remove(rolAEliminar)
     }
 
@@ -174,7 +175,7 @@ class Usuario(
         return listaRol.any { it is RolPorteria && estado === EstadoType.ACTIVO }
     }
 
-    fun darDeBaja(fecha: LocalDate = LocalDate.now()) {
+    fun darDeBaja(fecha: LocalDate = AppTime.hoy()) {
         this.fechaBaja = fecha
         this.estado = EstadoType.BAJA
         listaRol.forEach { it.fechaBaja = fecha }
@@ -202,7 +203,7 @@ class Usuario(
     }
 
     fun validarAcceso() {
-        val hoy = LocalDate.now()
+        val hoy = AppTime.hoy()
         if (tuvoAccesoEnFecha(hoy)) {
             throw IllegalStateException("El usuario ya ha registrado un acceso hoy")
         }

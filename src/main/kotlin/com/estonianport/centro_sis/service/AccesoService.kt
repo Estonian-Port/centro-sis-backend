@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.service
 
+import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.dto.AccesoDTO
 import com.estonianport.centro_sis.dto.AlertaPagosDTO
 import com.estonianport.centro_sis.dto.CursoAtrasoDTO
@@ -60,15 +61,15 @@ class AccesoService(
             .maxByOrNull { it.fechaHora }
 
         if (ultimoAcceso != null) {
-            val hoy = LocalDateTime.now()
-            if (ultimoAcceso.fechaHora.dayOfWeek == hoy.dayOfWeek) {
+            val hoy = AppTime.hoy()
+            if (ultimoAcceso.fechaHora.toLocalDate() == hoy) {
                 throw IllegalArgumentException("El usuario ${usuario.nombreCompleto()} ya registró un acceso hoy")
             }
         }
 
         val acceso = Acceso(
             usuario = usuario,
-            fechaHora = LocalDateTime.now(),
+            fechaHora = AppTime.ahora(),
             tipoAcceso = TipoAcceso.QR  // Siempre QR
         )
 
@@ -151,7 +152,7 @@ class AccesoService(
 
     @Transactional(readOnly = true)
     fun getAccesosPorUsuario(usuarioId: Long, dias: Int): List<AccesoDTO> {
-        val fechaLimite = LocalDateTime.now().minusDays(dias.toLong())
+        val fechaLimite = AppTime.ahora().minusDays(dias.toLong())
 
         return accesoRepository.findAll()
             .filter {
@@ -168,7 +169,7 @@ class AccesoService(
 
     @Transactional(readOnly = true)
     fun getEstadisticasAccesos(idPortero : Long? = null): EstadisticasAccesoDTO {
-        val ahora = LocalDateTime.now()
+        val ahora = AppTime.ahora()
         val hoy = ahora.toLocalDate().atStartOfDay()
         val ultimaSemana = ahora.minusDays(7)
         val inicioMes = ahora.withDayOfMonth(1).toLocalDate().atStartOfDay()
@@ -314,7 +315,7 @@ class AccesoService(
         // Crear el acceso
         val acceso = Acceso(
             usuario = usuario,
-            fechaHora = LocalDateTime.now(),
+            fechaHora = AppTime.ahora(),
             tipoAcceso = TipoAcceso.MANUAL
         )
 
@@ -346,7 +347,7 @@ class AccesoService(
         }
 
         // 3. Verificar si ya hay un acceso de este invitado hoy
-        val hoy = LocalDate.now()
+        val hoy = AppTime.hoy()
         val accesoHoy = accesoRepository.findAll().firstOrNull {
             it.invitadoDni == dni &&
                     it.fechaHora.toLocalDate() == hoy
@@ -361,7 +362,7 @@ class AccesoService(
         // 4. Crear acceso de invitado
         val acceso = Acceso(
             usuario = null,
-            fechaHora = LocalDateTime.now(),
+            fechaHora = AppTime.ahora(),
             tipoAcceso = TipoAcceso.INVITADO,
             invitadoDni = dni,
             invitadoNombre = nombre
@@ -401,7 +402,7 @@ class AccesoService(
         // Crear el acceso
         val acceso = Acceso(
             usuario = usuario,
-            fechaHora = LocalDateTime.now(),
+            fechaHora = AppTime.ahora(),
             tipoAcceso = TipoAcceso.TURNO
         )
 

@@ -24,7 +24,9 @@ class PagoService(
     private val pagoRepository: PagoRepository,
     private val usuarioRepository: UsuarioRepository,
     private val inscripcionRepository: InscripcionRepository,
-    private val cursoRepository: CursoRepository
+    private val cursoRepository: CursoRepository,
+    private val pagoMatriculaRepository: PagoMatriculaRepository,
+    private val configuracionMatriculaRepository: ConfiguracionMatriculaRepository
 ) {
 
     // ========================================
@@ -52,6 +54,7 @@ class PagoService(
                 TipoPagoConcepto.CURSO -> PagoCurso::class.java
                 TipoPagoConcepto.ALQUILER -> PagoAlquiler::class.java
                 TipoPagoConcepto.COMISION -> PagoComision::class.java
+                TipoPagoConcepto.MATRICULA -> PagoMatricula::class.java
             }
         }
 
@@ -418,6 +421,117 @@ class PagoService(
     }
 
     // ========================================
+    // MATRÍCULA (pago anual del alumno al instituto)
+    // ========================================
+
+    @Transactional(readOnly = true)
+    fun getConfiguracionMatricula(anio: Int): ConfiguracionMatriculaDTO {
+        val config = configuracionMatriculaRepository.findByAnio(anio)
+        return ConfiguracionMatriculaDTO(anio = anio, monto = config?.monto)
+    }
+
+    @Transactional
+    fun setConfiguracionMatricula(usuarioId: Long, request: ConfiguracionMatriculaRequest): ConfiguracionMatriculaDTO {
+        val usuario = usuarioRepository.findById(usuarioId)
+            .orElseThrow { IllegalArgumentException("Usuario no encontrado") }
+        require(usuario.tieneRol(RolType.ADMINISTRADOR)) {
+            "Solo los administradores pueden configurar el monto de la matrícula"
+        }
+        require(request.monto > BigDecimal.ZERO) { "El monto de la matrícula debe ser mayor a cero" }
+
+        val config = configuracionMatriculaRepository.findByAnio(request.anio)
+        val guardada = if (config != null) {
+            config.monto = request.monto
+            configuracionMatriculaRepository.save(config)
+        } else {
+            configuracionMatriculaRepository.save(
+                ConfiguracionMatricula(anio = request.anio, monto = request.monto)
+            )
+        }
+
+        return ConfiguracionMatriculaDTO(anio = guardada.anio, monto = guardada.monto)
+    }
+
+    @Transactional(readOnly = true)
+    fun getEstadoMatricula(alumnoId: Long, anio: Int?): EstadoMatriculaDTO {
+        val anioObjetivo = anio ?: LocalDate.now().year
+        val pago = pagoMatriculaRepository.findFirstByAlumnoIdAndAnioAndFechaBajaIsNull(alumnoId, anioObjetivo)
+        val montoConfigurado = configuracionMatriculaRepository.findByAnio(anioObjetivo)?.monto
+
+        return EstadoMatriculaDTO(
+            alumnoId = alumnoId,
+            anio = anioObjetivo,
+            pagada = pago != null,
+            monto = pago?.monto ?: montoConfigurado,
+            fechaPago = pago?.fecha?.toLocalDate()
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun calcularPreviewMatricula(usuarioId: Long, alumnoId: Long, anio: Int?): PagoMatriculaPreviewDTO {
+        val usuario = usuarioRepository.findById(usuarioId)
+            .orElseThrow { IllegalArgumentException("Usuario no encontrado") }
+        require(usuario.tieneRol(RolType.ADMINISTRADOR) || usuario.tieneRol(RolType.OFICINA)) {
+            "Solo administradores u oficina pueden ver previews de matrícula"
+        }
+
+        val anioObjetivo = anio ?: LocalDate.now().year
+        val alumno = usuarioRepository.findById(alumnoId)
+            .orElseThrow { IllegalArgumentException("Alumno no encontrado") }
+        val rolAlumno = alumno.getRolAlumno()
+
+        val monto = configuracionMatriculaRepository.findByAnio(anioObjetivo)?.monto
+        val yaPago = pagoMatriculaRepository.existsByAlumnoIdAndAnioAndFechaBajaIsNull(rolAlumno.id, anioObjetivo)
+
+        val mensajeError = when {
+            monto == null -> "No hay un monto de matrícula configurado para el año $anioObjetivo"
+            yaPago -> "El alumno ya pagó la matrícula del año $anioObjetivo"
+            else -> null
+        }
+
+        return PagoMatriculaPreviewDTO(
+            alumnoId = rolAlumno.id,
+            alumnoNombre = alumno.nombreCompleto(),
+            anio = anioObjetivo,
+            monto = monto,
+            yaPago = yaPago,
+            puedeRegistrar = monto != null && !yaPago,
+            mensajeError = mensajeError
+        )
+    }
+
+    @Transactional
+    fun registrarPagoMatricula(usuarioId: Long, alumnoId: Long, anio: Int?): PagoDTO {
+        val usuario = usuarioRepository.findById(usuarioId)
+            .orElseThrow { IllegalArgumentException("Usuario no encontrado") }
+        require(usuario.tieneRol(RolType.ADMINISTRADOR) || usuario.tieneRol(RolType.OFICINA)) {
+            "Solo administradores u oficina pueden registrar pagos de matrícula"
+        }
+
+        val anioObjetivo = anio ?: LocalDate.now().year
+        val alumno = usuarioRepository.findById(alumnoId)
+            .orElseThrow { IllegalArgumentException("Alumno no encontrado") }
+        val rolAlumno = alumno.getRolAlumno()
+
+        val monto = configuracionMatriculaRepository.findByAnio(anioObjetivo)?.monto
+            ?: throw IllegalStateException("No hay un monto de matrícula configurado para el año $anioObjetivo")
+
+        require(!pagoMatriculaRepository.existsByAlumnoIdAndAnioAndFechaBajaIsNull(rolAlumno.id, anioObjetivo)) {
+            "El alumno ya pagó la matrícula del año $anioObjetivo"
+        }
+
+        val pago = PagoMatricula(
+            monto = monto,
+            registradoPor = usuario,
+            alumno = rolAlumno,
+            anio = anioObjetivo
+        )
+
+        val pagoGuardado = pagoRepository.save(pago)
+        return mapPagoToDTO(pagoGuardado)
+    }
+
+    // ========================================
     // MÉTODOS PRIVADOS AUXILIARES
     // ========================================
 
@@ -488,6 +602,7 @@ class PagoService(
                 is PagoCurso -> TipoPagoConcepto.CURSO
                 is PagoAlquiler -> TipoPagoConcepto.ALQUILER
                 is PagoComision -> TipoPagoConcepto.COMISION
+                is PagoMatricula -> TipoPagoConcepto.MATRICULA
                 else -> throw IllegalArgumentException("Tipo de pago desconocido")
             }
         }
@@ -543,6 +658,22 @@ class PagoService(
                 usuarioRecibeId = pago.profesor.usuario.id,
                 usuarioRecibeNombre = pago.profesor.usuario.nombre,
                 usuarioRecibeApellido = pago.profesor.usuario.apellido
+            )
+            is PagoMatricula -> PagoDTO(
+                id = pago.id,
+                monto = pago.monto,
+                fecha = pago.fecha.toLocalDate(),
+                fechaBaja = pago.fechaBaja,
+                observaciones = pago.observaciones,
+                tipo = tipoPago,
+                cursoId = null,
+                cursoNombre = "Matrícula ${pago.anio}",
+                usuarioPagaId = pago.alumno.usuario.id,
+                usuarioPagaNombre = pago.alumno.usuario.nombre,
+                usuarioPagaApellido = pago.alumno.usuario.apellido,
+                usuarioRecibeId = null,
+                usuarioRecibeNombre = "Instituto",
+                usuarioRecibeApellido = null
             )
             else -> throw IllegalArgumentException("Tipo de pago desconocido")
         }

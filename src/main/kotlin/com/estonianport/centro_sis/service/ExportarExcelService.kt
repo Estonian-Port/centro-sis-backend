@@ -147,6 +147,14 @@ class ExportarExcelService(
         alquileresCell.setCellValue(reporte.detalleIngresos.alquileresProfesores.subtotal.toDouble())
         alquileresCell.cellStyle = moneyStyle
 
+        // Matrículas
+        val matriculasRow = sheet.createRow(rowNum++)
+        matriculasRow.createCell(0).setCellValue(reporte.detalleIngresos.matriculasAlumnos.concepto)
+        matriculasRow.createCell(1).setCellValue(reporte.detalleIngresos.matriculasAlumnos.cantidad.toDouble())
+        val matriculasCell = matriculasRow.createCell(2)
+        matriculasCell.setCellValue(reporte.detalleIngresos.matriculasAlumnos.subtotal.toDouble())
+        matriculasCell.cellStyle = moneyStyle
+
         // Total Ingresos
         val totalIngresosRow = sheet.createRow(rowNum++)
         totalIngresosRow.createCell(0).setCellValue("TOTAL INGRESOS")

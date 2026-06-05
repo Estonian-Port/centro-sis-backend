@@ -20,7 +20,11 @@ RUN ./gradlew bootJar --no-daemon
 # ================================
 FROM eclipse-temurin:17-jre-alpine
 
-# Configuración de zona horaria para registros y schedulers
+# Configuración de zona horaria para registros y schedulers.
+# Alpine no incluye la base de datos de zonas horarias: sin el paquete `tzdata`
+# el `ENV TZ` no tiene efecto y la JVM cae a UTC.
+RUN apk add --no-cache tzdata
+
 ENV APP_HOME=/app
 ENV TZ=America/Argentina/Buenos_Aires
 
