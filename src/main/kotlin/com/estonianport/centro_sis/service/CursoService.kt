@@ -5,6 +5,7 @@ import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
+import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Horario
@@ -38,11 +39,18 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
     fun countCursos(): Long = cursoRepository.countByFechaBajaIsNull()
 
     @Cacheable(value = ["cursos:lista"], key = "'todos'")
-    fun getAllCursos(): List<Curso> {
-        val cursos = cursoRepository.findAllOrdenadosConDetalles()
-        if (cursos.isEmpty()) return cursos
+    fun getAllCursosResponse(): List<CursoResponseDto> {
+        // 1. Buscas las entidades
+        val cursos = cursoRepository.findAllOrdenadosConDetalles().distinct()
+        if (cursos.isEmpty()) return emptyList()
+
+        // 2. Fetch de relaciones
         cursoRepository.findCursosConInscripcionesByIdsIn(cursos.map { it.id })
-        return cursos
+
+        // 3. Mapeas a DTO ANTES de retornar y guardar en caché
+        return cursos.map { curso ->
+            CursoMapper.buildCursoResponseDto(curso)
+        }
     }
 
     @Cacheable(value = ["cursos:detalle"], key = "#id")

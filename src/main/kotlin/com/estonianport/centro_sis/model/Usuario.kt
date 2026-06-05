@@ -4,6 +4,7 @@ import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
@@ -36,6 +37,7 @@ class Usuario(
     @JdbcTypeCode(SqlTypes.VARCHAR)
     var dni: String,
 
+    @JsonIgnore
     @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     var listaRol: MutableSet<Rol> = mutableSetOf(),
 

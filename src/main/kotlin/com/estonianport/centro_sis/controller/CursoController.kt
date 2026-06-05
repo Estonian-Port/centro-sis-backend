@@ -60,14 +60,12 @@ class CursoController(
     //Obtener todos los cursos activos
     @GetMapping("/activos")
     fun get(): ResponseEntity<CustomResponse> {
-        val cursos = cursoService.getAllCursos()
+        val cursosDto = cursoService.getAllCursosResponse()
 
         return ResponseEntity.status(200).body(
             CustomResponse(
                 message = "Cursos obtenidos correctamente",
-                data = cursos.map { curso ->
-                    CursoMapper.buildCursoResponseDto(curso)
-                }
+                data = cursosDto
             )
         )
     }

@@ -22,7 +22,7 @@ interface CursoRepository : CrudRepository<Curso, Long> {
     fun findAllConDetalles(): List<Curso>
 
     @Query("""
-    SELECT DISTINCT c FROM Curso c
+    SELECT c FROM Curso c
     LEFT JOIN FETCH c.profesores p
     LEFT JOIN FETCH p.usuario
     ORDER BY
@@ -73,7 +73,6 @@ interface CursoRepository : CrudRepository<Curso, Long> {
     """)
     fun findCursosActivosPorProfesorId(@Param("idProfe") idProfe: Long): List<Curso>
 
-    // Conservando tu firma para este query en particular
     @Query("""
         SELECT c FROM Curso c
         LEFT JOIN FETCH c.horarios
