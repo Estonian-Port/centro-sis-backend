@@ -1,5 +1,7 @@
 package com.estonianport.centro_sis.dto.response
 
+import java.io.Serializable
+
 data class InscripcionResponseDto(
     val id: Long,
     val alumno: AlumnoResponseDto,
@@ -11,4 +13,4 @@ data class InscripcionResponseDto(
     val puntos: Int,
     val porcentajeAsistencia: Double,
     val estado: String
-)
+): Serializable

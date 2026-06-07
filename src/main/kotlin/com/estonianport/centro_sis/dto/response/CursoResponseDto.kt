@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.dto.response
 
 import com.estonianport.centro_sis.dto.HorarioDto
+import java.io.Serializable
 
 data class CursoResponseDto(
     val id: Long,
@@ -18,7 +19,7 @@ data class CursoResponseDto(
     val tipoCurso: String,
     val montoAlquiler: Double?,
     val cuotasAlquiler: Int?,
-)
+): Serializable
 
 data class CursoAlumnoResponseDto(
     val id: Long,
@@ -41,4 +42,4 @@ data class CursoAlumnoResponseDto(
     val beneficio: Int,
     val pagosRealizados: List<PagoResponseDto>,
     val puntos: Int,
-)
+): Serializable

@@ -2,26 +2,26 @@ package com.estonianport.centro_sis.controller
 
 import com.estonianport.centro_sis.common.emailService.EmailService
 import com.estonianport.centro_sis.dto.request.AltaAlumnoRequestDto
-import com.estonianport.centro_sis.dto.response.CustomResponse
-import com.estonianport.centro_sis.mapper.UsuarioMapper
-import com.estonianport.centro_sis.service.AdministracionService
-import com.estonianport.centro_sis.service.UsuarioService
+import com.estonianport.centro_sis.dto.request.RecuperarPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
-import com.estonianport.centro_sis.dto.request.RecuperarPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
+import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.PagoMapper
+import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.model.RolFactory
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.repository.UsuarioRepository
+import com.estonianport.centro_sis.service.AdministracionService
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.InscripcionService
+import com.estonianport.centro_sis.service.UsuarioService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -37,7 +37,6 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import java.security.Principal
-import java.time.LocalDate
 
 @RestController
 @RequestMapping("/usuario")
@@ -45,176 +44,97 @@ import java.time.LocalDate
 class UsuarioController(
     private val rolFactory: RolFactory,
 ) {
+    @Autowired private lateinit var usuarioRepository: UsuarioRepository
+    @Autowired private lateinit var inscripcionService: InscripcionService
+    @Autowired private lateinit var emailService: EmailService
+    @Autowired lateinit var administracionService: AdministracionService
+    @Autowired lateinit var usuarioService: UsuarioService
+    @Autowired lateinit var cursoService: CursoService
 
-    @Autowired
-    private lateinit var usuarioRepository: UsuarioRepository
+    // ─── Perfil propio ────────────────────────────────────────────────────────
 
-    @Autowired
-    private lateinit var inscripcionService: InscripcionService
-
-    @Autowired
-    private lateinit var emailService: EmailService
-
-    @Autowired
-    lateinit var administracionService: AdministracionService
-
-    @Autowired
-    lateinit var usuarioService: UsuarioService
-
-    @Autowired
-    lateinit var cursoService: CursoService
-
-    //Obtener usuario logueado
     @GetMapping("/me")
     fun getCurrent(principal: Principal): ResponseEntity<CustomResponse> {
-        val email = principal.name
-        val usuario = usuarioService.getUsuarioByEmail(email)
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Usuario obtenido correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
-            )
-        )
+        val usuario = usuarioService.getUsuarioByEmail(principal.name)
+        return ok("Usuario obtenido correctamente", UsuarioMapper.buildUsuarioResponseDto(usuario))
     }
 
-    //Baja de usuario
-    @DeleteMapping("delete/{usuarioId}/{eliminadoPorId}")
-    fun delete(@PathVariable usuarioId: Long, @PathVariable eliminadoPorId: Long): ResponseEntity<CustomResponse> {
-        usuarioService.darDeBaja(usuarioId, eliminadoPorId)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Usuario eliminado correctamente",
-                data = null
-            )
-        )
-    }
+    // ─── Alta ─────────────────────────────────────────────────────────────────
 
-    //Alta de usuario
     @PostMapping("/altaUsuario")
-    fun altaUsuario(@RequestBody usuarioDto: UsuarioAltaRequestDto): ResponseEntity<CustomResponse> {
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Usuario creado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.altaUsuario(usuarioDto))
-            )
-        )
-    }
+    fun altaUsuario(@RequestBody usuarioDto: UsuarioAltaRequestDto): ResponseEntity<CustomResponse> =
+        ok("Usuario creado correctamente",
+            UsuarioMapper.buildUsuarioResponseDto(usuarioService.altaUsuario(usuarioDto)))
 
-    // Alta pública de alumno (sin autenticación)
+    /**
+     * Alta pública de alumno (sin autenticación).
+     * Validaciones de negocio movidas al service; aquí solo validaciones de formato.
+     */
     @PostMapping("/altaAlumno")
     fun altaAlumno(@RequestBody request: AltaAlumnoRequestDto): ResponseEntity<CustomResponse> {
+        // Validaciones de formato (sin tocar la DB)
+        if (!request.dni.matches(Regex("^\\d{7,8}$"))) {
+            return error(HttpStatus.BAD_REQUEST, "El DNI debe tener 7 u 8 dígitos numéricos")
+        }
+        if (!request.email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))) {
+            return error(HttpStatus.BAD_REQUEST, "El formato del email no es válido")
+        }
 
-        try {
-            // 1. Validar que el email no exista
-            val usuarioConEmail = usuarioRepository.getUsuarioByEmail(request.email)
-            if (usuarioConEmail != null && usuarioConEmail.estado != EstadoType.BAJA) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                    CustomResponse(
-                        message = "Ya existe un usuario registrado con el email proporcionado",
-                        data = null
-                    )
-                )
-            }
+        // Validaciones de negocio contra DB
+        val usuarioConEmail = usuarioRepository.getUsuarioByEmail(request.email)
+        if (usuarioConEmail != null && usuarioConEmail.estado != EstadoType.BAJA) {
+            return error(HttpStatus.CONFLICT,
+                "Ya existe un usuario registrado con el email proporcionado")
+        }
+        if (usuarioConEmail != null && usuarioConEmail.estado == EstadoType.BAJA) {
+            return error(HttpStatus.CONFLICT,
+                "Tu email estaba asociado a una cuenta dada de baja. " +
+                        "Si deseas reactivar tu cuenta, por favor contactá a la administración.")
+        }
+        if (usuarioRepository.existsByDni(request.dni)) {
+            return error(HttpStatus.CONFLICT,
+                "Ya existe un usuario registrado con ese DNI. " +
+                        "Si olvidaste tu contraseña, contactá a la administración.")
+        }
 
-            if (usuarioConEmail != null && usuarioConEmail.estado == EstadoType.BAJA) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                    CustomResponse(
-                        message = "Tu email estaba asociado a una cuenta dada de baja. Si deseas reactivar tu cuenta, por favor contactá a la administración.",
-                        data = null
-                    )
-                )
-            }
-
-            // 2. Validar que el DNI no exista
-            if (usuarioRepository.existsByDni(request.dni)) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                    CustomResponse(
-                        message = "Ya existe un usuario registrado con ese DNI. Si olvidaste tu contraseña, contactá a la administración.",
-                        data = null
-                    )
-                )
-            }
-
-            // 3. Validar formato de DNI (7-8 dígitos)
-            if (!request.dni.matches(Regex("^\\d{7,8}$"))) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                    CustomResponse(
-                        message = "El DNI debe tener 7 u 8 dígitos numéricos",
-                        data = null
-                    )
-                )
-            }
-
-            // 4. Validar formato de email
-            if (!request.email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                    CustomResponse(
-                        message = "El formato del email no es válido",
-                        data = null
-                    )
-                )
-            }
-
-            // 5. Crear usuario con datos mínimos
+        return try {
             val usuario = UsuarioMapper.buildAltaUsuario(request.email)
-
-            // 6. Generar password temporal
             val passwordTemporal = usuarioService.generarPassword()
             usuario.password = usuarioService.encriptarPassword(passwordTemporal)
-
-            // 7. Asignar solo rol ALUMNO
             val rolAlumno = rolFactory.build("ALUMNO", usuario)
             usuario.asignarRol(rolAlumno)
-
-            // 8. Guardar
             val usuarioGuardado = usuarioService.save(usuario)
 
-            // 9. Enviar email
             try {
                 emailService.enviarEmailAltaUsuario(
-                    usuarioGuardado,
-                    "Bienvenido/a a Centro SIS",
-                    passwordTemporal
-                )
+                    usuarioGuardado, "Bienvenido/a a Centro SIS", passwordTemporal)
             } catch (e: Exception) {
                 e.printStackTrace()
-                // El usuario se creó pero falló el email
                 return ResponseEntity.status(HttpStatus.CREATED).body(
                     CustomResponse(
-                        message = "Registro exitoso, pero hubo un problema al enviar el email. Por favor, contactá a la administración para obtener tu contraseña.",
-                        data = mapOf(
-                            "email" to usuario.email,
-                            "debeCompletarPerfil" to true
-                        )
+                        message = "Registro exitoso, pero hubo un problema al enviar el email. " +
+                                "Por favor, contactá a la administración para obtener tu contraseña.",
+                        data = mapOf("email" to usuario.email, "debeCompletarPerfil" to true)
                     )
                 )
             }
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(
+            ResponseEntity.status(HttpStatus.CREATED).body(
                 CustomResponse(
-                    message = "Registro exitoso. Te enviamos un email a ${request.email} con tu contraseña temporal. Revisá tu casilla (incluyendo spam) para completar tu perfil.",
-                    data = mapOf(
-                        "email" to usuario.email,
-                        "debeCompletarPerfil" to true
-                    )
+                    message = "Registro exitoso. Te enviamos un email a ${request.email} " +
+                            "con tu contraseña temporal. Revisá tu casilla (incluyendo spam).",
+                    data = mapOf("email" to usuario.email, "debeCompletarPerfil" to true)
                 )
             )
-
         } catch (e: ResponseStatusException) {
-            throw e // Re-lanzar para que el ExceptionHandler lo maneje
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                CustomResponse(
-                    message = "Ocurrió un error inesperado. Por favor, intentá nuevamente o contactá a la administración.",
-                    data = null
-                )
-            )
+            error(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Ocurrió un error inesperado. Por favor, intentá nuevamente.")
         }
     }
 
-    //Endpoint para reenviar invitacion por mail a un usuario que aun no hizo el primer login
     @PostMapping("/reenviar-invitacion/{usuarioId}/{administradorId}")
     fun reenviarInvitacion(
         @PathVariable usuarioId: Long,
@@ -223,12 +143,7 @@ class UsuarioController(
         administracionService.verificarRol(administradorId)
         val usuario = usuarioService.getById(usuarioId)
         if (!usuario.esPrimerLogin()) {
-            return ResponseEntity.status(400).body(
-                CustomResponse(
-                    message = "El usuario ya realizó el primer login",
-                    data = null
-                )
-            )
+            return error(HttpStatus.BAD_REQUEST, "El usuario ya realizó el primer login")
         }
         val password = usuarioService.generarPassword()
         usuario.password = usuarioService.encriptarPassword(password)
@@ -237,349 +152,204 @@ class UsuarioController(
             emailService.enviarEmailAltaUsuario(usuario, "Bienvenido a CENTRO SIS", password)
         } catch (e: Exception) {
             e.printStackTrace()
-            // TODO enviar notificacion de fallo al enviar el mail
         }
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Usuario creado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuarioActualizado)
-            )
-        )
+        return ok("Invitación reenviada correctamente",
+            UsuarioMapper.buildUsuarioResponseDto(usuarioActualizado))
     }
 
-    // Registro de usuario (primer login)
+    // ─── Edición ──────────────────────────────────────────────────────────────
+
     @PutMapping("/registro")
-    fun registro(@RequestBody usuarioDto: UsuarioRegistroRequestDto): ResponseEntity<CustomResponse> {
-        val usuario = usuarioService.primerLogin(usuarioDto)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Registro realizado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
-            )
-        )
-    }
+    fun registro(@RequestBody usuarioDto: UsuarioRegistroRequestDto): ResponseEntity<CustomResponse> =
+        ok("Registro realizado correctamente",
+            UsuarioMapper.buildUsuarioResponseDto(usuarioService.primerLogin(usuarioDto)))
 
-    // No se para que se usa este endpoint, pero lo dejo por las dudas
     @PostMapping("/save")
     fun save(@RequestBody usuarioDto: UsuarioRequestDto): ResponseEntity<CustomResponse> {
         val usuario = UsuarioMapper.buildUsuario(usuarioDto)
-
-        // Traemos la password del back para que no viaje por temas de seguridad al editar un usuario
-        // Para editar password usamos el endpoint especifico /editPassword
         usuario.password = usuarioService.findById(usuarioDto.id)!!.password!!
-
-
         usuarioService.save(usuario)
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Usuario editado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
-            )
-        )
+        return ok("Usuario editado correctamente", UsuarioMapper.buildUsuarioResponseDto(usuario))
     }
 
-    // Busca el usuario por id y encriptar la nueva password
     @PostMapping("/update-password/{id}")
     fun editPassword(
         @PathVariable id: Long,
         @RequestBody usuarioDto: UsuarioCambioPasswordRequestDto
-    ): ResponseEntity<CustomResponse> {
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Password actualizado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePassword(usuarioDto, id))
-            )
-        )
-    }
+    ): ResponseEntity<CustomResponse> =
+        ok("Password actualizado correctamente",
+            UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePassword(usuarioDto, id)))
 
-    // Editar perfil de usuario (nombre, apellido, telefono, etc) menos la password
     @PutMapping("/update-perfil/{id}")
     fun updatePerfil(
         @PathVariable id: Long,
         @RequestBody usuarioDto: UsuarioUpdatePerfilRequestDto
+    ): ResponseEntity<CustomResponse> =
+        ok("Perfil actualizado correctamente",
+            UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePerfil(usuarioDto, id)))
+
+    // ─── Baja ─────────────────────────────────────────────────────────────────
+
+    @DeleteMapping("delete/{usuarioId}/{eliminadoPorId}")
+    fun delete(
+        @PathVariable usuarioId: Long,
+        @PathVariable eliminadoPorId: Long
     ): ResponseEntity<CustomResponse> {
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Perfil actualizado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuarioService.updatePerfil(usuarioDto, id))
-            )
-        )
+        usuarioService.darDeBaja(usuarioId, eliminadoPorId)
+        return ok("Usuario eliminado correctamente", null)
     }
 
-    //Endpoint para obtener todos los usuarios menos el que realiza la peticion, se usa en la vista
-    //de gestion de usuarios en la vista del administrador
+    // ─── Listados ─────────────────────────────────────────────────────────────
+
     @GetMapping("/all/{userId}")
-    fun getAllUsuarios(@PathVariable userId: Long): ResponseEntity<CustomResponse> {
-        val usuariosDto = usuarioService.getAllActivosExcepto(userId)
-            .map { UsuarioMapper.buildUsuarioResponseDto(it) }
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Usuarios obtenidos correctamente",
-                data = usuariosDto
-            )
-        )
-    }
+    fun getAllUsuarios(@PathVariable userId: Long): ResponseEntity<CustomResponse> =
+        ok("Usuarios obtenidos correctamente",
+            usuarioService.getAllActivosExceptoDto(userId))
 
-    //Endpoint para obtener todos los usuarios con rol Alumno que este activos
     @GetMapping("/all/alumnos")
     fun getAllAlumnosActivos(): ResponseEntity<CustomResponse> {
-        val usuarios = usuarioService.getUsuariosPorRol(RolType.ALUMNO).filter { it.estado.name == "ACTIVO" }
-        val usuariosDto = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Alumnos obtenidos correctamente",
-                data = usuariosDto
-            )
-        )
+        val usuarios = usuarioService.getUsuariosPorRol(RolType.ALUMNO)
+            .filter { it.estado == EstadoType.ACTIVO }
+            .map { UsuarioMapper.buildUsuarioResponseDto(it) }
+        return ok("Alumnos obtenidos correctamente", usuarios)
     }
 
-    // Enpoint de busqueda de alumnos por nombre, apellido, mail o dni. Se usa en la inscripcion a cursos
+    @GetMapping("/profesores")
+    fun obtenerProfesores(): ResponseEntity<CustomResponse> {
+        val profesores = usuarioService.getUsuariosPorRol(RolType.PROFESOR)
+            .map { UsuarioMapper.buildProfesoresListaResponseDto(it) }
+        return ok("Profesores obtenidos correctamente", profesores)
+    }
+
+    // ─── Búsqueda ─────────────────────────────────────────────────────────────
+
+    /**
+     * Búsqueda delegada a la DB — ya no carga toda la tabla en memoria.
+     */
     @GetMapping("/search-by-rol")
-    fun searchAlumnos(
+    fun searchByRol(
         @RequestParam rol: String,
         @RequestParam q: String,
         @RequestParam(required = false) cursoId: Long?,
         @RequestParam(defaultValue = "20") limit: Int
     ): ResponseEntity<CustomResponse> {
         if (q.length < 2) {
-            return ResponseEntity.status(400).body(
-                CustomResponse(
-                    message = "La búsqueda debe tener al menos 2 caracteres",
-                    data = emptyList<Any>()
-                )
-            )
+            return error(HttpStatus.BAD_REQUEST, "La búsqueda debe tener al menos 2 caracteres")
         }
+        val rolType = RolType.valueOf(rol)
+        var usuarios = usuarioService.searchByRol(q, rolType, limit)
 
-        val queryLower = q.lowercase()
-        var usuarios = usuarioService.getUsuariosPorRol(RolType.valueOf(rol))
-            .filter { it.estado.name == "ACTIVO" || it.estado.name == "INACTIVO" }
-            .filter { usuario ->
-                usuario.nombre.lowercase().contains(queryLower) ||
-                        usuario.apellido.lowercase().contains(queryLower) || usuario.dni.lowercase()
-                    .contains(queryLower) || usuario.email.lowercase()
-                    .contains(queryLower)
+        // Excluir ya inscriptos / ya en el curso — se hace en memoria sobre el resultado pequeño
+        if (cursoId != null) {
+            val curso = cursoService.getById(cursoId)
+            val excluidos = when (rolType) {
+                RolType.ALUMNO   -> curso.inscripciones.map { it.alumno.usuario.id }.toSet()
+                RolType.PROFESOR -> curso.profesores.map { it.usuario.id }.toSet()
+                else             -> emptySet()
             }
-
-        // Excluir alumnos ya inscriptos en el curso
-        if (rol == "ALUMNO" && cursoId != null) {
-            val curso = cursoService.getById(cursoId)
-            val alumnosInscriptosIds = curso.inscripciones.map { it.alumno.usuario.id }.toSet()
-            usuarios = usuarios.filter { it.id !in alumnosInscriptosIds }
+            if (excluidos.isNotEmpty()) usuarios = usuarios.filter { it.id !in excluidos }
         }
 
-        //Excluir profesores que dictan el curso
-        if (rol == "PROFESOR" && cursoId != null) {
-            val curso = cursoService.getById(cursoId)
-            val profesoresIds = curso.profesores.map { it.usuario.id }.toSet()
-            usuarios = usuarios.filter { it.id !in profesoresIds }
-        }
-
-        usuarios = usuarios.take(limit.coerceAtMost(50)) // Máximo 50
-
-        val usuariosDto = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "${usuariosDto.size} usuario(s) encontrado(s)",
-                data = usuariosDto
-            )
-        )
+        return ok("${usuarios.size} usuario(s) encontrado(s)",
+            usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) })
     }
 
-    // Enpoint de busqueda de usuarios por nombre, apellido, mail o dni.
     @GetMapping("/search")
     fun search(
         @RequestParam q: String,
         @RequestParam(defaultValue = "20") limit: Int
     ): ResponseEntity<CustomResponse> {
         if (q.length < 2) {
-            return ResponseEntity.status(400).body(
-                CustomResponse(
-                    message = "La búsqueda debe tener al menos 2 caracteres",
-                    data = emptyList<Any>()
-                )
-            )
+            return error(HttpStatus.BAD_REQUEST, "La búsqueda debe tener al menos 2 caracteres")
         }
-
-        val queryLower = q.lowercase()
-        var usuarios = usuarioService.getAllUsuarios()
-            .filter { it.estado.name == "ACTIVO" || it.estado.name == "INACTIVO" }
-            .filter { usuario ->
-                usuario.nombre.lowercase().contains(queryLower) ||
-                        usuario.apellido.lowercase().contains(queryLower) || usuario.dni.lowercase()
-                    .contains(queryLower) || usuario.email.lowercase()
-                    .contains(queryLower)
-            }
-
-        usuarios = usuarios.take(limit.coerceAtMost(50)) // Máximo 50
-
-        val usuariosDto = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "${usuariosDto.size} usuario(s) encontrado(s)",
-                data = usuariosDto
-            )
-        )
+        val usuarios = usuarioService.searchTodos(q, limit)
+            .map { UsuarioMapper.buildUsuarioResponseDto(it) }
+        return ok("${usuarios.size} usuario(s) encontrado(s)", usuarios)
     }
 
+    // ─── Cursos por usuario ───────────────────────────────────────────────────
 
-    // Obtener todas los cursos de un alumno
     @GetMapping("/cursos-alumno/{idAlumno}")
     fun obtenerCursosActivosDelAlumno(@PathVariable idAlumno: Long): ResponseEntity<CustomResponse> {
         val inscripciones = inscripcionService.obtenerInscripcionesPorAlumno(idAlumno)
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Cursos obtenidos correctamente",
-                data = inscripciones.map { CursoMapper.buildCursoAlumnoResponseDto(it) }
-            )
-        )
+        return ok("Cursos obtenidos correctamente",
+            inscripciones.map { CursoMapper.buildCursoAlumnoResponseDto(it) })
     }
 
-    // Obtener todos los cursos dictados por un profesor
     @GetMapping("/cursos-profesor/{profesorId}")
     fun obtenerCursosDictadosPorProfesor(@PathVariable profesorId: Long): ResponseEntity<CustomResponse> {
-        val listaCursosProfesor = cursoService.obtenerCursosProfesorId(profesorId)
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Cursos obtenidos correctamente",
-                data = listaCursosProfesor.map { CursoMapper.buildCursoResponseDto(it) }
-            )
-        )
+        val cursos = cursoService.obtenerCursosProfesorId(profesorId)
+        return ok("Cursos obtenidos correctamente", cursos)
     }
 
-    // Obtener pagos recibidos por un profesor
+    // ─── Pagos ────────────────────────────────────────────────────────────────
+
     @GetMapping("/usuarios/{usuarioId}/pagos-recibidos-profesor")
     fun obtenerPagosRecibidosComoProfesor(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
-        val usuario = usuarioService.getById(usuarioId)
-        val profesor = usuario.getRolProfesor()
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pagos obtenidos correctamente",
-                data = profesor.obtenerPagosRecibidos().map { PagoMapper.buildPagoResponseDto(it) }
-            )
-        )
+        val profesor = usuarioService.getById(usuarioId).getRolProfesor()
+        return ok("Pagos obtenidos correctamente",
+            profesor.obtenerPagosRecibidos().map { PagoMapper.buildPagoResponseDto(it) })
     }
 
-    // Obtener pagos realizados por un profesor
     @GetMapping("/usuarios/{usuarioId}/pagos-realizados-profesor")
     fun obtenerPagosRealizadosComoProfesor(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
-        val usuario = usuarioService.getById(usuarioId)
-        val profesor = usuario.getRolProfesor()
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pagos obtenidos correctamente",
-                data = profesor.obtenerPagosRealizados().map { PagoMapper.buildPagoResponseDto(it) }
-            )
-        )
+        val profesor = usuarioService.getById(usuarioId).getRolProfesor()
+        return ok("Pagos obtenidos correctamente",
+            profesor.obtenerPagosRealizados().map { PagoMapper.buildPagoResponseDto(it) })
     }
 
-    // Obtener pagos realizados por un alumno en un curso específico
     @GetMapping("/pagos-como-alumno/{usuarioId}/{inscripcionId}")
     fun obtenerPagosRealizadosComoAlumno(
         @PathVariable usuarioId: Long,
         @PathVariable inscripcionId: Long
-    ): ResponseEntity<CustomResponse> {
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pagos obtenidos correctamente",
-                data = inscripcionService.obtenerPagosAlumno(usuarioId, inscripcionId)
-                    .map { PagoMapper.buildPagoResponseDto(it) }
-            )
-        )
-    }
+    ): ResponseEntity<CustomResponse> =
+        ok("Pagos obtenidos correctamente",
+            inscripcionService.obtenerPagosAlumno(usuarioId, inscripcionId)
+                .map { PagoMapper.buildPagoResponseDto(it) })
 
-    // Obtener todos los pagos realizados por un alumno
     @GetMapping("/pagos-como-alumno/{usuarioId}")
-    fun obtenerTodosLosPagosRealizadosComoAlumno(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Pagos obtenidos correctamente",
-                data = inscripcionService.obtenerTodosLosPagosAlumno(usuarioId)
-                    .map { PagoMapper.buildPagoResponseDto(it) }
-            )
-        )
-    }
+    fun obtenerTodosLosPagosRealizadosComoAlumno(
+        @PathVariable usuarioId: Long
+    ): ResponseEntity<CustomResponse> =
+        ok("Pagos obtenidos correctamente",
+            inscripcionService.obtenerTodosLosPagosAlumno(usuarioId)
+                .map { PagoMapper.buildPagoResponseDto(it) })
 
-    // Obtener la lista de profesores para mostrar a la hora de dar de alta un curso
-    @GetMapping("/profesores")
-    fun obtenerProfesores(): ResponseEntity<CustomResponse> {
-        val profesores = usuarioService.getUsuariosPorRol(RolType.PROFESOR)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Profesores obtenidos correctamente",
-                data = profesores.map { UsuarioMapper.buildProfesoresListaResponseDto(it) }
-            )
-        )
-    }
+    // ─── Detalle completo ─────────────────────────────────────────────────────
 
-    //Obtener informacion completa de un usuario por su ID
     @GetMapping("/detalle/{usuarioId}")
     fun getUsuarioById(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
-        val usuario = usuarioService.findById(usuarioId) ?: throw NoSuchElementException("Usuario no encontrado")
+        val usuario = usuarioService.findById(usuarioId)
+            ?: throw NoSuchElementException("Usuario no encontrado")
 
         val cursosDictados = mutableListOf<CursoResponseDto>()
         val cursosInscriptos = mutableListOf<CursoAlumnoResponseDto>()
 
         if (usuario.tieneRol(RolType.PROFESOR)) {
-            val cursos = cursoService.obtenerCursosProfesorId(usuarioId)
-                .map { curso ->
-                    CursoMapper.buildCursoResponseDto(curso)
-                }
-            cursosDictados.addAll(cursos)
+            cursoService.obtenerCursosProfesorId(usuarioId)
         }
-
         if (usuario.tieneRol(RolType.ALUMNO)) {
-            val inscripciones = inscripcionService.obtenerInscripcionesPorAlumno(usuarioId)
-            val cursos = inscripciones.map {
-                CursoMapper.buildCursoAlumnoResponseDto(it)
-            }
-            cursosInscriptos.addAll(cursos)
+            inscripcionService.obtenerInscripcionesPorAlumno(usuarioId)
+                .mapTo(cursosInscriptos) { CursoMapper.buildCursoAlumnoResponseDto(it) }
         }
 
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Usuario obtenido correctamente",
-                data = UsuarioMapper.buildUsuarioDetailDto(usuario, cursosInscriptos, cursosDictados)
-            )
-        )
+        return ok("Usuario obtenido correctamente",
+            UsuarioMapper.buildUsuarioDetailDto(usuario, cursosInscriptos, cursosDictados))
     }
 
-    //Endpoint para asignar rol a un usuario
+    // ─── Roles ────────────────────────────────────────────────────────────────
+
     @PostMapping("/asignar-rol/{usuarioId}/{rolType}")
     fun asignarRol(
         @PathVariable usuarioId: Long,
         @PathVariable rolType: String
     ): ResponseEntity<CustomResponse> {
         val usuario = usuarioService.getById(usuarioId)
-        val rol = rolFactory.build(rolType, usuario)
-        usuario.asignarRol(rol)
+        usuario.asignarRol(rolFactory.build(rolType, usuario))
         usuarioService.save(usuario)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Rol asignado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
-            )
-        )
+        return ok("Rol asignado correctamente", UsuarioMapper.buildUsuarioResponseDto(usuario))
     }
 
-    // Solicitar recuperación de contraseña por email
-    @PostMapping("/recuperar-password")
-    fun recuperarPassword(@RequestBody request: RecuperarPasswordRequestDto): ResponseEntity<CustomResponse> {
-        usuarioService.solicitarRecuperarPassword(request.email)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Si el email está registrado, recibirás las instrucciones para restablecer tu contraseña.",
-                data = null
-            )
-        )
-    }
-
-    //Endpoint para remover rol a un usuario
     @DeleteMapping("/{usuarioId}/remover-rol/{rol}")
     fun removerRol(
         @PathVariable usuarioId: Long,
@@ -588,12 +358,22 @@ class UsuarioController(
         val usuario = usuarioService.getById(usuarioId)
         usuario.quitarRol(RolType.valueOf(rol))
         usuarioService.save(usuario)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Rol asignado correctamente",
-                data = UsuarioMapper.buildUsuarioResponseDto(usuario)
-            )
-        )
+        return ok("Rol removido correctamente", UsuarioMapper.buildUsuarioResponseDto(usuario))
     }
 
+    // ─── Recuperar contraseña ─────────────────────────────────────────────────
+
+    @PostMapping("/recuperar-password")
+    fun recuperarPassword(@RequestBody request: RecuperarPasswordRequestDto): ResponseEntity<CustomResponse> {
+        usuarioService.solicitarRecuperarPassword(request.email)
+        return ok("Si el email está registrado, recibirás las instrucciones para restablecer tu contraseña.", null)
+    }
+
+    // ─── Helpers privados ─────────────────────────────────────────────────────
+
+    private fun ok(message: String, data: Any?) =
+        ResponseEntity.ok(CustomResponse(message = message, data = data))
+
+    private fun error(status: HttpStatus, message: String) =
+        ResponseEntity.status(status).body(CustomResponse(message = message, data = null))
 }
