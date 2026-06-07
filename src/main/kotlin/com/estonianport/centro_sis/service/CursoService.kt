@@ -6,13 +6,15 @@ import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
+import com.estonianport.centro_sis.dto.response.ParteAsistenciaResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
+import com.estonianport.centro_sis.mapper.ParteAsistenciaMapper
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Horario
 import com.estonianport.centro_sis.model.ParteAsistencia
 import com.estonianport.centro_sis.model.RolProfesor
-import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.model.enums.EstadoType
+import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.repository.CursoRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.annotation.CacheEvict
@@ -27,33 +29,33 @@ import java.time.LocalDate
 @Transactional(readOnly = true)
 class CursoService : GenericServiceImpl<Curso, Long>() {
 
-    @Autowired
-    private lateinit var usuarioService: UsuarioService
-
-    @Autowired
-    lateinit var cursoRepository: CursoRepository
+    @Autowired private lateinit var usuarioService: UsuarioService
+    @Autowired lateinit var cursoRepository: CursoRepository
 
     override val dao: CursoRepository
         get() = cursoRepository
 
     fun countCursos(): Long = cursoRepository.countByFechaBajaIsNull()
 
+    // ─── LECTURAS ─────────────────────────────────────────────────────────────
+
+    /**
+     * Lista principal: devuelve DTOs directamente para que el caché no guarde
+     * entidades JPA con lazy collections → evita el Document nesting depth (1001).
+     */
     @Cacheable(value = ["cursos:lista"], key = "'todos'")
     fun getAllCursosResponse(): List<CursoResponseDto> {
-        // 1. Buscas las entidades
         val cursos = cursoRepository.findAllOrdenadosConDetalles().distinct()
         if (cursos.isEmpty()) return emptyList()
-
-        // 2. Fetch de relaciones
+        // Segunda pasada: inscripciones (evita producto cartesiano en un solo JOIN)
         cursoRepository.findCursosConInscripcionesByIdsIn(cursos.map { it.id })
-
-        // 3. Mapeas a DTO ANTES de retornar y guardar en caché
-        return cursos.map { curso ->
-            CursoMapper.buildCursoResponseDto(curso)
-        }
+        return cursos.map { CursoMapper.buildCursoResponseDto(it) }
     }
 
-    @Cacheable(value = ["cursos:detalle"], key = "#id")
+    /**
+     * Carga la entidad para operaciones de escritura o uso interno.
+     * NO cachea la entidad — solo el DTO resultante se puede cachear externamente.
+     */
     fun getById(id: Long): Curso {
         cursoRepository.findByIdConDetalles(id)
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
@@ -61,70 +63,79 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
     }
 
-    @Cacheable(value = ["cursos:profesor"], key = "#idProfe")
-    fun obtenerCursosProfesorId(idProfe: Long): List<Curso> =
-        cursoRepository.findCursosActivosPorProfesorId(idProfe)
+    /**
+     * Versión cacheada que devuelve DTO para el endpoint GET /curso/{id}.
+     */
+    @Cacheable(value = ["cursos:detalle"], key = "#id")
+    fun getByIdDto(id: Long): CursoResponseDto =
+        CursoMapper.buildCursoResponseDto(getById(id))
 
+    @Cacheable(value = ["cursos:profesor"], key = "#idProfe")
+    fun obtenerCursosProfesorId(idProfe: Long): List<CursoResponseDto> {
+        val cursosEntidad = cursoRepository.findCursosActivosPorProfesorId(idProfe)
+        return cursosEntidad.map { CursoMapper.buildCursoResponseDto(it) }
+    }
     @Cacheable(value = ["cursos:asistencia"], key = "#cursoId")
-    fun getPartesAsistencia(cursoId: Long): List<ParteAsistencia> =
-        cursoRepository.findPartesAsistenciaByCursoId(cursoId)
+    fun getPartesAsistencia(cursoId: Long): List<ParteAsistenciaResponseDto> {
+        val partes = cursoRepository.findPartesAsistenciaByCursoId(cursoId)
+        return partes.map { ParteAsistenciaMapper.buildParteAsistenciaResponseDto(it) }
+    }
 
     // ─── ESCRITURAS ───────────────────────────────────────────────────────────
 
     @Transactional
     @Caching(evict = [
         CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#nuevoCurso.id", condition = "#nuevoCurso.id != 0")
     ])
     fun alta(nuevoCurso: Curso): Curso = cursoRepository.save(nuevoCurso)
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'")
+        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
+        CacheEvict(value = ["cursos:profesor"], allEntries = true),
     ])
     fun crearCursoAlquiler(cursoRequestDto: CursoAlquilerAdminRequestDto): Curso {
         val profesores = cursoRequestDto.profesoresId
             .map { usuarioService.getById(it).getRolProfesor() }
             .toMutableSet()
-
-        val nuevoCursoAlquiler = CursoMapper.buildCursoAlquiler(cursoRequestDto, profesores)
-        val cursoAgregado = alta(nuevoCursoAlquiler)
+        val nuevoCurso = CursoMapper.buildCursoAlquiler(cursoRequestDto, profesores)
+        val cursoAgregado = alta(nuevoCurso)
         usuarioService.actualizarEstadoProfesor(profesores)
         return cursoAgregado
     }
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'")
+        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
+        CacheEvict(value = ["cursos:profesor"], allEntries = true),
     ])
     fun crearCursoComision(cursoRequestDto: CursoComisionRequestDto): Curso {
         val profesores = cursoRequestDto.profesoresId
             .map { usuarioService.getById(it).getRolProfesor() }
             .toMutableSet()
-
-        val nuevoCursoComision = CursoMapper.buildCursoComision(cursoRequestDto, profesores)
-        nuevoCursoComision.estadoAlta = EstadoType.ACTIVO
-        val cursoAgregado = alta(nuevoCursoComision)
+        val nuevoCurso = CursoMapper.buildCursoComision(cursoRequestDto, profesores)
+        nuevoCurso.estadoAlta = EstadoType.ACTIVO
+        val cursoAgregado = alta(nuevoCurso)
         usuarioService.actualizarEstadoProfesor(profesores)
         return cursoAgregado
     }
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#cursoId")
+        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
+        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
-    fun actualizarNombreCurso(cursoId: Long, nuevoNombre: String): Curso {
+    fun actualizarNombreCurso(cursoId: Long, nuevoNombre: String): CursoResponseDto {
         val updated = cursoRepository.updateNombre(cursoId, nuevoNombre)
         if (updated == 0) throw NotFoundException("No se encontró el curso con ID: $cursoId")
-        return getById(cursoId)
+        return getByIdDto(cursoId)
     }
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#id"),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true)
+        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
+        CacheEvict(value = ["cursos:detalle"],  allEntries = true),
+        CacheEvict(value = ["cursos:profesor"], allEntries = true),
     ])
     override fun delete(id: Long) {
         val updated = cursoRepository.darDeBajaDirecto(id)
@@ -133,48 +144,26 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#curso.id"),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true)
-    ])
-    fun actualizarProfesoresDelCurso(curso: Curso, nuevosProfesores: Set<RolProfesor>): Curso {
-        curso.profesores.clear()
-        curso.profesores.addAll(nuevosProfesores)
-        return save(curso)
-    }
-
-    @Transactional
-    @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true)
-    ])
-    fun actualizarProfesores(cursoId: Long, nuevosProfesores: Set<RolProfesor>): Curso {
-        val curso = getById(cursoId)
-        nuevosProfesores.forEach { if (!curso.esProfesor(it)) curso.agregarProfesor(it) }
-        curso.profesores.toList().forEach { if (!nuevosProfesores.contains(it)) curso.removerProfesor(it) }
-        return save(curso)
-    }
-
-    @Transactional
-    @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true)
+        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
+        CacheEvict(value = ["cursos:detalle"],  key = "#cursoId"),
+        CacheEvict(value = ["cursos:profesor"], allEntries = true),
     ])
     fun reemplazarProfesoresPorId(cursoId: Long, profesoresId: List<Long>): Curso {
         val curso = getById(cursoId)
         val nuevosProfesores = profesoresId
             .map { usuarioService.getById(it).getRolProfesor() }
             .toMutableSet()
+        // Sincronizar bidireccional
+        curso.profesores.toList().forEach { if (!nuevosProfesores.contains(it)) curso.removerProfesor(it) }
+        nuevosProfesores.forEach { if (!curso.esProfesor(it)) curso.agregarProfesor(it) }
         usuarioService.actualizarEstadoProfesor(nuevosProfesores)
-        return actualizarProfesoresDelCurso(curso, nuevosProfesores)
+        return save(curso)
     }
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#cursoId")
+        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
+        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
     fun actualizarHorariosCurso(cursoId: Long, nuevosHorarios: Set<Horario>): Curso {
         val curso = getById(cursoId)
@@ -185,8 +174,8 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#cursoId")
+        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
+        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
     fun actualizarMontosTiposPagoCurso(cursoId: Long, nuevosTiposPago: Set<TipoPago>): Curso {
         val curso = getById(cursoId)
@@ -197,8 +186,8 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"], key = "#cursoId")
+        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
+        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
     fun finalizarAltaCursoAlquiler(cursoId: Long, tiposPago: Set<TipoPago>, recargo: Double?): Curso {
         val curso = getById(cursoId)
@@ -212,8 +201,8 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
-        CacheEvict(value = ["cursos:asistencia"], key = "#cursoId")
+        CacheEvict(value = ["cursos:detalle"],    key = "#cursoId"),
+        CacheEvict(value = ["cursos:asistencia"], key = "#cursoId"),
     ])
     fun tomarAsistenciaAutomatica(cursoId: Long, usuarioId: Long, fecha: LocalDate?): Curso {
         val curso = getById(cursoId)

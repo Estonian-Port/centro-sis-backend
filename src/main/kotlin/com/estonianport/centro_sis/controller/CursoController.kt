@@ -10,7 +10,6 @@ import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.HorarioMapper
 import com.estonianport.centro_sis.mapper.ParteAsistenciaMapper
 import com.estonianport.centro_sis.mapper.TipoPagoMapper
-import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
@@ -28,199 +27,112 @@ import java.time.LocalDate
 @RestController
 @RequestMapping("/curso")
 @CrossOrigin("*")
-class CursoController(
-    private val cursoService: CursoService) {
+class CursoController(private val cursoService: CursoService) {
 
-    //Obtener un curso por id
+    // ─── Lectura ──────────────────────────────────────────────────────────────
+
     @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> {
-        val curso = cursoService.getById(id)
+    fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> =
+        ok("Curso obtenido correctamente", cursoService.getByIdDto(id))
 
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Curso obtenido correctamente",
-                data = CursoMapper.buildCursoResponseDto(curso)
-            )
-        )
-    }
-
-    //Obtetener un curso por id con sus inscripciones
     @GetMapping("/inscripciones/{id}")
-    fun getCursoConInscripciones(@PathVariable id: Long): ResponseEntity<CustomResponse> {
-        val curso = cursoService.getById(id)
+    fun getCursoConInscripciones(@PathVariable id: Long): ResponseEntity<CustomResponse> =
+        ok("Curso obtenido correctamente", cursoService.getByIdDto(id))
 
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Curso obtenido correctamente",
-                data = CursoMapper.buildCursoResponseDto(curso)
-            )
-        )
-    }
-
-    //Obtener todos los cursos activos
     @GetMapping("/activos")
-    fun get(): ResponseEntity<CustomResponse> {
-        val cursosDto = cursoService.getAllCursosResponse()
+    fun getAllActivos(): ResponseEntity<CustomResponse> =
+        ok("Cursos obtenidos correctamente", cursoService.getAllCursosResponse())
 
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Cursos obtenidos correctamente",
-                data = cursosDto
-            )
-        )
+    @GetMapping("/{cursoId}/partes-asistencia")
+    fun getPartesAsistenciaCurso(@PathVariable cursoId: Long): ResponseEntity<CustomResponse> {
+        val partes = cursoService.getPartesAsistencia(cursoId)
+        return ok("Partes de asistencia obtenidos correctamente", partes)
     }
 
-    //Crear un nuevo curso alquiler
+    // ─── Alta ─────────────────────────────────────────────────────────────────
+
     @PostMapping("/alta-alquiler")
     fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerAdminRequestDto): ResponseEntity<CustomResponse> {
-        // Lógica delegada al servicio para mantener transaccionalidad
-        val cursoAgregado = cursoService.crearCursoAlquiler(cursoRequestDto)
-
+        val curso = cursoService.crearCursoAlquiler(cursoRequestDto)
         return ResponseEntity.status(201).body(
-            CustomResponse(
-                message = "Curso creado correctamente",
-                data = cursoAgregado
-            )
+            CustomResponse(message = "Curso creado correctamente",
+                data = CursoMapper.buildCursoResponseDto(curso))
         )
     }
 
-    //Crear un nuevo curso comision
     @PostMapping("/alta-comision")
     fun altaComision(@RequestBody cursoRequestDto: CursoComisionRequestDto): ResponseEntity<CustomResponse> {
-        val cursoAgregado = cursoService.crearCursoComision(cursoRequestDto)
-
+        val curso = cursoService.crearCursoComision(cursoRequestDto)
         return ResponseEntity.status(201).body(
-            CustomResponse(
-                message = "Curso creado correctamente",
-                data = cursoAgregado
-            )
+            CustomResponse(message = "Curso creado correctamente",
+                data = CursoMapper.buildCursoResponseDto(curso))
         )
     }
 
-    // Actualizar profesores de un curso
-    @PostMapping("/{cursoId}/actualizar-profesores")
-    fun actualizarProfesoresDeCurso(
-        @PathVariable cursoId: Long,
-        @RequestBody profesoresId: List<Long>
-    ): ResponseEntity<CustomResponse> {
-        val cursoActualizado = cursoService.reemplazarProfesoresPorId(cursoId, profesoresId)
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Profesores actualizados correctamente",
-                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
-            )
-        )
-    }
-
-    //Endpoint para finalizar alta de un curso de alquiler
     @PostMapping("/{cursoId}/finalizar-alta-alquiler")
     fun finalizarAltaCursoAlquiler(
         @PathVariable cursoId: Long,
         @RequestBody curso: CursoAlquilerProfeRequestDto
     ): ResponseEntity<CustomResponse> {
-
-        val tiposDePago = curso.tiposPago.map {
-            TipoPagoMapper.buildTipoPago(it)
-        }.toSet()
-
+        val tiposDePago = curso.tiposPago.map { TipoPagoMapper.buildTipoPago(it) }.toSet()
         val cursoFinalizado = cursoService.finalizarAltaCursoAlquiler(cursoId, tiposDePago, curso.recargo)
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Curso de alquiler finalizado correctamente",
-                data = CursoMapper.buildCursoResponseDto(cursoFinalizado)
-            )
-        )
+        return ok("Curso de alquiler finalizado correctamente",
+            CursoMapper.buildCursoResponseDto(cursoFinalizado))
     }
 
-    // Endpoint para actualizar el nombre de un curso
+    // ─── Actualización ────────────────────────────────────────────────────────
+
+    @PostMapping("/{cursoId}/actualizar-profesores")
+    fun actualizarProfesoresDeCurso(
+        @PathVariable cursoId: Long,
+        @RequestBody profesoresId: List<Long>
+    ): ResponseEntity<CustomResponse> {
+        val curso = cursoService.reemplazarProfesoresPorId(cursoId, profesoresId)
+        return ok("Profesores actualizados correctamente", CursoMapper.buildCursoResponseDto(curso))
+    }
+
     @PutMapping("/{cursoId}/nombre")
     fun actualizarNombreCurso(
         @PathVariable cursoId: Long,
         @RequestParam nuevoNombre: String
-    ): ResponseEntity<CustomResponse> {
-        val cursoActualizado = cursoService.actualizarNombreCurso(cursoId, nuevoNombre)
+    ): ResponseEntity<CustomResponse> =
+        ok("Nombre del curso actualizado correctamente",
+            cursoService.actualizarNombreCurso(cursoId, nuevoNombre))
 
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Nombre del curso actualizado correctamente",
-                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
-            )
-        )
-    }
-
-    // Endpoint para actualizar los profesores de un curso
     @PutMapping("/{cursoId}/profesores")
     fun actualizarProfesoresCurso(
         @PathVariable cursoId: Long,
         @RequestBody idsProfesores: List<Long>
     ): ResponseEntity<CustomResponse> {
-        val cursoActualizado = cursoService.reemplazarProfesoresPorId(cursoId, idsProfesores)
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Profesores del curso actualizados correctamente",
-                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
-            )
-        )
+        val curso = cursoService.reemplazarProfesoresPorId(cursoId, idsProfesores)
+        return ok("Profesores del curso actualizados correctamente",
+            CursoMapper.buildCursoResponseDto(curso))
     }
 
-    // Endpoint para editar los horarios de un curso
     @PutMapping("/{cursoId}/horarios")
     fun actualizarHorariosCurso(
         @PathVariable cursoId: Long,
         @RequestBody nuevosHorarios: List<HorarioDto>
     ): ResponseEntity<CustomResponse> {
-        val cursoActualizado = cursoService.actualizarHorariosCurso(
-            cursoId,
-            nuevosHorarios.map { HorarioMapper.buildHorario(it) }.toSet()
-        )
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Horarios del curso actualizados correctamente",
-                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
-            )
-        )
+        val curso = cursoService.actualizarHorariosCurso(
+            cursoId, nuevosHorarios.map { HorarioMapper.buildHorario(it) }.toSet())
+        return ok("Horarios del curso actualizados correctamente",
+            CursoMapper.buildCursoResponseDto(curso))
     }
 
-    // Endpoint para editar montos de las modalidades de pago permitidas en un curso
     @PutMapping("/{cursoId}/modalidades-pago")
     fun actualizarMontosTiposPagoCurso(
         @PathVariable cursoId: Long,
-        @RequestBody montosActualizados: List<TipoPagoDto>,
+        @RequestBody montosActualizados: List<TipoPagoDto>
     ): ResponseEntity<CustomResponse> {
-        val cursoActualizado = cursoService.actualizarMontosTiposPagoCurso(
-            cursoId,
-            montosActualizados.map { TipoPagoMapper.buildTipoPago(it) }.toSet()
-        )
-
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Montos de las modalidades de pago actualizados correctamente",
-                data = CursoMapper.buildCursoResponseDto(cursoActualizado)
-            )
-        )
+        val curso = cursoService.actualizarMontosTiposPagoCurso(
+            cursoId, montosActualizados.map { TipoPagoMapper.buildTipoPago(it) }.toSet())
+        return ok("Montos de las modalidades de pago actualizados correctamente",
+            CursoMapper.buildCursoResponseDto(curso))
     }
 
-    //Endpoint para obtener los partes de asistencia de un curso
-    @GetMapping("/{cursoId}/partes-asistencia")
-    fun getPartesAsistenciaCurso(
-        @PathVariable cursoId: Long
-    ): ResponseEntity<CustomResponse> {
-        val partes = cursoService.getPartesAsistencia(cursoId)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Partes de asistencia obtenidos correctamente",
-                data = partes.map {
-                    ParteAsistenciaMapper.buildParteAsistenciaResponseDto(it)
-                }
-            )
-        )
-    }
+    // ─── Asistencia ───────────────────────────────────────────────────────────
 
-    //Endpoint para tomar asistencia en un curso
     @PostMapping("/{cursoId}/tomar-asistencia-automatica/{usuarioId}")
     fun tomarAsistenciaAutomatica(
         @PathVariable cursoId: Long,
@@ -229,31 +141,22 @@ class CursoController(
     ): ResponseEntity<CustomResponse> {
         if (fecha != null && fecha.isAfter(LocalDate.now())) {
             return ResponseEntity.status(400).body(
-                CustomResponse(
-                    message = "La fecha no puede ser futura",
-                    data = null
-                )
-            )
+                CustomResponse(message = "La fecha no puede ser futura", data = null))
         }
         cursoService.tomarAsistenciaAutomatica(cursoId, usuarioId, fecha)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Asistencia tomada correctamente",
-                data = null
-            )
-        )
+        return ok("Asistencia tomada correctamente", null)
     }
 
-    //Dar de baja un curso
+    // ─── Baja ─────────────────────────────────────────────────────────────────
+
     @DeleteMapping("/baja/{id}")
     fun baja(@PathVariable id: Long): ResponseEntity<CustomResponse> {
         cursoService.delete(id)
-        return ResponseEntity.status(200).body(
-            CustomResponse(
-                message = "Curso dado de baja correctamente",
-                data = null
-            )
-        )
+        return ok("Curso dado de baja correctamente", null)
     }
 
+    // ─── Helper ───────────────────────────────────────────────────────────────
+
+    private fun ok(message: String, data: Any?) =
+        ResponseEntity.ok(CustomResponse(message = message, data = data))
 }

@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.model.enums.TipoAcceso
+import com.fasterxml.jackson.annotation.JsonBackReference
 import jakarta.persistence.*
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -21,6 +22,7 @@ class Acceso(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = true)
+    @JsonBackReference
     val usuario: Usuario? = null,
 
     @Column(name = "fecha_hora", nullable = false)

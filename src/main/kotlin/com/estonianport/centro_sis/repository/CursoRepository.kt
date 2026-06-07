@@ -14,34 +14,39 @@ interface CursoRepository : CrudRepository<Curso, Long> {
 
     fun countByFechaBajaIsNull(): Long
 
+    /**
+     * Lista principal de cursos: trae solo lo necesario para armar CursoResponseDto
+     * (profesores + horarios + tiposPago). Las inscripciones se cargan aparte con
+     * findCursosConInscripcionesByIdsIn para evitar el producto cartesiano.
+     */
     @Query("""
-        SELECT DISTINCT c FROM Curso c
+        SELECT c FROM Curso c
         LEFT JOIN FETCH c.profesores p
         LEFT JOIN FETCH p.usuario
-    """)
-    fun findAllConDetalles(): List<Curso>
-
-    @Query("""
-    SELECT c FROM Curso c
-    LEFT JOIN FETCH c.profesores p
-    LEFT JOIN FETCH p.usuario
-    ORDER BY
-        CASE c.estadoAlta
-            WHEN 'ACTIVO' THEN 0
-            WHEN 'PENDIENTE' THEN 1
-            WHEN 'BAJA' THEN 2
-            ELSE 3
-        END ASC,
-        CASE
-            WHEN c.estadoAlta = 'BAJA' THEN 2
-            WHEN CURRENT_DATE < c.fechaInicio THEN 1
-            WHEN CURRENT_DATE > c.fechaFin THEN 2
-            ELSE 0
-        END ASC,
-        c.nombre ASC
+        LEFT JOIN FETCH c.horarios
+        LEFT JOIN FETCH c.tiposPago
+        WHERE c.fechaBaja IS NULL
+        ORDER BY
+            CASE c.estadoAlta
+                WHEN 'ACTIVO'    THEN 0
+                WHEN 'PENDIENTE' THEN 1
+                WHEN 'BAJA'      THEN 2
+                ELSE 3
+            END ASC,
+            CASE
+                WHEN c.estadoAlta = 'BAJA'         THEN 2
+                WHEN CURRENT_DATE < c.fechaInicio  THEN 1
+                WHEN CURRENT_DATE > c.fechaFin     THEN 2
+                ELSE 0
+            END ASC,
+            c.nombre ASC
     """)
     fun findAllOrdenadosConDetalles(): List<Curso>
 
+    /**
+     * Segunda pasada: carga inscripciones + alumnos para un conjunto de cursos ya
+     * recuperados, evitando N+1 y el producto cartesiano gigante de un JOIN único.
+     */
     @Query("""
         SELECT DISTINCT c FROM Curso c
         LEFT JOIN FETCH c.inscripciones i
@@ -51,6 +56,23 @@ interface CursoRepository : CrudRepository<Curso, Long> {
     """)
     fun findCursosConInscripcionesByIdsIn(@Param("ids") ids: List<Long>): List<Curso>
 
+    /**
+     * Detalle de un curso: horarios + tiposPago + profesores.
+     * Las inscripciones se cargan con findInscripcionesByCursoId.
+     */
+    @Query("""
+        SELECT DISTINCT c FROM Curso c
+        LEFT JOIN FETCH c.horarios
+        LEFT JOIN FETCH c.tiposPago
+        LEFT JOIN FETCH c.profesores p
+        LEFT JOIN FETCH p.usuario
+        WHERE c.id = :id
+    """)
+    fun findByIdConDetalles(@Param("id") id: Long): Optional<Curso>
+
+    /**
+     * Segunda pasada para detalle: inscripciones del curso.
+     */
     @Query("""
         SELECT DISTINCT c FROM Curso c
         LEFT JOIN FETCH c.inscripciones i
@@ -60,28 +82,20 @@ interface CursoRepository : CrudRepository<Curso, Long> {
     """)
     fun findInscripcionesByCursoId(@Param("id") id: Long): Optional<Curso>
 
-    // Conservando tus FETCH extra de horarios y tiposPago
+    /**
+     * Cursos activos de un profesor (usado en perfil de profesor y listados).
+     */
     @Query("""
-    SELECT DISTINCT c FROM Curso c
-    LEFT JOIN FETCH c.horarios
-    LEFT JOIN FETCH c.tiposPago
-    LEFT JOIN FETCH c.profesores p
-    LEFT JOIN FETCH p.usuario
-    JOIN c.profesores p2 
-    WHERE p2.usuario.id = :idProfe
-    AND c.fechaBaja IS NULL
-    """)
-    fun findCursosActivosPorProfesorId(@Param("idProfe") idProfe: Long): List<Curso>
-
-    @Query("""
-        SELECT c FROM Curso c
+        SELECT DISTINCT c FROM Curso c
         LEFT JOIN FETCH c.horarios
+        LEFT JOIN FETCH c.tiposPago
         LEFT JOIN FETCH c.profesores p
         LEFT JOIN FETCH p.usuario
-        LEFT JOIN FETCH c.tiposPago
-        WHERE c.id = :id
+        JOIN c.profesores p2
+        WHERE p2.usuario.id = :idProfe
+        AND c.fechaBaja IS NULL
     """)
-    fun findByIdConDetalles(@Param("id") id: Long): Optional<Curso>
+    fun findCursosActivosPorProfesorId(@Param("idProfe") idProfe: Long): List<Curso>
 
     @Query("SELECT pa FROM ParteAsistencia pa WHERE pa.curso.id = :cursoId ORDER BY pa.fecha DESC")
     fun findPartesAsistenciaByCursoId(@Param("cursoId") cursoId: Long): List<ParteAsistencia>
