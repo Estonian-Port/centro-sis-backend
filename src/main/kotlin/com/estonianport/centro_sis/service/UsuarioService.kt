@@ -1,6 +1,5 @@
 package com.estonianport.centro_sis.service
 
-import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.common.codeGeneratorUtil.CodeGeneratorUtil
 import com.estonianport.centro_sis.common.emailService.EmailService
 import com.estonianport.centro_sis.common.errors.ConflictException
@@ -20,34 +19,27 @@ import com.estonianport.centro_sis.model.enums.TipoAcceso
 import com.estonianport.centro_sis.repository.RolRepository
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import jakarta.transaction.Transactional
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.cache.annotation.Caching
-import org.springframework.data.repository.CrudRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Service
-class UsuarioService : GenericServiceImpl<Usuario, Long>() {
-
-    @Autowired lateinit var usuarioRepository: UsuarioRepository
-    @Autowired lateinit var rolRepository: RolRepository
-    @Autowired lateinit var emailService: EmailService
-    @Autowired lateinit var rolFactory: RolFactory
-
-    override val dao: CrudRepository<Usuario, Long>
-        get() = usuarioRepository
+class UsuarioService(
+    private val usuarioRepository: UsuarioRepository,
+    private val rolRepository: RolRepository,
+    private val emailService: EmailService,
+    private val rolFactory: RolFactory
+) {
 
     // ─── LECTURAS ─────────────────────────────────────────────────────────────
 
-    /**
-     * Carga la entidad desde DB. No cacheable aquí porque el caché de entidades
-     * JPA con lazy collections provoca el Document nesting depth (1001).
-     * El caché se aplica en la capa DTO (buildUsuarioResponseDto).
-     */
     fun getById(id: Long): Usuario =
         usuarioRepository.findById(id)
             .orElseThrow { NoSuchElementException("No se encontró un usuario con el ID proporcionado") }
@@ -59,26 +51,61 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         usuarioRepository.getUsuarioByEmail(email)
             ?: throw NoSuchElementException("No se encontró un usuario con el email proporcionado")
 
-    /**
-     * Retorna DTOs cacheados para el listado general. Se invalida cuando se
-     * persiste o modifica cualquier usuario.
-     */
-    @Cacheable(value = ["usuarios:lista"], key = "'activos'")
-    fun getAllUsuariosDto(): List<UsuarioResponseDto> =
-        usuarioRepository.findAllActivos()
-            .map { UsuarioMapper.buildUsuarioResponseDto(it) }
-
-    fun getAllUsuarios(): Set<Usuario> =
-        usuarioRepository.findAllActivos()
-
     @Cacheable(value = ["usuarios:lista"], key = "'activos-excepto-' + #userId")
     fun getAllActivosExceptoDto(userId: Long): List<UsuarioResponseDto> =
         usuarioRepository.getAllActivosExcepto(userId)
-            .map { UsuarioMapper.buildUsuarioResponseDto(it) }
+            .map { UsuarioMapper.buildUsuarioResponseDto(it)
+            }
 
-    /** Mantener por compatibilidad con código existente que recibe Set<Usuario> */
-    fun getAllActivosExcepto(userId: Long): Set<Usuario> =
-        usuarioRepository.getAllActivosExcepto(userId)
+    /**
+     * Versión paginada de [getAllActivosExceptoDto].
+     * Usa el patrón "IDs primero, hidratación después" para evitar el
+     * producto cartesiano que distorsionaba el conteo de páginas cuando
+     * se hacía JOIN FETCH con roles.
+     *
+     * Los filtros de rol y estado se aplican en memoria sobre la página
+     * pequeña (≤ 10 registros), por lo que el overhead es mínimo.
+     */
+    fun getAllActivosExceptoPaginado(
+        userId: Long,
+        page: Int,
+        size: Int,
+        search: String?,
+        roles: List<RolType>?,
+        estados: List<EstadoType>?
+    ): Page<UsuarioResponseDto> {
+        val pageable = PageRequest.of(page, size)
+
+        // 1. Obtener IDs paginados (con filtro de texto en DB)
+        val idsPage: Page<Long> = usuarioRepository.findIdsActivosExcepto(
+            userId,
+            search?.takeIf { it.isNotBlank() },
+            pageable
+        )
+
+        if (idsPage.isEmpty) return Page.empty(pageable)
+
+        // 2. Hidratar los usuarios de esta página con sus roles en una sola query
+        val usuariosMap = usuarioRepository.findWithRolesByIds(idsPage.content)
+            .associateBy { it.id }
+
+        // 3. Mapear respetando el orden original + aplicar filtros de rol/estado en memoria
+        var usuarios = idsPage.content.mapNotNull { usuariosMap[it] }
+
+        if (!roles.isNullOrEmpty()) {
+            usuarios = usuarios.filter { u -> roles.any { r -> u.tieneRol(r) } }
+        }
+        if (!estados.isNullOrEmpty()) {
+            usuarios = usuarios.filter { u -> estados.contains(u.estado) }
+        }
+
+        val dtos = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
+
+        // Nota: el total en la Page refleja el conteo sin filtros de rol/estado
+        // (esos filtros son en memoria). Para el front esto es suficiente ya que
+        // los filtros de rol/estado son meramente visuales sobre la página actual.
+        return PageImpl(dtos, pageable, idsPage.totalElements)
+    }
 
     @Cacheable(value = ["usuarios:rol"], key = "#rolTipo.name()")
     fun getUsuariosPorRol(rolTipo: RolType): List<Usuario> =
@@ -90,11 +117,6 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
             RolType.PORTERIA      -> usuarioRepository.findPorteria()
         }
 
-    /**
-     * Búsqueda delegada a la base de datos: no carga toda la tabla en memoria.
-     * El limit se aplica después porque JPQL no acepta LIMIT directamente en todos
-     * los providers; para volumen alto se puede agregar Pageable.
-     */
     fun searchByRol(q: String, rolTipo: RolType, limit: Int = 20): List<Usuario> {
         val resultados = when (rolTipo) {
             RolType.ALUMNO   -> usuarioRepository.searchAlumnos(q)
@@ -109,6 +131,15 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         usuarioRepository.searchTodos(q).take(limit.coerceAtMost(50))
 
     // ─── ESCRITURAS ───────────────────────────────────────────────────────────
+
+    @Transactional
+    @Caching(evict = [
+        CacheEvict(value = ["usuarios:lista"], allEntries = true),
+        CacheEvict(value = ["usuarios:rol"], allEntries = true)
+    ])
+    fun save(usuario: Usuario): Usuario {
+        return usuarioRepository.save(usuario)
+    }
 
     @Transactional
     @Caching(evict = [
@@ -277,16 +308,6 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         profesores.forEach { save(it.usuario) }
     }
 
-    @Transactional
-    fun obtenerVariosPorId(ids: List<Long>): List<Usuario> {
-        if (ids.isEmpty()) return emptyList()
-        val usuarios = usuarioRepository.findAllWithRolesByIds(ids)
-        if (usuarios.size != ids.distinct().size) {
-            throw NoSuchElementException("Uno o más IDs de usuario proporcionados no existen.")
-        }
-        return usuarios
-    }
-
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     fun countAlumnosActivos(): Long =
@@ -311,7 +332,6 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
     }
 
     fun verficarDniNoExiste(dni: String, id: Long) {
-        // Idealmente agregar findByDni al repository para no traer todos
         val usuario = usuarioRepository.findAll().find { it.dni == dni }
         if (usuario != null && usuario.id != id) {
             throw ConflictException("Ya existe un usuario registrado con el DNI proporcionado")
@@ -337,4 +357,9 @@ class UsuarioService : GenericServiceImpl<Usuario, Long>() {
         usuario.ultimoIngresoAlSistema = fecha
         save(usuario)
     }
+
+    fun existsByDni(dni: String): Boolean {
+        return usuarioRepository.existsByDni(dni)
+    }
+
 }

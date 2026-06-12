@@ -8,9 +8,8 @@ import com.estonianport.centro_sis.dto.request.UsuarioCambioPasswordRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
-import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
-import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
+import com.estonianport.centro_sis.dto.response.PageResponse
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.PagoMapper
 import com.estonianport.centro_sis.mapper.UsuarioMapper
@@ -21,6 +20,7 @@ import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.service.AdministracionService
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.InscripcionService
+import com.estonianport.centro_sis.service.UsuarioDetalleFacade
 import com.estonianport.centro_sis.service.UsuarioService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -42,14 +42,14 @@ import java.security.Principal
 @RequestMapping("/usuario")
 @CrossOrigin("*")
 class UsuarioController(
+    private val inscripcionService: InscripcionService,
     private val rolFactory: RolFactory,
+    private val usuarioDetalleFacade: UsuarioDetalleFacade,
+    private val emailService: EmailService,
+    val administracionService: AdministracionService,
+    val usuarioService: UsuarioService,
+    val cursoService: CursoService
 ) {
-    @Autowired private lateinit var usuarioRepository: UsuarioRepository
-    @Autowired private lateinit var inscripcionService: InscripcionService
-    @Autowired private lateinit var emailService: EmailService
-    @Autowired lateinit var administracionService: AdministracionService
-    @Autowired lateinit var usuarioService: UsuarioService
-    @Autowired lateinit var cursoService: CursoService
 
     // ─── Perfil propio ────────────────────────────────────────────────────────
 
@@ -81,17 +81,17 @@ class UsuarioController(
         }
 
         // Validaciones de negocio contra DB
-        val usuarioConEmail = usuarioRepository.getUsuarioByEmail(request.email)
-        if (usuarioConEmail != null && usuarioConEmail.estado != EstadoType.BAJA) {
+        val usuarioConEmail = usuarioService.getUsuarioByEmail(request.email)
+        if (usuarioConEmail.estado != EstadoType.BAJA) {
             return error(HttpStatus.CONFLICT,
                 "Ya existe un usuario registrado con el email proporcionado")
         }
-        if (usuarioConEmail != null && usuarioConEmail.estado == EstadoType.BAJA) {
+        if (usuarioConEmail.estado == EstadoType.BAJA) {
             return error(HttpStatus.CONFLICT,
                 "Tu email estaba asociado a una cuenta dada de baja. " +
                         "Si deseas reactivar tu cuenta, por favor contactá a la administración.")
         }
-        if (usuarioRepository.existsByDni(request.dni)) {
+        if (usuarioService.existsByDni(request.dni)) {
             return error(HttpStatus.CONFLICT,
                 "Ya existe un usuario registrado con ese DNI. " +
                         "Si olvidaste tu contraseña, contactá a la administración.")
@@ -201,6 +201,27 @@ class UsuarioController(
 
     // ─── Listados ─────────────────────────────────────────────────────────────
 
+    /**
+     * Listado paginado para la pantalla de administración.
+     * Reemplaza al anterior GET /all/{userId} (que devolvía todos de golpe).
+     * El front envía page/size/search/roles/estados como query params.
+     */
+    @GetMapping("/all-paginado/{userId}")
+    fun getAllUsuariosPaginado(
+        @PathVariable userId: Long,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) roles: List<RolType>?,
+        @RequestParam(required = false) estados: List<EstadoType>?
+    ): ResponseEntity<PageResponse<*>> {
+        val result = usuarioService.getAllActivosExceptoPaginado(
+            userId, page, size, search, roles, estados
+        )
+        return ResponseEntity.ok(PageResponse.from(result))
+    }
+
+    /** Endpoint original — se mantiene para compatibilidad con otras pantallas. */
     @GetMapping("/all/{userId}")
     fun getAllUsuarios(@PathVariable userId: Long): ResponseEntity<CustomResponse> =
         ok("Usuarios obtenidos correctamente",
@@ -319,22 +340,8 @@ class UsuarioController(
 
     @GetMapping("/detalle/{usuarioId}")
     fun getUsuarioById(@PathVariable usuarioId: Long): ResponseEntity<CustomResponse> {
-        val usuario = usuarioService.findById(usuarioId)
-            ?: throw NoSuchElementException("Usuario no encontrado")
-
-        val cursosDictados = mutableListOf<CursoResponseDto>()
-        val cursosInscriptos = mutableListOf<CursoAlumnoResponseDto>()
-
-        if (usuario.tieneRol(RolType.PROFESOR)) {
-            cursoService.obtenerCursosProfesorId(usuarioId)
-        }
-        if (usuario.tieneRol(RolType.ALUMNO)) {
-            inscripcionService.obtenerInscripcionesPorAlumno(usuarioId)
-                .mapTo(cursosInscriptos) { CursoMapper.buildCursoAlumnoResponseDto(it) }
-        }
-
-        return ok("Usuario obtenido correctamente",
-            UsuarioMapper.buildUsuarioDetailDto(usuario, cursosInscriptos, cursosDictados))
+        val usuarioDetalle = usuarioDetalleFacade.obtenerDetalleUsuario(usuarioId)
+        return ok("Usuario obtenido correctamente", usuarioDetalle)
     }
 
     // ─── Roles ────────────────────────────────────────────────────────────────

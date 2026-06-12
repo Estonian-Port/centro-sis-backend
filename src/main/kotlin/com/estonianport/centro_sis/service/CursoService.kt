@@ -6,6 +6,7 @@ import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
+import com.estonianport.centro_sis.dto.response.PageResponse
 import com.estonianport.centro_sis.dto.response.ParteAsistenciaResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.ParteAsistenciaMapper
@@ -20,6 +21,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.cache.annotation.Caching
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -27,35 +31,75 @@ import java.time.LocalDate
 
 @Service
 @Transactional(readOnly = true)
-class CursoService : GenericServiceImpl<Curso, Long>() {
-
-    @Autowired private lateinit var usuarioService: UsuarioService
-    @Autowired lateinit var cursoRepository: CursoRepository
-
-    override val dao: CursoRepository
-        get() = cursoRepository
+class CursoService(
+    private val usuarioService: UsuarioService,
+    private val cursoRepository: CursoRepository
+) {
 
     fun countCursos(): Long = cursoRepository.countByFechaBajaIsNull()
 
     // ─── LECTURAS ─────────────────────────────────────────────────────────────
 
     /**
-     * Lista principal: devuelve DTOs directamente para que el caché no guarde
-     * entidades JPA con lazy collections → evita el Document nesting depth (1001).
+     * Lista completa (sin paginación) — conservada para endpoints internos y
+     * para la vista de calendario que necesita todos los cursos a la vez.
      */
     @Cacheable(value = ["cursos:lista"], key = "'todos'")
     fun getAllCursosResponse(): List<CursoResponseDto> {
         val cursos = cursoRepository.findAllOrdenadosConDetalles().distinct()
         if (cursos.isEmpty()) return emptyList()
-        // Segunda pasada: inscripciones (evita producto cartesiano en un solo JOIN)
         cursoRepository.findCursosConInscripcionesByIdsIn(cursos.map { it.id })
         return cursos.map { CursoMapper.buildCursoResponseDto(it) }
     }
 
     /**
-     * Carga la entidad para operaciones de escritura o uso interno.
-     * NO cachea la entidad — solo el DTO resultante se puede cachear externamente.
+     * Versión paginada para la pantalla de administración.
+     *
+     * Usa el patrón "IDs primero, hidratación después" — igual que PagoService —
+     * para evitar el producto cartesiano que rompía el conteo de páginas cuando
+     * se combinaban JOIN FETCH con Pageable.
+     *
+     * El filtro de [estadoCurso] (POR_COMENZAR / EN_CURSO / FINALIZADO) se aplica
+     * en memoria sobre la página pequeña (≤ 10 registros) porque ese estado es
+     * calculado en Kotlin a partir de fechaInicio/fechaFin, no persiste en la DB.
+     * El filtro de [estadoAlta] (ACTIVO / PENDIENTE / BAJA) sí va a la DB.
      */
+    fun getAllCursosPaginado(
+        page: Int,
+        size: Int,
+        search: String?,
+        estadoAlta: EstadoType?,
+        estadoCurso: String?          // "POR_COMENZAR" | "EN_CURSO" | "FINALIZADO"
+    ): Page<CursoResponseDto> {
+        val pageable = PageRequest.of(page, size)
+
+        // 1. IDs paginados con filtros que la DB puede resolver
+        val idsPage: Page<Long> = cursoRepository.findIdsPaginados(
+            search?.takeIf { it.isNotBlank() },
+            estadoAlta,
+            pageable
+        )
+
+        if (idsPage.isEmpty) return Page.empty(pageable)
+
+        // 2. Hidratar con detalles (profesores, horarios, tiposPago)
+        val cursosMap = cursoRepository.findConDetallesByIds(idsPage.content)
+            .associateBy { it.id }
+
+        // 3. Segunda pasada: inscripciones (evita N+1 y producto cartesiano)
+        cursoRepository.findCursosConInscripcionesByIdsIn(idsPage.content)
+
+        // 4. Mapear respetando orden + filtrar por estadoCurso en memoria
+        var cursos = idsPage.content.mapNotNull { cursosMap[it] }
+
+        if (!estadoCurso.isNullOrBlank()) {
+            cursos = cursos.filter { it.estado.name == estadoCurso }
+        }
+
+        val dtos = cursos.map { CursoMapper.buildCursoResponseDto(it) }
+        return PageImpl(dtos, pageable, idsPage.totalElements)
+    }
+
     fun getById(id: Long): Curso {
         cursoRepository.findByIdConDetalles(id)
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
@@ -63,9 +107,6 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
     }
 
-    /**
-     * Versión cacheada que devuelve DTO para el endpoint GET /curso/{id}.
-     */
     @Cacheable(value = ["cursos:detalle"], key = "#id")
     fun getByIdDto(id: Long): CursoResponseDto =
         CursoMapper.buildCursoResponseDto(getById(id))
@@ -75,6 +116,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         val cursosEntidad = cursoRepository.findCursosActivosPorProfesorId(idProfe)
         return cursosEntidad.map { CursoMapper.buildCursoResponseDto(it) }
     }
+
     @Cacheable(value = ["cursos:asistencia"], key = "#cursoId")
     fun getPartesAsistencia(cursoId: Long): List<ParteAsistenciaResponseDto> {
         val partes = cursoRepository.findPartesAsistenciaByCursoId(cursoId)
@@ -137,7 +179,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         CacheEvict(value = ["cursos:detalle"],  allEntries = true),
         CacheEvict(value = ["cursos:profesor"], allEntries = true),
     ])
-    override fun delete(id: Long) {
+    fun delete(id: Long) {
         val updated = cursoRepository.darDeBajaDirecto(id)
         if (updated == 0) throw NotFoundException("No se encontró el curso con ID: $id o ya está dado de baja")
     }
@@ -153,11 +195,10 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         val nuevosProfesores = profesoresId
             .map { usuarioService.getById(it).getRolProfesor() }
             .toMutableSet()
-        // Sincronizar bidireccional
         curso.profesores.toList().forEach { if (!nuevosProfesores.contains(it)) curso.removerProfesor(it) }
         nuevosProfesores.forEach { if (!curso.esProfesor(it)) curso.agregarProfesor(it) }
         usuarioService.actualizarEstadoProfesor(nuevosProfesores)
-        return save(curso)
+        return cursoRepository.save(curso)
     }
 
     @Transactional
@@ -169,7 +210,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         val curso = getById(cursoId)
         curso.horarios.clear()
         curso.horarios.addAll(nuevosHorarios)
-        return save(curso)
+        return cursoRepository.save(curso)
     }
 
     @Transactional
@@ -181,7 +222,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
         val curso = getById(cursoId)
         curso.tiposPago.clear()
         curso.tiposPago.addAll(nuevosTiposPago)
-        return save(curso)
+        return cursoRepository.save(curso)
     }
 
     @Transactional
@@ -196,7 +237,7 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
             recargo?.let { BigDecimal.valueOf(it).divide(BigDecimal.valueOf(100)).add(BigDecimal.ONE) }
                 ?: BigDecimal.ONE
         curso.estadoAlta = EstadoType.ACTIVO
-        return save(curso)
+        return cursoRepository.save(curso)
     }
 
     @Transactional
@@ -216,6 +257,6 @@ class CursoService : GenericServiceImpl<Curso, Long>() {
             .toSet()
 
         curso.tomarAsistencia(usuario, alumnosPresentesIds, fechaAsistencia)
-        return save(curso)
+        return cursoRepository.save(curso)
     }
 }

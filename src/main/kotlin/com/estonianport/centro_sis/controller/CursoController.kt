@@ -5,11 +5,13 @@ import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoAlquilerProfeRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
+import com.estonianport.centro_sis.dto.response.PageResponse
 import com.estonianport.centro_sis.dto.response.TipoPagoDto
 import com.estonianport.centro_sis.mapper.CursoMapper
 import com.estonianport.centro_sis.mapper.HorarioMapper
 import com.estonianport.centro_sis.mapper.ParteAsistenciaMapper
 import com.estonianport.centro_sis.mapper.TipoPagoMapper
+import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
@@ -39,6 +41,23 @@ class CursoController(private val cursoService: CursoService) {
     fun getCursoConInscripciones(@PathVariable id: Long): ResponseEntity<CustomResponse> =
         ok("Curso obtenido correctamente", cursoService.getByIdDto(id))
 
+    /**
+     * Listado paginado para la pantalla de administración.
+     * Reemplaza al anterior GET /activos (que devolvía todos de golpe).
+     */
+    @GetMapping("/activos-paginado")
+    fun getAllActivosPaginado(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) estadoAlta: EstadoType?,
+        @RequestParam(required = false) estadoCurso: String?
+    ): ResponseEntity<PageResponse<*>> {
+        val result = cursoService.getAllCursosPaginado(page, size, search, estadoAlta, estadoCurso)
+        return ResponseEntity.ok(PageResponse.from(result))
+    }
+
+    /** Endpoint original — se mantiene para la vista de calendario y otros usos internos. */
     @GetMapping("/activos")
     fun getAllActivos(): ResponseEntity<CustomResponse> =
         ok("Cursos obtenidos correctamente", cursoService.getAllCursosResponse())
