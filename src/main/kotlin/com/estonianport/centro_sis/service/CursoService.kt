@@ -1,23 +1,29 @@
 package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.AppTime
-import com.estonianport.centro_sis.common.GenericServiceImpl
 import com.estonianport.centro_sis.common.errors.NotFoundException
 import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
+import com.estonianport.centro_sis.dto.response.CursoAlumnoInscriptoDto
+import com.estonianport.centro_sis.dto.response.CursoDetalleDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
+import com.estonianport.centro_sis.dto.response.CursoResumenDto
+import com.estonianport.centro_sis.dto.response.MiInscripcionCursoDto
 import com.estonianport.centro_sis.dto.response.PageResponse
+import com.estonianport.centro_sis.dto.response.PagoRealizadoDto
 import com.estonianport.centro_sis.dto.response.ParteAsistenciaResponseDto
 import com.estonianport.centro_sis.mapper.CursoMapper
+import com.estonianport.centro_sis.mapper.CursoMapper.toAlumnoInscriptoDto
+import com.estonianport.centro_sis.mapper.CursoMapper.toDetalleDto
+import com.estonianport.centro_sis.mapper.CursoMapper.toMiInscripcionDto
+import com.estonianport.centro_sis.mapper.CursoMapper.toResumenDto
+import com.estonianport.centro_sis.mapper.PagoMapper.toPagoRealizadoDto
 import com.estonianport.centro_sis.mapper.ParteAsistenciaMapper
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Horario
-import com.estonianport.centro_sis.model.ParteAsistencia
-import com.estonianport.centro_sis.model.RolProfesor
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.repository.CursoRepository
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.cache.annotation.Caching
@@ -40,10 +46,10 @@ class CursoService(
 
     // ─── LECTURAS ─────────────────────────────────────────────────────────────
 
-    /**
-     * Lista completa (sin paginación) — conservada para endpoints internos y
-     * para la vista de calendario que necesita todos los cursos a la vez.
-     */
+    @Deprecated(
+        message = "Usar getActivosResumen en su lugar. Evita el fetch de colecciones pesadas utilizando agregaciones.",
+        replaceWith = ReplaceWith("getActivosResumen()")
+    )
     @Cacheable(value = ["cursos:lista"], key = "'todos'")
     fun getAllCursosResponse(): List<CursoResponseDto> {
         val cursos = cursoRepository.findAllOrdenadosConDetalles().distinct()
@@ -52,54 +58,144 @@ class CursoService(
         return cursos.map { CursoMapper.buildCursoResponseDto(it) }
     }
 
-    /**
-     * Versión paginada para la pantalla de administración.
-     *
-     * Usa el patrón "IDs primero, hidratación después" — igual que PagoService —
-     * para evitar el producto cartesiano que rompía el conteo de páginas cuando
-     * se combinaban JOIN FETCH con Pageable.
-     *
-     * El filtro de [estadoCurso] (POR_COMENZAR / EN_CURSO / FINALIZADO) se aplica
-     * en memoria sobre la página pequeña (≤ 10 registros) porque ese estado es
-     * calculado en Kotlin a partir de fechaInicio/fechaFin, no persiste en la DB.
-     * El filtro de [estadoAlta] (ACTIVO / PENDIENTE / BAJA) sí va a la DB.
-     */
+    @Deprecated(
+        message = "Usar getResumenPaginado en su lugar. Trae DTO resumido y cuenta alumnos de forma eficiente sin mutar colecciones.",
+        replaceWith = ReplaceWith("getResumenPaginado(page, size, search, estadoAlta, estadoCurso)")
+    )
     fun getAllCursosPaginado(
         page: Int,
         size: Int,
         search: String?,
         estadoAlta: EstadoType?,
-        estadoCurso: String?          // "POR_COMENZAR" | "EN_CURSO" | "FINALIZADO"
-    ): Page<CursoResponseDto> {
+        estadoCurso: String?
+    ): PageResponse<CursoResponseDto> {
         val pageable = PageRequest.of(page, size)
 
-        // 1. IDs paginados con filtros que la DB puede resolver
         val idsPage: Page<Long> = cursoRepository.findIdsPaginados(
             search?.takeIf { it.isNotBlank() },
             estadoAlta,
             pageable
         )
-
-        if (idsPage.isEmpty) return Page.empty(pageable)
-
-        // 2. Hidratar con detalles (profesores, horarios, tiposPago)
+        if (idsPage.isEmpty) return PageResponse.from(Page.empty(pageable))
         val cursosMap = cursoRepository.findConDetallesByIds(idsPage.content)
             .associateBy { it.id }
-
-        // 3. Segunda pasada: inscripciones (evita N+1 y producto cartesiano)
         cursoRepository.findCursosConInscripcionesByIdsIn(idsPage.content)
-
-        // 4. Mapear respetando orden + filtrar por estadoCurso en memoria
         var cursos = idsPage.content.mapNotNull { cursosMap[it] }
 
         if (!estadoCurso.isNullOrBlank()) {
             cursos = cursos.filter { it.estado.name == estadoCurso }
         }
-
         val dtos = cursos.map { CursoMapper.buildCursoResponseDto(it) }
-        return PageImpl(dtos, pageable, idsPage.totalElements)
+        val pageImpl = PageImpl(dtos, pageable, idsPage.totalElements)
+
+        return PageResponse.from(pageImpl)
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // ─── LECTURAS GRANULARES (UI-First) ──────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+
+    /** Listado liviano paginado para la pantalla de administración. */
+    @Cacheable(value = ["cursos:resumen:pagina"], key = "{#page, #size, #search, #estadoAlta, #estadoCurso}")
+    fun getResumenPaginado(
+        page: Int,
+        size: Int,
+        search: String?,
+        estadoAlta: EstadoType?,
+        estadoCurso: String?          // "POR_COMENZAR" | "EN_CURSO" | "FINALIZADO"
+    ): PageResponse<CursoResumenDto> {
+        val pageable = PageRequest.of(page, size)
+
+        val idsPage: Page<Long> = cursoRepository.findIdsPaginados(
+            search?.takeIf { it.isNotBlank() },
+            estadoAlta,
+            pageable
+        )
+        if (idsPage.isEmpty) return PageResponse.from(Page.empty(pageable))
+
+        val cursosMap = cursoRepository.findConDetallesByIds(idsPage.content).associateBy { it.id }
+        // Conteo, no fetch: evita traer las inscripciones completas solo para saber "cuántas hay".
+        val conteos = cursoRepository.countAlumnosActivosPorCursoIds(idsPage.content)
+            .associate { it.id to it.cantidad.toInt() }
+
+        var cursos = idsPage.content.mapNotNull { cursosMap[it] }
+        if (!estadoCurso.isNullOrBlank()) {
+            cursos = cursos.filter { it.estado.name == estadoCurso }
+        }
+
+        val dtos = cursos.map { it.toResumenDto(conteos[it.id] ?: 0) }
+        val pageImpl = PageImpl(dtos, pageable, idsPage.totalElements)
+
+        return PageResponse.from(pageImpl)
+    }
+
+    /** Lista completa liviana, para la vista de calendario y usos internos similares. */
+    @Cacheable(value = ["cursos:resumen:activos"], key = "'todos'")
+    fun getActivosResumen(): List<CursoResumenDto> {
+        val cursos = cursoRepository.findAllOrdenadosConDetalles().distinct()
+        if (cursos.isEmpty()) return emptyList()
+        val conteos = cursoRepository.countAlumnosActivosPorCursoIds(cursos.map { it.id })
+            .associate { it.id to it.cantidad.toInt() }
+        return cursos.map { it.toResumenDto(conteos[it.id] ?: 0) }
+    }
+
+    /** Detalle de un curso, sin la lista de alumnos embebida (ver getAlumnosInscriptosPaginado). */
+    @Cacheable(value = ["cursos:detalle"], key = "#id")
+    fun getDetalleDto(id: Long): CursoDetalleDto {
+        // Usa findByIdConDetalles directo (no getById()) para NO arrastrar el
+        // JOIN de inscripciones que getById() sí necesita para otros casos.
+        val curso = cursoRepository.findByIdConDetalles(id)
+            .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
+        val cantidad = cursoRepository.countAlumnosActivosPorCursoIds(listOf(id))
+            .firstOrNull()?.cantidad?.toInt() ?: 0
+        return curso.toDetalleDto(cantidad)
+    }
+
+    /** Sub-recurso de getDetalleDto(): alumnos inscriptos en el curso, paginados. */
+    @Cacheable(value = ["cursos:alumnos:pagina"], key = "{#cursoId, #page, #size}")
+    fun getAlumnosInscriptosPaginado(cursoId: Long, page: Int, size: Int): PageResponse<CursoAlumnoInscriptoDto> {
+        val pageable = PageRequest.of(page, size)
+        val pageImpl = cursoRepository.findInscripcionesActivasPaginadoByCursoId(cursoId, pageable)
+            .map { it.toAlumnoInscriptoDto() }
+
+        return PageResponse.from(pageImpl)
+    }
+
+    /** Vista "mi curso" desde la perspectiva de un alumno puntual. */
+    @Cacheable(value = ["cursos:mi-inscripcion"], key = "{#cursoId, #alumnoId}")
+    fun getMiInscripcion(cursoId: Long, alumnoId: Long): MiInscripcionCursoDto {
+        val inscripcion = cursoRepository.findInscripcionActivaByCursoIdYAlumnoId(cursoId, alumnoId)
+            .orElseThrow {
+                NotFoundException("No se encontró inscripción activa del alumno $alumnoId en el curso $cursoId")
+            }
+        return inscripcion.toMiInscripcionDto()
+    }
+
+    @Cacheable(value = ["cursos:mis-pagos"], key = "{#cursoId, #alumnoId}")
+    fun getMisPagos(cursoId: Long, alumnoId: Long): List<PagoRealizadoDto> {
+        val pagos = cursoRepository.findPagosByCursoIdYAlumnoId(cursoId, alumnoId)
+
+        return pagos.map { it.toPagoRealizadoDto() }
+    }
+
+    /** Cursos de un profesor, en formato liviano. */
+    @Cacheable(value = ["cursos:resumen:profesor"], key = "#idProfe")
+    fun getCursosResumenPorProfesorId(idProfe: Long): List<CursoResumenDto> {
+        val cursos = cursoRepository.findCursosActivosPorProfesorId(idProfe)
+        if (cursos.isEmpty()) return emptyList()
+        val conteos = cursoRepository.countAlumnosActivosPorCursoIds(cursos.map { it.id })
+            .associate { it.id to it.cantidad.toInt() }
+        return cursos.map { it.toResumenDto(conteos[it.id] ?: 0) }
+    }
+
+    /**
+     * Carga interna de la entidad Curso (no expone DTOs). Se usa para las
+     * escrituras de este service. Sigue trayendo inscripciones porque
+     * tomarAsistenciaAutomatica() las necesita de verdad para calcular
+     * asistencia; el resto de los llamadores (reemplazarProfesoresPorId, etc.)
+     * paga ese fetch de más sin usarlo — deuda técnica pre-existente, fuera
+     * de alcance de este refactor.
+     */
     fun getById(id: Long): Curso {
         cursoRepository.findByIdConDetalles(id)
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
@@ -107,10 +203,15 @@ class CursoService(
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
     }
 
+    @Deprecated("Utilizar getDetalleDto(id) en su lugar para mejorar el rendimiento.")
     @Cacheable(value = ["cursos:detalle"], key = "#id")
     fun getByIdDto(id: Long): CursoResponseDto =
         CursoMapper.buildCursoResponseDto(getById(id))
 
+    @Deprecated(
+        message = "Usar getCursosResumenPorProfesorId en su lugar. Devuelve DTO optimizado y procesa conteos eficientemente.",
+        replaceWith = ReplaceWith("getCursosResumenPorProfesorId(idProfe)")
+    )
     @Cacheable(value = ["cursos:profesor"], key = "#idProfe")
     fun obtenerCursosProfesorId(idProfe: Long): List<CursoResponseDto> {
         val cursosEntidad = cursoRepository.findCursosActivosPorProfesorId(idProfe)
@@ -127,14 +228,16 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
     ])
     fun alta(nuevoCurso: Curso): Curso = cursoRepository.save(nuevoCurso)
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
     ])
     fun crearCursoAlquiler(cursoRequestDto: CursoAlquilerAdminRequestDto): Curso {
         val profesores = cursoRequestDto.profesoresId
@@ -148,8 +251,9 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
     ])
     fun crearCursoComision(cursoRequestDto: CursoComisionRequestDto): Curso {
         val profesores = cursoRequestDto.profesoresId
@@ -164,20 +268,24 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
         CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
-    fun actualizarNombreCurso(cursoId: Long, nuevoNombre: String): CursoResponseDto {
+    fun actualizarNombreCurso(cursoId: Long, nuevoNombre: String): CursoDetalleDto {
         val updated = cursoRepository.updateNombre(cursoId, nuevoNombre)
         if (updated == 0) throw NotFoundException("No se encontró el curso con ID: $cursoId")
-        return getByIdDto(cursoId)
+        return getDetalleDto(cursoId)
     }
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"],  allEntries = true),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:alumnos:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:mi-inscripcion"], allEntries = true),
     ])
     fun delete(id: Long) {
         val updated = cursoRepository.darDeBajaDirecto(id)
@@ -186,9 +294,10 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],    key = "'todos'"),
-        CacheEvict(value = ["cursos:detalle"],  key = "#cursoId"),
-        CacheEvict(value = ["cursos:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
     ])
     fun reemplazarProfesoresPorId(cursoId: Long, profesoresId: List<Long>): Curso {
         val curso = getById(cursoId)
@@ -203,7 +312,8 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
         CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
     fun actualizarHorariosCurso(cursoId: Long, nuevosHorarios: Set<Horario>): Curso {
@@ -215,7 +325,6 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
         CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
     fun actualizarMontosTiposPagoCurso(cursoId: Long, nuevosTiposPago: Set<TipoPago>): Curso {
@@ -227,7 +336,8 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:lista"],   key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
         CacheEvict(value = ["cursos:detalle"], key = "#cursoId"),
     ])
     fun finalizarAltaCursoAlquiler(cursoId: Long, tiposPago: Set<TipoPago>, recargo: Double?): Curso {
@@ -242,8 +352,11 @@ class CursoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:detalle"],    key = "#cursoId"),
         CacheEvict(value = ["cursos:asistencia"], key = "#cursoId"),
+        // La asistencia afecta porcentajeAsistencia, que vive en los DTOs de
+        // alumno/inscripción puntual, no en el resumen ni en el detalle.
+        CacheEvict(value = ["cursos:alumnos:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:mi-inscripcion"], allEntries = true),
     ])
     fun tomarAsistenciaAutomatica(cursoId: Long, usuarioId: Long, fecha: LocalDate?): Curso {
         val curso = getById(cursoId)
@@ -259,4 +372,5 @@ class CursoService(
         curso.tomarAsistencia(usuario, alumnosPresentesIds, fechaAsistencia)
         return cursoRepository.save(curso)
     }
+
 }

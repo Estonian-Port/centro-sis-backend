@@ -1,7 +1,7 @@
 package com.estonianport.centro_sis.dto.response
 
+import java.io.Serializable
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 data class PagoResponseDto(
     val id: Long,
@@ -9,3 +9,12 @@ data class PagoResponseDto(
     val fecha: LocalDate,
     val fechaBaja: LocalDate?
 )
+
+data class PagoRealizadoDto(
+    val id: Long,
+    val tipoPago: TipoPagoDto,
+    val fecha: LocalDate,
+    val retraso: Boolean
+): Serializable
+
+

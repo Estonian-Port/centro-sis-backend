@@ -2,9 +2,15 @@ package com.estonianport.centro_sis.mapper
 
 import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
-import com.estonianport.centro_sis.dto.response.AlumnoResponseDto
+import com.estonianport.centro_sis.dto.response.CursoAlumnoInscriptoDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
+import com.estonianport.centro_sis.dto.response.CursoDetalleDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
+import com.estonianport.centro_sis.dto.response.CursoResumenDto
+import com.estonianport.centro_sis.dto.response.MiInscripcionCursoDto
+import com.estonianport.centro_sis.dto.response.ProfesorResumenDto
+import com.estonianport.centro_sis.mapper.HorarioMapper.ordenarPorDia
+import com.estonianport.centro_sis.mapper.UsuarioMapper.buildAdultoResponsable
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.CursoAlquiler
 import com.estonianport.centro_sis.model.CursoComision
@@ -16,6 +22,10 @@ import java.time.LocalDate
 
 object CursoMapper {
 
+    @Deprecated(
+        message = "No utilizar más este mapeo estructurado. Migrar al flujo de CursoResumenDto para evitar sobrecarga en memoria.",
+        level = DeprecationLevel.WARNING
+    )
     fun buildCursoResponseDto(curso: Curso): CursoResponseDto {
 
         val inscripcionesActivas = curso.inscripciones
@@ -108,4 +118,88 @@ object CursoMapper {
             fechaFin = LocalDate.parse(cursoDto.fechaFin),
         )
     }
+
+    /**
+     * Mappers nuevos de la arquitectura UI-First, como extension functions.
+     *
+     * Reemplazan a CursoMapper.buildCursoResponseDto / buildCursoAlumnoResponseDto
+     * (deprecados). Se mantienen como funciones de extensión —no como objeto
+     * estático— a propósito: cada función mapea UN caso de uso concreto, recibe
+     * solo los datos extra que necesita (ej. el conteo de alumnos ya resuelto
+     * por separado) y no intenta ser "la" función universal de mapeo de Curso.
+     *
+     * Reutilizan HorarioMapper / TipoPagoMapper porque esos sí son mappers de
+     * value objects acotados (no "God DTOs"): no hace falta reinventarlos.
+     */
+
+    private fun Curso.profesoresResumen(): List<ProfesorResumenDto> =
+        profesores.map {
+            val usuario = it.usuario
+            ProfesorResumenDto(id = usuario.id, nombreCompleto = "${usuario.nombre} ${usuario.apellido}")
+        }
+
+    private fun BigDecimal.aPorcentajeRecargo(): Double =
+        minus(BigDecimal.ONE).multiply(BigDecimal(100)).toDouble()
+
+    /** Mapea un Curso a su DTO de listado. [cantidadAlumnos] se resuelve aparte (conteo, no fetch). */
+    fun Curso.toResumenDto(cantidadAlumnos: Int): CursoResumenDto = CursoResumenDto(
+        id = id,
+        nombre = nombre,
+        tipoCurso = tipoCurso.name,
+        estado = estado.name,
+        estadoAlta = estadoAlta.name,
+        fechaInicio = fechaInicio.toString(),
+        fechaFin = fechaFin.toString(),
+        horarios = horarios.ordenarPorDia().map { HorarioMapper.buildHorarioResponseDto(it) },
+        profesores = profesoresResumen(),
+        cantidadAlumnosInscriptos = cantidadAlumnos
+    )
+
+    /** Mapea un Curso a su DTO de detalle. [cantidadAlumnos] se resuelve aparte (conteo, no fetch). */
+    fun Curso.toDetalleDto(cantidadAlumnos: Int): CursoDetalleDto = CursoDetalleDto(
+        id = id,
+        nombre = nombre,
+        tipoCurso = tipoCurso.name,
+        estado = estado.name,
+        estadoAlta = estadoAlta.name,
+        fechaInicio = fechaInicio.toString(),
+        fechaFin = fechaFin.toString(),
+        recargoPorAtrasoPorcentaje = recargoAtraso.aPorcentajeRecargo(),
+        horarios = horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
+        tiposPago = tiposPago.map { TipoPagoMapper.buildTipoPagoResponseDto(it) },
+        profesores = profesoresResumen(),
+        montoAlquiler = (this as? CursoAlquiler)?.precioAlquiler?.toDouble(),
+        cuotasAlquiler = (this as? CursoAlquiler)?.cuotasAlquiler,
+        totalAlumnosInscriptos = cantidadAlumnos
+    )
+
+    /** Fila del sub-recurso paginado GET /curso/{id}/alumnos. */
+    fun Inscripcion.toAlumnoInscriptoDto(): CursoAlumnoInscriptoDto = CursoAlumnoInscriptoDto(
+        inscripcionId = id,
+        id = alumno.id,
+        nombreCompleto = "${alumno.usuario.nombre} ${alumno.usuario.apellido}",
+        email = alumno.usuario.email,
+        dni = alumno.usuario.dni,
+        celular = alumno.usuario.celular.toString(),
+        fechaNacimiento = alumno.usuario.fechaNacimiento.toString(),
+        estadoPago = estadoPago.name,
+        fechaInscripcion = fechaInscripcion.toString(),
+        porcentajeAsistencia = curso.getPorcentajeAsistenciaAlumno(alumno.id),
+        puntos = puntos,
+        adultoResponsable = alumno.usuario.adultoResponsable?.let { buildAdultoResponsable(it) })
+
+    /** Vista "mi curso" de un alumno puntual. Reemplaza a CursoMapper.buildCursoAlumnoResponseDto. */
+    fun Inscripcion.toMiInscripcionDto(): MiInscripcionCursoDto = MiInscripcionCursoDto(
+        id = curso.id,
+        nombreCurso = curso.nombre,
+        estado = curso.estado.name,
+        estadoPago = estadoPago.name,
+        tipoPagoElegido = TipoPagoMapper.buildTipoPagoResponseDto(tipoPagoSeleccionado),
+        fechaInscripcion = fechaInscripcion.toString(),
+        porcentajeAsistencia = curso.getPorcentajeAsistenciaAlumno(alumno.id),
+        puntos = puntos,
+        beneficio = beneficio
+    )
+
 }
+
