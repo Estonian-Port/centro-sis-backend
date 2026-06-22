@@ -290,6 +290,7 @@ class UsuarioController(
 
     // ─── Cursos por usuario ───────────────────────────────────────────────────
 
+    @Deprecated("Usar /v2/cursos-alumno/{alumnoId} — devuelve InscripcionAlumnoSummaryDto con Redis cache")
     @GetMapping("/cursos-alumno/{idAlumno}")
     fun obtenerCursosActivosDelAlumno(@PathVariable idAlumno: Long): ResponseEntity<CustomResponse> {
         val inscripciones = inscripcionService.obtenerInscripcionesPorAlumno(idAlumno)
@@ -297,11 +298,30 @@ class UsuarioController(
             inscripciones.map { CursoMapper.buildCursoAlumnoResponseDto(it) })
     }
 
+    @Deprecated("Usar /v2/cursos-profesor/{alumnoId} — devuelve CursoProfesorSummaryDto con Redis cache")
     @GetMapping("/cursos-profesor/{profesorId}")
     fun obtenerCursosDictadosPorProfesor(@PathVariable profesorId: Long): ResponseEntity<CustomResponse> {
         val cursos = cursoService.obtenerCursosProfesorId(profesorId)
         return ok("Cursos obtenidos correctamente", cursos)
     }
+
+    @GetMapping("/v2/cursos-alumno/{alumnoId}")
+    fun obtenerCursosAlumnoSummary(
+        @PathVariable alumnoId: Long
+    ): ResponseEntity<CustomResponse> =
+        ok(
+            "Cursos obtenidos correctamente",
+            inscripcionService.obtenerCursosAlumnoSummary(alumnoId)
+        )
+
+    @GetMapping("/v2/cursos-profesor/{profesorId}")
+    fun obtenerCursosProfesorSummary(
+        @PathVariable profesorId: Long
+    ): ResponseEntity<CustomResponse> =
+        ok(
+            "Cursos obtenidos correctamente",
+            cursoService.obtenerCursosProfesorSummary(profesorId)
+        )
 
     // ─── Pagos ────────────────────────────────────────────────────────────────
 
@@ -326,7 +346,7 @@ class UsuarioController(
     ): ResponseEntity<CustomResponse> =
         ok("Pagos obtenidos correctamente",
             inscripcionService.obtenerPagosAlumno(usuarioId, inscripcionId)
-                .map { PagoMapper.buildPagoResponseDto(it) })
+        )
 
     @GetMapping("/pagos-como-alumno/{usuarioId}")
     fun obtenerTodosLosPagosRealizadosComoAlumno(
@@ -334,7 +354,7 @@ class UsuarioController(
     ): ResponseEntity<CustomResponse> =
         ok("Pagos obtenidos correctamente",
             inscripcionService.obtenerTodosLosPagosAlumno(usuarioId)
-                .map { PagoMapper.buildPagoResponseDto(it) })
+        )
 
     // ─── Detalle completo ─────────────────────────────────────────────────────
 

@@ -19,6 +19,7 @@ interface InscripcionRepository : CrudRepository<Inscripcion, Long> {
     @Query("SELECT p FROM Inscripcion i JOIN i.pagos p WHERE i.alumno.id = :alumnoId")
     fun findAllPagosByAlumnoId(@Param("alumnoId") alumnoId: Long): List<PagoCurso>
 
+    @Deprecated("Reemplazado por findInscripcionesSummaryPorAlumnoId(idAlumno)")
     @Query("""
         SELECT i FROM Inscripcion i
         JOIN FETCH i.curso c
@@ -33,4 +34,22 @@ interface InscripcionRepository : CrudRepository<Inscripcion, Long> {
         WHERE a.usuario.id = :idAlumno
         AND i.fechaBaja IS NULL
     """)
-    fun findInscripcionesActivasConDetallesPorAlumnoId(@Param("idAlumno") idAlumno: Long): Set<Inscripcion>}
+    fun findInscripcionesActivasConDetallesPorAlumnoId(@Param("idAlumno") idAlumno: Long): Set<Inscripcion>
+
+    @Query("""
+        SELECT i FROM Inscripcion i
+        JOIN FETCH i.curso c
+        LEFT JOIN FETCH c.horarios
+        LEFT JOIN FETCH c.profesores p
+        LEFT JOIN FETCH p.usuario
+        LEFT JOIN FETCH c.tiposPago
+        JOIN FETCH i.alumno a
+        JOIN FETCH a.usuario
+        LEFT JOIN FETCH i.tipoPagoSeleccionado
+        WHERE a.usuario.id = :alumnoId
+        AND i.fechaBaja IS NULL
+    """)
+    fun findInscripcionesSummaryPorAlumnoId(
+        @Param("alumnoId") alumnoId: Long
+    ): List<Inscripcion>
+}

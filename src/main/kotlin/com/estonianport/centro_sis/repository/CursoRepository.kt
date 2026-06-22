@@ -236,4 +236,18 @@ interface CursoRepository : CrudRepository<Curso, Long> {
         @Param("cursoId") cursoId: Long,
         @Param("alumnoId") alumnoId: Long
     ): List<PagoCurso>
+
+    @Query("""
+    SELECT DISTINCT c FROM Curso c
+    LEFT JOIN FETCH c.horarios
+    LEFT JOIN FETCH c.tiposPago
+    LEFT JOIN FETCH c.profesores p
+    LEFT JOIN FETCH p.usuario
+    JOIN c.profesores p2
+    WHERE p2.usuario.id = :profesorId
+    AND c.fechaBaja IS NULL
+""")
+    fun findCursosSummaryPorProfesorId(
+        @Param("profesorId") profesorId: Long
+    ): List<Curso>
 }

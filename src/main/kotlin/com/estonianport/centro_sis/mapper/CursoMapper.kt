@@ -5,6 +5,7 @@ import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoInscriptoDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoDetalleDto
+import com.estonianport.centro_sis.dto.response.CursoProfesorSummaryDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResumenDto
 import com.estonianport.centro_sis.dto.response.MiInscripcionCursoDto
@@ -51,6 +52,10 @@ object CursoMapper {
         )
     }
 
+    @Deprecated(
+        message = "No utilizar más este mapeo estructurado. Migrar al flujo de CursoResumenDto para evitar sobrecarga en memoria.",
+        level = DeprecationLevel.WARNING
+    )
     fun buildCursoAlumnoResponseDto(inscripcion: Inscripcion): CursoAlumnoResponseDto {
         return CursoAlumnoResponseDto(
             id = inscripcion.curso.id,
@@ -201,5 +206,19 @@ object CursoMapper {
         beneficio = beneficio
     )
 
+    fun buildCursoProfesorSummaryDto(curso: Curso, totalAlumnos: Int): CursoProfesorSummaryDto {
+        return CursoProfesorSummaryDto(
+            id = curso.id,
+            nombre = curso.nombre,
+            estado = curso.estado.name,
+            estadoAlta = curso.estadoAlta.name,
+            fechaInicio = curso.fechaInicio.toString(),
+            fechaFin = curso.fechaFin.toString(),
+            horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
+            profesores = curso.profesores.map { UsuarioMapper.buildProfesoresListaResponseDto(it.usuario) }.toSet(),
+            totalAlumnosInscriptos = totalAlumnos,
+            tipoCurso = curso.tipoCurso.name,
+        )
+    }
 }
 

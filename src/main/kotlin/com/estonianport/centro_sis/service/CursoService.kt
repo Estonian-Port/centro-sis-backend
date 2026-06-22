@@ -6,6 +6,7 @@ import com.estonianport.centro_sis.dto.request.CursoAlquilerAdminRequestDto
 import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoInscriptoDto
 import com.estonianport.centro_sis.dto.response.CursoDetalleDto
+import com.estonianport.centro_sis.dto.response.CursoProfesorSummaryDto
 import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResumenDto
 import com.estonianport.centro_sis.dto.response.MiInscripcionCursoDto
@@ -209,13 +210,37 @@ class CursoService(
         CursoMapper.buildCursoResponseDto(getById(id))
 
     @Deprecated(
-        message = "Usar getCursosResumenPorProfesorId en su lugar. Devuelve DTO optimizado y procesa conteos eficientemente.",
-        replaceWith = ReplaceWith("getCursosResumenPorProfesorId(idProfe)")
+        message = "Usar obtenerCursosProfesorSummary en su lugar. Devuelve DTO optimizado y procesa conteos eficientemente.",
+        replaceWith = ReplaceWith("obtenerCursosProfesorSummary(idProfe)")
     )
     @Cacheable(value = ["cursos:profesor"], key = "#idProfe")
     fun obtenerCursosProfesorId(idProfe: Long): List<CursoResponseDto> {
         val cursosEntidad = cursoRepository.findCursosActivosPorProfesorId(idProfe)
         return cursosEntidad.map { CursoMapper.buildCursoResponseDto(it) }
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = ["cursos:profesor:summary"], key = "#profesorId")
+    fun obtenerCursosProfesorSummary(profesorId: Long): List<CursoProfesorSummaryDto> {
+        // 1. Traemos la lista base con los JOIN FETCH necesarios
+        val cursos = cursoRepository.findCursosSummaryPorProfesorId(profesorId)
+        if (cursos.isEmpty()) return emptyList()
+
+        // 2. Extraemos los IDs y buscamos el volumen de alumnos en una sola query
+        val cursosIds = cursos.map { it.id }
+
+        // 3. Armamos un mapa O(1) para buscar el conteo rápido.
+        val alumnosPorCursoMap = cursoRepository
+            .countAlumnosActivosPorCursoIds(cursosIds)
+            .associate { it.id to it.cantidad.toInt() }
+
+        // 4. Mapeamos las entidades al DTO final inyectando el total de alumnos
+        return cursos.map { curso ->
+            CursoMapper.buildCursoProfesorSummaryDto(
+                curso = curso,
+                totalAlumnos = alumnosPorCursoMap[curso.id] ?: 0
+            )
+        }
     }
 
     @Cacheable(value = ["cursos:asistencia"], key = "#cursoId")
@@ -318,8 +343,8 @@ class CursoService(
     ])
     fun actualizarHorariosCurso(cursoId: Long, nuevosHorarios: Set<Horario>): Curso {
         val curso = getById(cursoId)
-        curso.horarios.clear()
-        curso.horarios.addAll(nuevosHorarios)
+        curso.horarios.removeIf { it !in nuevosHorarios }
+        nuevosHorarios.forEach { if (it !in curso.horarios) curso.horarios.add(it) }
         return cursoRepository.save(curso)
     }
 
@@ -372,5 +397,4 @@ class CursoService(
         curso.tomarAsistencia(usuario, alumnosPresentesIds, fechaAsistencia)
         return cursoRepository.save(curso)
     }
-
 }

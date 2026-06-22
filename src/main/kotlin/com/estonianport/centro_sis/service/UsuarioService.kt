@@ -133,10 +133,6 @@ class UsuarioService(
     // ─── ESCRITURAS ───────────────────────────────────────────────────────────
 
     @Transactional
-    @Caching(evict = [
-        CacheEvict(value = ["usuarios:lista"], allEntries = true),
-        CacheEvict(value = ["usuarios:rol"], allEntries = true)
-    ])
     fun save(usuario: Usuario): Usuario {
         return usuarioRepository.save(usuario)
     }

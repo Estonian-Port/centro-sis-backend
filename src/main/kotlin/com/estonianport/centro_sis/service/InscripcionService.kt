@@ -1,14 +1,19 @@
 package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.dto.request.InscripcionRequestDto
+import com.estonianport.centro_sis.dto.response.InscripcionAlumnoSummaryDto
+import com.estonianport.centro_sis.dto.response.PagoResponseDto
+import com.estonianport.centro_sis.mapper.InscripcionMapper
+import com.estonianport.centro_sis.mapper.PagoMapper
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
-import com.estonianport.centro_sis.model.PagoCurso
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -29,6 +34,7 @@ class InscripcionService {
     }
 
     @Transactional
+    @CacheEvict(value = ["cursos:alumno:summary"], key = "#usuario.id")
     fun inscribirUsuarioACurso(usuario: Usuario, curso: Curso, inscripcion: InscripcionRequestDto): Inscripcion {
         val alumno = usuario.getRolAlumno()
 
@@ -80,20 +86,32 @@ class InscripcionService {
     }
 
     @Transactional(readOnly = true)
-    fun obtenerPagosAlumno(alumnoId: Long, inscripcionId: Long): List<PagoCurso> {
+    fun obtenerPagosAlumno(alumnoId: Long, inscripcionId: Long): List<PagoResponseDto> {
         val inscripcion = getById(inscripcionId)
         if (inscripcion.alumno.id != alumnoId) {
             throw IllegalArgumentException("El alumno con id $alumnoId no está inscrito en la inscripción con id $inscripcionId")
         }
-        return inscripcion.pagos
+        return inscripcion.pagos.map { PagoMapper.buildPagoResponseDto(it) }
     }
 
     @Transactional(readOnly = true)
-    fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoCurso> {
-        return inscripcionRepository.findAllPagosByAlumnoId(alumnoId)
-    }
+    fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoResponseDto> =
+        inscripcionRepository.findAllPagosByAlumnoId(alumnoId).map { PagoMapper.buildPagoResponseDto(it) }
 
+    @Deprecated(
+        message = "Usar obtenerCursosAlumnoSummary en su lugar. Devuelve DTO optimizado y procesa conteos eficientemente.",
+        replaceWith = ReplaceWith("obtenerCursosAlumnoSummary(alumnoId)")
+    )
     @Transactional(readOnly = true)
     fun obtenerInscripcionesPorAlumno(idAlumno: Long): Set<Inscripcion> {
         return inscripcionRepository.findInscripcionesActivasConDetallesPorAlumnoId(idAlumno)
-    }}
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = ["cursos:alumno:summary"], key = "#alumnoId")
+    fun obtenerCursosAlumnoSummary(alumnoId: Long): List<InscripcionAlumnoSummaryDto> {
+        return inscripcionRepository
+            .findInscripcionesActivasConDetallesPorAlumnoId(alumnoId)
+            .map { InscripcionMapper.buildInscripcionAlumnoSummaryDto(it) }
+    }
+}
