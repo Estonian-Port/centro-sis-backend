@@ -14,6 +14,7 @@ import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
+import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -26,7 +27,6 @@ class InscripcionService {
     @Autowired
     lateinit var inscripcionRepository: InscripcionRepository
 
-    // Modificado para usar la query optimizada con FETCH
     @Transactional(readOnly = true)
     fun getById(id: Long): Inscripcion {
         return inscripcionRepository.findByIdWithCursoAndAlumno(id).orElse(null)
@@ -34,7 +34,14 @@ class InscripcionService {
     }
 
     @Transactional
-    @CacheEvict(value = ["cursos:alumno:summary"], key = "#usuario.id")
+    @Caching(evict = [
+        CacheEvict(value = ["cursos:alumno:summary"], key = "#usuario.id"),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], key = "#curso.id"),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:profesor:summary"], allEntries = true)
+    ])
     fun inscribirUsuarioACurso(usuario: Usuario, curso: Curso, inscripcion: InscripcionRequestDto): Inscripcion {
         val alumno = usuario.getRolAlumno()
 
@@ -63,6 +70,7 @@ class InscripcionService {
     }
 
     @Transactional
+    @CacheEvict(value = ["cursos:alumno:summary"], allEntries = true)
     fun asignarPuntos(idInscripcion: Long, puntos: Int, usuario: Usuario): Inscripcion {
         val inscripcion = getById(idInscripcion)
         inscripcion.darPuntos(usuario, puntos)
@@ -70,6 +78,7 @@ class InscripcionService {
     }
 
     @Transactional
+    @CacheEvict(value = ["cursos:alumno:summary"], allEntries = true)
     fun editarBeneficio(idInscripcion: Long, nuevoBeneficio: Int, idUsuario: Long): Inscripcion {
         val inscripcion = getById(idInscripcion)
         val otorgadoPor = usuarioService.getById(idUsuario)
@@ -79,6 +88,16 @@ class InscripcionService {
     }
 
     @Transactional
+    @Caching(evict = [
+        CacheEvict(value = ["cursos:alumno:summary"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:profesor:summary"], allEntries = true),
+        CacheEvict(value = ["cursos:alumnos:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:mi-inscripcion"], allEntries = true)
+    ])
     fun darDeBajaInscripcion(idInscripcion: Long) {
         val inscripcion = getById(idInscripcion)
         inscripcion.darDeBaja()
@@ -98,10 +117,8 @@ class InscripcionService {
     fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoResponseDto> =
         inscripcionRepository.findAllPagosByAlumnoId(alumnoId).map { PagoMapper.buildPagoResponseDto(it) }
 
-    @Deprecated(
-        message = "Usar obtenerCursosAlumnoSummary en su lugar. Devuelve DTO optimizado y procesa conteos eficientemente.",
-        replaceWith = ReplaceWith("obtenerCursosAlumnoSummary(alumnoId)")
-    )
+    @Deprecated(message = "Usar obtenerCursosAlumnoSummary en su lugar. Devuelve DTO optimizado y procesa conteos " +
+            "eficientemente.",)
     @Transactional(readOnly = true)
     fun obtenerInscripcionesPorAlumno(idAlumno: Long): Set<Inscripcion> {
         return inscripcionRepository.findInscripcionesActivasConDetallesPorAlumnoId(idAlumno)
