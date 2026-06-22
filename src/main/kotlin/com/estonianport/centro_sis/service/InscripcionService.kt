@@ -1,14 +1,20 @@
 package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.dto.request.InscripcionRequestDto
+import com.estonianport.centro_sis.dto.response.InscripcionAlumnoSummaryDto
+import com.estonianport.centro_sis.dto.response.PagoResponseDto
+import com.estonianport.centro_sis.mapper.InscripcionMapper
+import com.estonianport.centro_sis.mapper.PagoMapper
 import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Inscripcion
-import com.estonianport.centro_sis.model.PagoCurso
 import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.TipoPago
 import com.estonianport.centro_sis.repository.InscripcionRepository
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
+import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -21,7 +27,6 @@ class InscripcionService {
     @Autowired
     lateinit var inscripcionRepository: InscripcionRepository
 
-    // Modificado para usar la query optimizada con FETCH
     @Transactional(readOnly = true)
     fun getById(id: Long): Inscripcion {
         return inscripcionRepository.findByIdWithCursoAndAlumno(id).orElse(null)
@@ -29,6 +34,14 @@ class InscripcionService {
     }
 
     @Transactional
+    @Caching(evict = [
+        CacheEvict(value = ["cursos:alumno:summary"], key = "#usuario.id"),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], key = "#curso.id"),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:profesor:summary"], allEntries = true)
+    ])
     fun inscribirUsuarioACurso(usuario: Usuario, curso: Curso, inscripcion: InscripcionRequestDto): Inscripcion {
         val alumno = usuario.getRolAlumno()
 
@@ -57,6 +70,7 @@ class InscripcionService {
     }
 
     @Transactional
+    @CacheEvict(value = ["cursos:alumno:summary"], allEntries = true)
     fun asignarPuntos(idInscripcion: Long, puntos: Int, usuario: Usuario): Inscripcion {
         val inscripcion = getById(idInscripcion)
         inscripcion.darPuntos(usuario, puntos)
@@ -64,6 +78,7 @@ class InscripcionService {
     }
 
     @Transactional
+    @CacheEvict(value = ["cursos:alumno:summary"], allEntries = true)
     fun editarBeneficio(idInscripcion: Long, nuevoBeneficio: Int, idUsuario: Long): Inscripcion {
         val inscripcion = getById(idInscripcion)
         val otorgadoPor = usuarioService.getById(idUsuario)
@@ -73,6 +88,16 @@ class InscripcionService {
     }
 
     @Transactional
+    @Caching(evict = [
+        CacheEvict(value = ["cursos:alumno:summary"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], key = "'todos'"),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:profesor:summary"], allEntries = true),
+        CacheEvict(value = ["cursos:alumnos:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:mi-inscripcion"], allEntries = true)
+    ])
     fun darDeBajaInscripcion(idInscripcion: Long) {
         val inscripcion = getById(idInscripcion)
         inscripcion.darDeBaja()
@@ -80,20 +105,30 @@ class InscripcionService {
     }
 
     @Transactional(readOnly = true)
-    fun obtenerPagosAlumno(alumnoId: Long, inscripcionId: Long): List<PagoCurso> {
+    fun obtenerPagosAlumno(alumnoId: Long, inscripcionId: Long): List<PagoResponseDto> {
         val inscripcion = getById(inscripcionId)
         if (inscripcion.alumno.id != alumnoId) {
             throw IllegalArgumentException("El alumno con id $alumnoId no está inscrito en la inscripción con id $inscripcionId")
         }
-        return inscripcion.pagos
+        return inscripcion.pagos.map { PagoMapper.buildPagoResponseDto(it) }
     }
 
     @Transactional(readOnly = true)
-    fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoCurso> {
-        return inscripcionRepository.findAllPagosByAlumnoId(alumnoId)
-    }
+    fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoResponseDto> =
+        inscripcionRepository.findAllPagosByAlumnoId(alumnoId).map { PagoMapper.buildPagoResponseDto(it) }
 
+    @Deprecated("Usar obtenerCursosAlumnoSummary en su lugar. Devuelve DTO optimizado y procesa conteos " +
+            "eficientemente.",)
     @Transactional(readOnly = true)
     fun obtenerInscripcionesPorAlumno(idAlumno: Long): Set<Inscripcion> {
         return inscripcionRepository.findInscripcionesActivasConDetallesPorAlumnoId(idAlumno)
-    }}
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = ["cursos:alumno:summary"], key = "#alumnoId")
+    fun obtenerCursosAlumnoSummary(alumnoId: Long): List<InscripcionAlumnoSummaryDto> {
+        return inscripcionRepository
+            .findInscripcionesSummaryPorAlumnoId(alumnoId)
+            .map { InscripcionMapper.buildInscripcionAlumnoSummaryDto(it) }
+    }
+}

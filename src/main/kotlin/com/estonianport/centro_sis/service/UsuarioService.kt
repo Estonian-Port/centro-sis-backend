@@ -54,18 +54,8 @@ class UsuarioService(
     @Cacheable(value = ["usuarios:lista"], key = "'activos-excepto-' + #userId")
     fun getAllActivosExceptoDto(userId: Long): List<UsuarioResponseDto> =
         usuarioRepository.getAllActivosExcepto(userId)
-            .map { UsuarioMapper.buildUsuarioResponseDto(it)
-            }
+            .map { UsuarioMapper.buildUsuarioResponseDto(it) }
 
-    /**
-     * Versión paginada de [getAllActivosExceptoDto].
-     * Usa el patrón "IDs primero, hidratación después" para evitar el
-     * producto cartesiano que distorsionaba el conteo de páginas cuando
-     * se hacía JOIN FETCH con roles.
-     *
-     * Los filtros de rol y estado se aplican en memoria sobre la página
-     * pequeña (≤ 10 registros), por lo que el overhead es mínimo.
-     */
     fun getAllActivosExceptoPaginado(
         userId: Long,
         page: Int,
@@ -76,7 +66,6 @@ class UsuarioService(
     ): Page<UsuarioResponseDto> {
         val pageable = PageRequest.of(page, size)
 
-        // 1. Obtener IDs paginados (con filtro de texto en DB)
         val idsPage: Page<Long> = usuarioRepository.findIdsActivosExcepto(
             userId,
             search?.takeIf { it.isNotBlank() },
@@ -85,11 +74,9 @@ class UsuarioService(
 
         if (idsPage.isEmpty) return Page.empty(pageable)
 
-        // 2. Hidratar los usuarios de esta página con sus roles en una sola query
         val usuariosMap = usuarioRepository.findWithRolesByIds(idsPage.content)
             .associateBy { it.id }
 
-        // 3. Mapear respetando el orden original + aplicar filtros de rol/estado en memoria
         var usuarios = idsPage.content.mapNotNull { usuariosMap[it] }
 
         if (!roles.isNullOrEmpty()) {
@@ -101,9 +88,6 @@ class UsuarioService(
 
         val dtos = usuarios.map { UsuarioMapper.buildUsuarioResponseDto(it) }
 
-        // Nota: el total en la Page refleja el conteo sin filtros de rol/estado
-        // (esos filtros son en memoria). Para el front esto es suficiente ya que
-        // los filtros de rol/estado son meramente visuales sobre la página actual.
         return PageImpl(dtos, pageable, idsPage.totalElements)
     }
 
@@ -133,10 +117,6 @@ class UsuarioService(
     // ─── ESCRITURAS ───────────────────────────────────────────────────────────
 
     @Transactional
-    @Caching(evict = [
-        CacheEvict(value = ["usuarios:lista"], allEntries = true),
-        CacheEvict(value = ["usuarios:rol"], allEntries = true)
-    ])
     fun save(usuario: Usuario): Usuario {
         return usuarioRepository.save(usuario)
     }
@@ -226,6 +206,12 @@ class UsuarioService(
     @Transactional
     @Caching(evict = [
         CacheEvict(value = ["usuarios:lista"], allEntries = true),
+        CacheEvict(value = ["usuarios:rol"],   allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:profesor:summary"], allEntries = true)
     ])
     fun darDeBaja(usuarioId: Long, eliminadoPorId: Long) {
         puedeEliminar(eliminadoPorId)
@@ -239,6 +225,11 @@ class UsuarioService(
     @Transactional
     @Caching(evict = [
         CacheEvict(value = ["usuarios:lista"], allEntries = true),
+        CacheEvict(value = ["cursos:detalle"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:pagina"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:activos"], allEntries = true),
+        CacheEvict(value = ["cursos:resumen:profesor"], allEntries = true),
+        CacheEvict(value = ["cursos:profesor:summary"], allEntries = true)
     ])
     fun updatePerfil(usuario: UsuarioUpdatePerfilRequestDto, id: Long): Usuario {
         val usuarioExistente = findById(id)
@@ -272,10 +263,6 @@ class UsuarioService(
     }
 
     @Transactional
-    @Caching(evict = [
-        CacheEvict(value = ["usuarios:lista"], allEntries = true),
-        CacheEvict(value = ["usuarios:rol"],   allEntries = true),
-    ])
     fun solicitarRecuperarPassword(email: String) {
         val usuario = usuarioRepository.getUsuarioByEmail(email) ?: return
         if (usuario.estado == EstadoType.BAJA) return
@@ -303,6 +290,10 @@ class UsuarioService(
     }
 
     @Transactional
+    @Caching(evict = [
+        CacheEvict(value = ["usuarios:lista"], allEntries = true),
+        CacheEvict(value = ["usuarios:rol"],   allEntries = true),
+    ])
     fun actualizarEstadoProfesor(profesores: MutableSet<RolProfesor>) {
         profesores.forEach { it.actualizarEstado() }
         profesores.forEach { save(it.usuario) }
@@ -361,5 +352,4 @@ class UsuarioService(
     fun existsByDni(dni: String): Boolean {
         return usuarioRepository.existsByDni(dni)
     }
-
 }

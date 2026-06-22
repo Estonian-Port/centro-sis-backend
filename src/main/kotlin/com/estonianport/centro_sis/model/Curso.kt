@@ -13,6 +13,7 @@ import jakarta.persistence.Transient
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.LocalDateTime
+import kotlin.math.roundToInt
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -204,10 +205,10 @@ abstract class Curso(
             }
         }
 
-        return (asistenciasAlumno.toDouble() / totalClases) * 100
+        val porcentaje = (asistenciasAlumno.toDouble() / totalClases) * 100
 
+        return porcentaje.roundToInt().toDouble()
     }
-
     fun darDeBaja() {
         fechaBaja = AppTime.hoy()
         estadoAlta = EstadoType.BAJA

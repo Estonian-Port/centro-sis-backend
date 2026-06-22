@@ -7,9 +7,8 @@ import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CustomResponse
 import com.estonianport.centro_sis.dto.response.PageResponse
 import com.estonianport.centro_sis.dto.response.TipoPagoDto
-import com.estonianport.centro_sis.mapper.CursoMapper
+import com.estonianport.centro_sis.mapper.CursoMapper.toDetalleDto
 import com.estonianport.centro_sis.mapper.HorarioMapper
-import com.estonianport.centro_sis.mapper.ParteAsistenciaMapper
 import com.estonianport.centro_sis.mapper.TipoPagoMapper
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.service.CursoService
@@ -31,7 +30,7 @@ import java.time.LocalDate
 @CrossOrigin("*")
 class CursoController(private val cursoService: CursoService) {
 
-    // ─── Lectura ──────────────────────────────────────────────────────────────
+    // ─── DEPRECADOS ──────────────────────────────────────────────────────────────
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> =
@@ -41,10 +40,10 @@ class CursoController(private val cursoService: CursoService) {
     fun getCursoConInscripciones(@PathVariable id: Long): ResponseEntity<CustomResponse> =
         ok("Curso obtenido correctamente", cursoService.getByIdDto(id))
 
-    /**
-     * Listado paginado para la pantalla de administración.
-     * Reemplaza al anterior GET /activos (que devolvía todos de golpe).
-     */
+    @GetMapping("/activos")
+    fun getAllActivos(): ResponseEntity<CustomResponse> =
+        ok("Cursos obtenidos correctamente", cursoService.getAllCursosResponse())
+
     @GetMapping("/activos-paginado")
     fun getAllActivosPaginado(
         @RequestParam(defaultValue = "0") page: Int,
@@ -52,21 +51,65 @@ class CursoController(private val cursoService: CursoService) {
         @RequestParam(required = false) search: String?,
         @RequestParam(required = false) estadoAlta: EstadoType?,
         @RequestParam(required = false) estadoCurso: String?
-    ): ResponseEntity<PageResponse<*>> {
-        val result = cursoService.getAllCursosPaginado(page, size, search, estadoAlta, estadoCurso)
-        return ResponseEntity.ok(PageResponse.from(result))
-    }
+    ): ResponseEntity<PageResponse<*>> =
+        ResponseEntity.ok(cursoService.getAllCursosPaginado(page, size, search, estadoAlta, estadoCurso))
 
-    /** Endpoint original — se mantiene para la vista de calendario y otros usos internos. */
-    @GetMapping("/activos")
-    fun getAllActivos(): ResponseEntity<CustomResponse> =
-        ok("Cursos obtenidos correctamente", cursoService.getAllCursosResponse())
+    // ─── Lectura ──────────────────────────────────────────────────────────────
+
+    /** Detalle de un curso, sin la lista de alumnos embebida. */
+    @GetMapping("/{id}/detalle")
+    fun getDetalle(@PathVariable id: Long): ResponseEntity<CustomResponse> =
+        ok("Curso obtenido correctamente", cursoService.getDetalleDto(id))
+
+    /** Listado liviano paginado para la pantalla de administración. */
+    @GetMapping("/resumen")
+    fun getResumenPaginado(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) estadoAlta: EstadoType?,
+        @RequestParam(required = false) estadoCurso: String?
+    ): ResponseEntity<PageResponse<*>> =
+         ResponseEntity.ok(cursoService.getResumenPaginado(page, size, search, estadoAlta, estadoCurso))
+
+    /** Listado liviano completo (sin paginar), para la vista de calendario. */
+    @GetMapping("/resumen/activos")
+    fun getActivosResumen(): ResponseEntity<CustomResponse> =
+        ok("Cursos obtenidos correctamente", cursoService.getActivosResumen())
+
+    /** Sub-recurso paginado de alumnos inscriptos en un curso. */
+    @GetMapping("/{cursoId}/alumnos")
+    fun getAlumnosInscriptos(
+        @PathVariable cursoId: Long,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int
+    ): ResponseEntity<PageResponse<*>> =
+        ResponseEntity.ok(cursoService.getAlumnosInscriptosPaginado(cursoId, page, size))
+
+    /** Vista "mi curso" desde la perspectiva de un alumno puntual. */
+    @GetMapping("/{cursoId}/mi-inscripcion/{alumnoId}")
+    fun getMiInscripcion(
+        @PathVariable cursoId: Long,
+        @PathVariable alumnoId: Long
+    ): ResponseEntity<CustomResponse> =
+        ok("Inscripción obtenida correctamente", cursoService.getMiInscripcion(cursoId, alumnoId))
+
+    /** Vista "mi curso" desde la perspectiva de un alumno puntual. */
+    @GetMapping("/{cursoId}/mis-pagos/{alumnoId}")
+    fun getMisPagos(
+        @PathVariable cursoId: Long,
+        @PathVariable alumnoId: Long
+    ): ResponseEntity<CustomResponse> =
+        ok("Pagos obtenidos correctamente", cursoService.getMisPagos(cursoId, alumnoId))
+
+    /** Cursos de un profesor, en formato liviano. */
+    @GetMapping("/resumen/profesor/{idProfe}")
+    fun getCursosResumenPorProfesorId(@PathVariable idProfe: Long): ResponseEntity<CustomResponse> =
+        ok("Cursos obtenidos correctamente", cursoService.getCursosResumenPorProfesorId(idProfe))
 
     @GetMapping("/{cursoId}/partes-asistencia")
-    fun getPartesAsistenciaCurso(@PathVariable cursoId: Long): ResponseEntity<CustomResponse> {
-        val partes = cursoService.getPartesAsistencia(cursoId)
-        return ok("Partes de asistencia obtenidos correctamente", partes)
-    }
+    fun getPartesAsistenciaCurso(@PathVariable cursoId: Long): ResponseEntity<CustomResponse> =
+        ok("Partes de asistencia obtenidos correctamente", cursoService.getPartesAsistencia(cursoId))
 
     // ─── Alta ─────────────────────────────────────────────────────────────────
 
@@ -74,8 +117,7 @@ class CursoController(private val cursoService: CursoService) {
     fun altaAlquiler(@RequestBody cursoRequestDto: CursoAlquilerAdminRequestDto): ResponseEntity<CustomResponse> {
         val curso = cursoService.crearCursoAlquiler(cursoRequestDto)
         return ResponseEntity.status(201).body(
-            CustomResponse(message = "Curso creado correctamente",
-                data = CursoMapper.buildCursoResponseDto(curso))
+            CustomResponse(message = "Curso creado correctamente", data = curso.toDetalleDto(0))
         )
     }
 
@@ -83,8 +125,7 @@ class CursoController(private val cursoService: CursoService) {
     fun altaComision(@RequestBody cursoRequestDto: CursoComisionRequestDto): ResponseEntity<CustomResponse> {
         val curso = cursoService.crearCursoComision(cursoRequestDto)
         return ResponseEntity.status(201).body(
-            CustomResponse(message = "Curso creado correctamente",
-                data = CursoMapper.buildCursoResponseDto(curso))
+            CustomResponse(message = "Curso creado correctamente", data = curso.toDetalleDto(0))
         )
     }
 
@@ -95,8 +136,10 @@ class CursoController(private val cursoService: CursoService) {
     ): ResponseEntity<CustomResponse> {
         val tiposDePago = curso.tiposPago.map { TipoPagoMapper.buildTipoPago(it) }.toSet()
         val cursoFinalizado = cursoService.finalizarAltaCursoAlquiler(cursoId, tiposDePago, curso.recargo)
-        return ok("Curso de alquiler finalizado correctamente",
-            CursoMapper.buildCursoResponseDto(cursoFinalizado))
+        return ok(
+            "Curso de alquiler finalizado correctamente",
+            cursoFinalizado.toDetalleDto(cursoFinalizado.getInscripcionesActivas().size)
+        )
     }
 
     // ─── Actualización ────────────────────────────────────────────────────────
@@ -107,7 +150,10 @@ class CursoController(private val cursoService: CursoService) {
         @RequestBody profesoresId: List<Long>
     ): ResponseEntity<CustomResponse> {
         val curso = cursoService.reemplazarProfesoresPorId(cursoId, profesoresId)
-        return ok("Profesores actualizados correctamente", CursoMapper.buildCursoResponseDto(curso))
+        return ok(
+            "Profesores actualizados correctamente",
+            curso.toDetalleDto(curso.getInscripcionesActivas().size)
+        )
     }
 
     @PutMapping("/{cursoId}/nombre")
@@ -124,8 +170,10 @@ class CursoController(private val cursoService: CursoService) {
         @RequestBody idsProfesores: List<Long>
     ): ResponseEntity<CustomResponse> {
         val curso = cursoService.reemplazarProfesoresPorId(cursoId, idsProfesores)
-        return ok("Profesores del curso actualizados correctamente",
-            CursoMapper.buildCursoResponseDto(curso))
+        return ok(
+            "Profesores del curso actualizados correctamente",
+            curso.toDetalleDto(curso.getInscripcionesActivas().size)
+        )
     }
 
     @PutMapping("/{cursoId}/horarios")
@@ -135,8 +183,10 @@ class CursoController(private val cursoService: CursoService) {
     ): ResponseEntity<CustomResponse> {
         val curso = cursoService.actualizarHorariosCurso(
             cursoId, nuevosHorarios.map { HorarioMapper.buildHorario(it) }.toSet())
-        return ok("Horarios del curso actualizados correctamente",
-            CursoMapper.buildCursoResponseDto(curso))
+        return ok(
+            "Horarios del curso actualizados correctamente",
+            curso.toDetalleDto(curso.getInscripcionesActivas().size)
+        )
     }
 
     @PutMapping("/{cursoId}/modalidades-pago")
@@ -146,8 +196,10 @@ class CursoController(private val cursoService: CursoService) {
     ): ResponseEntity<CustomResponse> {
         val curso = cursoService.actualizarMontosTiposPagoCurso(
             cursoId, montosActualizados.map { TipoPagoMapper.buildTipoPago(it) }.toSet())
-        return ok("Montos de las modalidades de pago actualizados correctamente",
-            CursoMapper.buildCursoResponseDto(curso))
+        return ok(
+            "Montos de las modalidades de pago actualizados correctamente",
+            curso.toDetalleDto(curso.getInscripcionesActivas().size)
+        )
     }
 
     // ─── Asistencia ───────────────────────────────────────────────────────────

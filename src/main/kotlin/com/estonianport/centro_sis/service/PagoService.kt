@@ -7,6 +7,8 @@ import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoPagoConcepto
 import com.estonianport.centro_sis.repository.*
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Caching
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
@@ -142,6 +144,9 @@ class PagoService(
     // ========================================
 
     @Transactional
+    @Caching(evict = [
+        CacheEvict(value = ["cursos:alumno:summary"], key = "#alumnoId"),
+    ])
     fun registrarPagoCurso(
         usuarioId: Long,
         inscripcionId: Long,

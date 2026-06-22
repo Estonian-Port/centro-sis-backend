@@ -23,14 +23,18 @@ object HorarioMapper {
     )
 
     fun buildHorarioResponseDto(horario: Horario): HorarioDto {
-        val diaEsp = horario.dia
-            .getDisplayName(TextStyle.FULL, SPANISH)
-            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(SPANISH) else it.toString() }
+        val diaEsp = horario.dia.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+            .replaceFirstChar { it.uppercase() }
+
         return HorarioDto(
             dia = diaEsp,
             horaInicio = horario.horaInicio.toString(),
             horaFin = horario.horaFin.toString()
         )
+    }
+
+    fun MutableSet<Horario>.ordenarPorDia(): List<Horario> {
+        return this.sortedBy { it.dia.value }
     }
 
     fun buildHorario(horarioDto: HorarioDto): Horario {
