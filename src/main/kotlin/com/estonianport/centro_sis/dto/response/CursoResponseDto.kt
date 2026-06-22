@@ -123,7 +123,7 @@ data class InscripcionAlumnoSummaryDto(
     val fechaFin: String,
     val fechaInscripcion: String,
     val horarios: Set<HorarioDto>,
-    val profesores: Set<UsuarioResponseDto>,
+    val profesores: List<ProfesorResumenDto>,
     val tipoPagoElegido: TipoPagoDto,
     val porcentajeAsistencia: Double,
     val tipoCurso: String,
@@ -138,7 +138,7 @@ data class CursoProfesorSummaryDto(
     val fechaInicio: String,
     val fechaFin: String,
     val horarios: Set<HorarioDto>,
-    val profesores: Set<ProfesorListaResponseDto>,
+    val profesores: List<ProfesorResumenDto>,
     val totalAlumnosInscriptos: Int,
     val tipoCurso: String,
 ): Serializable

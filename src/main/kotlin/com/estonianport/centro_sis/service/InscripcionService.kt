@@ -117,7 +117,7 @@ class InscripcionService {
     fun obtenerTodosLosPagosAlumno(alumnoId: Long): List<PagoResponseDto> =
         inscripcionRepository.findAllPagosByAlumnoId(alumnoId).map { PagoMapper.buildPagoResponseDto(it) }
 
-    @Deprecated(message = "Usar obtenerCursosAlumnoSummary en su lugar. Devuelve DTO optimizado y procesa conteos " +
+    @Deprecated("Usar obtenerCursosAlumnoSummary en su lugar. Devuelve DTO optimizado y procesa conteos " +
             "eficientemente.",)
     @Transactional(readOnly = true)
     fun obtenerInscripcionesPorAlumno(idAlumno: Long): Set<Inscripcion> {
@@ -128,7 +128,7 @@ class InscripcionService {
     @Cacheable(value = ["cursos:alumno:summary"], key = "#alumnoId")
     fun obtenerCursosAlumnoSummary(alumnoId: Long): List<InscripcionAlumnoSummaryDto> {
         return inscripcionRepository
-            .findInscripcionesActivasConDetallesPorAlumnoId(alumnoId)
+            .findInscripcionesSummaryPorAlumnoId(alumnoId)
             .map { InscripcionMapper.buildInscripcionAlumnoSummaryDto(it) }
     }
 }

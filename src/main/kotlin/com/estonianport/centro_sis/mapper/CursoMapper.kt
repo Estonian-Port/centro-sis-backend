@@ -137,7 +137,7 @@ object CursoMapper {
      * value objects acotados (no "God DTOs"): no hace falta reinventarlos.
      */
 
-    private fun Curso.profesoresResumen(): List<ProfesorResumenDto> =
+    fun Curso.profesoresResumen(): List<ProfesorResumenDto> =
         profesores.map {
             val usuario = it.usuario
             ProfesorResumenDto(id = usuario.id, nombreCompleto = "${usuario.nombre} ${usuario.apellido}")
@@ -215,7 +215,7 @@ object CursoMapper {
             fechaInicio = curso.fechaInicio.toString(),
             fechaFin = curso.fechaFin.toString(),
             horarios = curso.horarios.map { HorarioMapper.buildHorarioResponseDto(it) }.toSet(),
-            profesores = curso.profesores.map { UsuarioMapper.buildProfesoresListaResponseDto(it.usuario) }.toSet(),
+            profesores = curso.profesoresResumen(),
             totalAlumnosInscriptos = totalAlumnos,
             tipoCurso = curso.tipoCurso.name,
         )
