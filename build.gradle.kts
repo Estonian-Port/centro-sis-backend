@@ -1,3 +1,6 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+import org.gradle.kotlin.dsl.filter
+
 plugins {
     id("org.springframework.boot") version "3.5.6"
     id("io.spring.dependency-management") version "1.1.7"
@@ -7,7 +10,7 @@ plugins {
 }
 
 group = "com.estonianport"
-version = "1.5.0"
+version = "1.5.1"
 description = "Centro – Student Information System (Backend)"
 
 java {
@@ -67,6 +70,14 @@ allOpen {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+tasks.processResources {
+    inputs.property("version", project.version)
+
+    filesMatching("**/banner.txt") {
+        filter<ReplaceTokens>("tokens" to mapOf("APPLICATION_VERSION" to project.version.toString()))
+    }
 }
 
 configurations.all {

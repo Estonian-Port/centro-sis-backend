@@ -117,6 +117,7 @@ class EmailService {
             throw BusinessException("Email Inválido")
         }
 
+
         val template = loadHtmlTemplate("recuperar_password.html")
 
         val content = renderTemplate(
