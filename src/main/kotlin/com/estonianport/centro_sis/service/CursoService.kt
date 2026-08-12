@@ -7,7 +7,6 @@ import com.estonianport.centro_sis.dto.request.CursoComisionRequestDto
 import com.estonianport.centro_sis.dto.response.CursoAlumnoInscriptoDto
 import com.estonianport.centro_sis.dto.response.CursoDetalleDto
 import com.estonianport.centro_sis.dto.response.CursoProfesorSummaryDto
-import com.estonianport.centro_sis.dto.response.CursoResponseDto
 import com.estonianport.centro_sis.dto.response.CursoResumenDto
 import com.estonianport.centro_sis.dto.response.MiInscripcionCursoDto
 import com.estonianport.centro_sis.dto.response.PageResponse
@@ -45,49 +44,8 @@ class CursoService(
 
     fun countCursos(): Long = cursoRepository.countByFechaBajaIsNull()
 
-    // ─── LECTURAS ─────────────────────────────────────────────────────────────
-
-    @Deprecated(message = "Usar getActivosResumen en su lugar. Evita el fetch de colecciones pesadas utilizando agregaciones.",)
-    @Cacheable(value = ["cursos:lista"], key = "'todos'")
-    fun getAllCursosResponse(): List<CursoResponseDto> {
-        val cursos = cursoRepository.findAllOrdenadosConDetalles().distinct()
-        if (cursos.isEmpty()) return emptyList()
-        cursoRepository.findCursosConInscripcionesByIdsIn(cursos.map { it.id })
-        return cursos.map { CursoMapper.buildCursoResponseDto(it) }
-    }
-
-    @Deprecated(message = "Usar getResumenPaginado en su lugar. Trae DTO resumido y cuenta alumnos de forma eficiente sin mutar colecciones.",)
-    fun getAllCursosPaginado(
-        page: Int,
-        size: Int,
-        search: String?,
-        estadoAlta: EstadoType?,
-        estadoCurso: String?
-    ): PageResponse<CursoResponseDto> {
-        val pageable = PageRequest.of(page, size)
-
-        val idsPage: Page<Long> = cursoRepository.findIdsPaginados(
-            search?.takeIf { it.isNotBlank() },
-            estadoAlta,
-            pageable
-        )
-        if (idsPage.isEmpty) return PageResponse.from(Page.empty(pageable))
-        val cursosMap = cursoRepository.findConDetallesByIds(idsPage.content)
-            .associateBy { it.id }
-        cursoRepository.findCursosConInscripcionesByIdsIn(idsPage.content)
-        var cursos = idsPage.content.mapNotNull { cursosMap[it] }
-
-        if (!estadoCurso.isNullOrBlank()) {
-            cursos = cursos.filter { it.estado.name == estadoCurso }
-        }
-        val dtos = cursos.map { CursoMapper.buildCursoResponseDto(it) }
-        val pageImpl = PageImpl(dtos, pageable, idsPage.totalElements)
-
-        return PageResponse.from(pageImpl)
-    }
-
     // ════════════════════════════════════════════════════════════════════════
-    // ─── LECTURAS GRANULARES (UI-First) ──────────────────────────────────────
+    // ─── LECTURAS ───────────────────────────────────────────────────────────
     // ════════════════════════════════════════════════════════════════════════
 
     @Cacheable(value = ["cursos:resumen:pagina"], key = "{#page, #size, #search, #estadoAlta, #estadoCurso}")
@@ -178,19 +136,6 @@ class CursoService(
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
         return cursoRepository.findInscripcionesByCursoId(id)
             .orElseThrow { NotFoundException("No se encontró el curso con ID: $id") }
-    }
-
-    @Deprecated("Utilizar getDetalleDto(id) en su lugar para mejorar el rendimiento.")
-    @Cacheable(value = ["cursos:detalle"], key = "#id")
-    fun getByIdDto(id: Long): CursoResponseDto =
-        CursoMapper.buildCursoResponseDto(getById(id))
-
-    @Deprecated(message = "Usar obtenerCursosProfesorSummary en su lugar. Devuelve DTO optimizado y procesa conteos " +
-            "eficientemente.",)
-    @Cacheable(value = ["cursos:profesor"], key = "#idProfe")
-    fun obtenerCursosProfesorId(idProfe: Long): List<CursoResponseDto> {
-        val cursosEntidad = cursoRepository.findCursosActivosPorProfesorId(idProfe)
-        return cursosEntidad.map { CursoMapper.buildCursoResponseDto(it) }
     }
 
     @Transactional(readOnly = true)

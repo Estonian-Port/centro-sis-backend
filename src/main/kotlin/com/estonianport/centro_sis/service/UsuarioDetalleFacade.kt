@@ -19,12 +19,11 @@ class UsuarioDetalleFacade(
         val usuario = usuarioService.getById(usuarioId)
 
         val cursosDictados = if (usuario.tieneRol(RolType.PROFESOR)) {
-            cursoService.obtenerCursosProfesorId(usuarioId)
+            cursoService.obtenerCursosProfesorSummary(usuarioId)
         } else emptyList()
 
         val cursosInscriptos = if (usuario.tieneRol(RolType.ALUMNO)) {
-            inscripcionService.obtenerInscripcionesPorAlumno(usuarioId)
-                .map { CursoMapper.buildCursoAlumnoResponseDto(it) }
+            inscripcionService.obtenerCursosAlumnoSummary(usuarioId)
         } else emptyList()
 
         return UsuarioMapper.buildUsuarioDetailDto(usuario, cursosInscriptos, cursosDictados)

@@ -16,13 +16,11 @@ import com.estonianport.centro_sis.mapper.UsuarioMapper
 import com.estonianport.centro_sis.model.RolFactory
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
-import com.estonianport.centro_sis.repository.UsuarioRepository
 import com.estonianport.centro_sis.service.AdministracionService
 import com.estonianport.centro_sis.service.CursoService
 import com.estonianport.centro_sis.service.InscripcionService
 import com.estonianport.centro_sis.service.UsuarioDetalleFacade
 import com.estonianport.centro_sis.service.UsuarioService
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CrossOrigin
@@ -203,7 +201,6 @@ class UsuarioController(
 
     /**
      * Listado paginado para la pantalla de administración.
-     * Reemplaza al anterior GET /all/{userId} (que devolvía todos de golpe).
      * El front envía page/size/search/roles/estados como query params.
      */
     @GetMapping("/all-paginado/{userId}")
@@ -220,12 +217,6 @@ class UsuarioController(
         )
         return ResponseEntity.ok(PageResponse.from(result))
     }
-
-    /** Endpoint original — se mantiene para compatibilidad con otras pantallas. */
-    @GetMapping("/all/{userId}")
-    fun getAllUsuarios(@PathVariable userId: Long): ResponseEntity<CustomResponse> =
-        ok("Usuarios obtenidos correctamente",
-            usuarioService.getAllActivosExceptoDto(userId))
 
     @GetMapping("/all/alumnos")
     fun getAllAlumnosActivos(): ResponseEntity<CustomResponse> {
@@ -289,21 +280,6 @@ class UsuarioController(
     }
 
     // ─── Cursos por usuario ───────────────────────────────────────────────────
-
-    @Deprecated("Usar /v2/cursos-alumno/{alumnoId} — devuelve InscripcionAlumnoSummaryDto con Redis cache")
-    @GetMapping("/cursos-alumno/{idAlumno}")
-    fun obtenerCursosActivosDelAlumno(@PathVariable idAlumno: Long): ResponseEntity<CustomResponse> {
-        val inscripciones = inscripcionService.obtenerInscripcionesPorAlumno(idAlumno)
-        return ok("Cursos obtenidos correctamente",
-            inscripciones.map { CursoMapper.buildCursoAlumnoResponseDto(it) })
-    }
-
-    @Deprecated("Usar /v2/cursos-profesor/{alumnoId} — devuelve CursoProfesorSummaryDto con Redis cache")
-    @GetMapping("/cursos-profesor/{profesorId}")
-    fun obtenerCursosDictadosPorProfesor(@PathVariable profesorId: Long): ResponseEntity<CustomResponse> {
-        val cursos = cursoService.obtenerCursosProfesorId(profesorId)
-        return ok("Cursos obtenidos correctamente", cursos)
-    }
 
     @GetMapping("/v2/cursos-alumno/{alumnoId}")
     fun obtenerCursosAlumnoSummary(

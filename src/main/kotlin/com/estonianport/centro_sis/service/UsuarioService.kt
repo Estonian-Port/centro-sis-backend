@@ -266,16 +266,16 @@ class UsuarioService(
     fun solicitarRecuperarPassword(email: String) {
         val usuario = usuarioRepository.getUsuarioByEmail(email) ?: return
         if (usuario.estado == EstadoType.BAJA) return
-        val nuevaPassword = generarPassword()
-        usuario.password = encriptarPassword(nuevaPassword)
-        usuario.estado = EstadoType.PENDIENTE
-        usuario.ultimoIngresoAlSistema = null
-        save(usuario)
-        try {
-            emailService.enviarEmailRecuperarPassword(usuario, nuevaPassword)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+            val nuevaPassword = generarPassword()
+            usuario.password = encriptarPassword(nuevaPassword)
+            usuario.estado = EstadoType.PENDIENTE
+            usuario.ultimoIngresoAlSistema = null
+            save(usuario)
+            try {
+                emailService.enviarEmailRecuperarPassword(usuario, nuevaPassword)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
     }
 
     @Transactional

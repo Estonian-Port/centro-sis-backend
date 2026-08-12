@@ -30,30 +30,6 @@ import java.time.LocalDate
 @CrossOrigin("*")
 class CursoController(private val cursoService: CursoService) {
 
-    // ─── DEPRECADOS ──────────────────────────────────────────────────────────────
-
-    @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): ResponseEntity<CustomResponse> =
-        ok("Curso obtenido correctamente", cursoService.getByIdDto(id))
-
-    @GetMapping("/inscripciones/{id}")
-    fun getCursoConInscripciones(@PathVariable id: Long): ResponseEntity<CustomResponse> =
-        ok("Curso obtenido correctamente", cursoService.getByIdDto(id))
-
-    @GetMapping("/activos")
-    fun getAllActivos(): ResponseEntity<CustomResponse> =
-        ok("Cursos obtenidos correctamente", cursoService.getAllCursosResponse())
-
-    @GetMapping("/activos-paginado")
-    fun getAllActivosPaginado(
-        @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "10") size: Int,
-        @RequestParam(required = false) search: String?,
-        @RequestParam(required = false) estadoAlta: EstadoType?,
-        @RequestParam(required = false) estadoCurso: String?
-    ): ResponseEntity<PageResponse<*>> =
-        ResponseEntity.ok(cursoService.getAllCursosPaginado(page, size, search, estadoAlta, estadoCurso))
-
     // ─── Lectura ──────────────────────────────────────────────────────────────
 
     /** Detalle de un curso, sin la lista de alumnos embebida. */

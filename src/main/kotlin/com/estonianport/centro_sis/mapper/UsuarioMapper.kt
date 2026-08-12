@@ -3,11 +3,10 @@ package com.estonianport.centro_sis.mapper
 import com.estonianport.centro_sis.dto.ProfesorListaResponseDto
 import com.estonianport.centro_sis.dto.request.AdultoResponsableDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
-import com.estonianport.centro_sis.dto.request.UsuarioAltaRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioRequestDto
 import com.estonianport.centro_sis.dto.response.AlumnoResponseDto
-import com.estonianport.centro_sis.dto.response.CursoAlumnoResponseDto
-import com.estonianport.centro_sis.dto.response.CursoResponseDto
+import com.estonianport.centro_sis.dto.response.CursoProfesorSummaryDto
+import com.estonianport.centro_sis.dto.response.InscripcionAlumnoSummaryDto
 import com.estonianport.centro_sis.dto.response.UsuarioDetailResponseDto
 import com.estonianport.centro_sis.dto.response.UsuarioSimpleResponseDto
 import com.estonianport.centro_sis.model.AdultoResponsable
@@ -78,29 +77,6 @@ object UsuarioMapper {
         )
     }
 
-    fun buildUsuarioDetailDto(
-        usuario: Usuario,
-        cursosInscriptos: List<CursoAlumnoResponseDto>?,
-        cursosDictados: List<CursoResponseDto>?
-    ): UsuarioDetailResponseDto {
-        return UsuarioDetailResponseDto(
-            id = usuario.id,
-            nombre = usuario.nombre,
-            apellido = usuario.apellido,
-            dni = usuario.dni,
-            email = usuario.email,
-            celular = usuario.celular,
-            fechaNacimiento = usuario.fechaNacimiento.format(formatter),
-            estado = usuario.estado.name,
-            primerLogin = usuario.esPrimerLogin(),
-            listaRol = usuario.getRolTypes().toMutableSet(),
-            ultimoIngreso = usuario.ultimoIngresoAlSistema?.format(formatterTime) ?: "",
-            adultoResponsable = usuario.adultoResponsable?.let { buildAdultoResponsable(it) },
-            cursosInscriptos = cursosInscriptos.orEmpty(),
-            cursosDictados = cursosDictados.orEmpty(),
-        )
-    }
-
     fun buildAlumno(alumno: Usuario): AlumnoResponseDto {
         return AlumnoResponseDto(
             id = alumno.id,
@@ -122,4 +98,23 @@ object UsuarioMapper {
         )
     }
 
+    fun buildUsuarioDetailDto(
+        usuario: Usuario,
+        cursosInscriptos: List<InscripcionAlumnoSummaryDto>,
+        cursosDictados: List<CursoProfesorSummaryDto>
+    ): UsuarioDetailResponseDto {
+        return UsuarioDetailResponseDto(
+            id = usuario.id,
+            nombre = usuario.nombre,
+            apellido = usuario.apellido,
+            dni = usuario.dni,
+            email = usuario.email,
+            celular = usuario.celular,
+            estado = usuario.estado.name,
+            fechaNacimiento = usuario.fechaNacimiento.format(formatter),
+            listaRol = usuario.getRolTypes().toMutableSet(),
+            cursosInscriptos = cursosInscriptos,
+            cursosDictados = cursosDictados
+        )
+    }
 }
