@@ -21,4 +21,12 @@ interface PagoCursoRepository : JpaRepository<PagoCurso, Long> {
         @Param("desde") desde: LocalDateTime,
         @Param("hasta") hasta: LocalDateTime
     ): List<PagoCurso>
+
+    @Query("""
+        SELECT pc FROM PagoCurso pc
+        JOIN FETCH pc.inscripcion i
+        WHERE i.curso.id = :cursoId
+        AND pc.fechaBaja IS NULL
+    """)
+    fun findActivosByCursoId(@Param("cursoId") cursoId: Long): List<PagoCurso>
 }

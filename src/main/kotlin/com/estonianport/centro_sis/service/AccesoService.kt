@@ -56,15 +56,9 @@ class AccesoService(
             "El usuario ${usuario.nombreCompleto()} fue dado de baja"
         }
 
-        val ultimoAcceso = accesoRepository.findAll()
-            .filter { it.usuario?.id == usuarioId }
-            .maxByOrNull { it.fechaHora }
-
-        if (ultimoAcceso != null) {
-            val hoy = AppTime.hoy()
-            if (ultimoAcceso.fechaHora.toLocalDate() == hoy) {
-                throw IllegalArgumentException("El usuario ${usuario.nombreCompleto()} ya registró un acceso hoy")
-            }
+        val inicioHoy = AppTime.hoy().atStartOfDay()
+        if (accesoRepository.existeAccesoEnRango(usuarioId, inicioHoy, inicioHoy.plusDays(1))) {
+            throw IllegalArgumentException("El usuario ${usuario.nombreCompleto()} ya registró un acceso hoy")
         }
 
         val acceso = Acceso(
@@ -140,9 +134,8 @@ class AccesoService(
 
     @Transactional(readOnly = true)
     fun getAccesosRecientes(limit: Int): List<AccesoDTO> {
-        return accesoRepository.findAll()
-            .sortedByDescending { it.fechaHora }
-            .take(limit)
+        return accesoRepository
+            .findAllByOrderByFechaHoraDesc(PageRequest.of(0, limit.coerceAtLeast(1)))
             .map { mapAccesoToDTO(it) }
     }
 
@@ -154,12 +147,8 @@ class AccesoService(
     fun getAccesosPorUsuario(usuarioId: Long, dias: Int): List<AccesoDTO> {
         val fechaLimite = AppTime.ahora().minusDays(dias.toLong())
 
-        return accesoRepository.findAll()
-            .filter {
-                it.usuario?.id == usuarioId &&
-                        it.fechaHora.isAfter(fechaLimite)
-            }
-            .sortedByDescending { it.fechaHora }
+        return accesoRepository
+            .findByUsuarioIdAndFechaHoraAfterOrderByFechaHoraDesc(usuarioId, fechaLimite)
             .map { mapAccesoToDTO(it) }
     }
 
@@ -174,11 +163,9 @@ class AccesoService(
         val ultimaSemana = ahora.minusDays(7)
         val inicioMes = ahora.withDayOfMonth(1).toLocalDate().atStartOfDay()
 
-        val accesos = accesoRepository.findAll()
-
-        val totalHoy = accesos.count { it.fechaHora.isAfter(hoy) }
-        val totalSemana = accesos.count { it.fechaHora.isAfter(ultimaSemana) }
-        val totalMes = accesos.count { it.fechaHora.isAfter(inicioMes) }
+        val totalHoy = accesoRepository.countByFechaHoraAfter(hoy).toInt()
+        val totalSemana = accesoRepository.countByFechaHoraAfter(ultimaSemana).toInt()
+        val totalMes = accesoRepository.countByFechaHoraAfter(inicioMes).toInt()
 
         val promedioDiario = if (totalMes > 0) totalMes / 30.0 else 0.0
 
@@ -347,11 +334,10 @@ class AccesoService(
         }
 
         // 3. Verificar si ya hay un acceso de este invitado hoy
-        val hoy = AppTime.hoy()
-        val accesoHoy = accesoRepository.findAll().firstOrNull {
-            it.invitadoDni == dni &&
-                    it.fechaHora.toLocalDate() == hoy
-        }
+        val accesoHoy = accesoRepository.findFirstByInvitadoDniAndFechaHoraGreaterThanEqual(
+            dni,
+            AppTime.hoy().atStartOfDay()
+        )
 
         if (accesoHoy != null) {
             throw IllegalArgumentException(

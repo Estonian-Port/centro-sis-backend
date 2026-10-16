@@ -4,6 +4,7 @@ import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -17,6 +18,7 @@ abstract class Rol(
     val id: Long = 0,
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     var usuario: Usuario,
 
     @Column
@@ -65,6 +67,7 @@ class RolProfesor(
     usuario: Usuario,
 
     @ManyToMany(mappedBy = "profesores", fetch = FetchType.LAZY)
+    @JsonIgnore
     var cursos: MutableSet<Curso> = mutableSetOf(),
 
     // Pagos DE alquiler (profesor PAGA al instituto)
@@ -122,7 +125,9 @@ class RolAlumno(
     usuario: Usuario,
 
     @OneToMany(mappedBy = "alumno", cascade = [CascadeType.ALL], orphanRemoval = true)
+    @JsonIgnore
     var inscripciones: MutableList<Inscripcion> = mutableListOf()
+
 ) : Rol(usuario = usuario) {
 
     override fun puedeGestionarCurso(curso: Curso): Boolean = false

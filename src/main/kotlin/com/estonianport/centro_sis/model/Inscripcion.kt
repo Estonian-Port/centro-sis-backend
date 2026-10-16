@@ -1,6 +1,7 @@
 package com.estonianport.centro_sis.model
 
 import com.estonianport.centro_sis.model.enums.*
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -16,10 +17,12 @@ class Inscripcion(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "alumno_id", nullable = false)
+    @JsonIgnore
     var alumno: RolAlumno,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "curso_id", nullable = false)
+    @JsonIgnore
     var curso: Curso,
 
     @Embedded

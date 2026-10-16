@@ -123,18 +123,56 @@ interface AccesoRepository : JpaRepository<Acceso, Long> {
         pageable: Pageable
     ): Page<Acceso>
 
-    // Buscar accesos de invitados por DNI
-    fun findByInvitadoDni(dni: String): List<Acceso>
+    // ========================================
+    // CONSULTAS OPTIMIZADAS (reemplazan findAll() + filtros en memoria)
+    // ========================================
 
-    // Contar visitas de un invitado
-    fun countByInvitadoDni(dni: String): Long
-
-    // Buscar accesos de invitados en un rango de fechas
-    @Query("SELECT a FROM Acceso a WHERE a.invitadoDni = :dni AND a.fechaHora BETWEEN :desde AND :hasta")
-    fun findInvitadoAccesosByFechas(
-        @Param("dni") dni: String,
+    /** ¿El usuario ya tiene un acceso dentro de [desde, hasta)? */
+    @Query(
+        """
+        SELECT COUNT(a) > 0 FROM Acceso a
+        WHERE a.usuario.id = :usuarioId
+        AND a.fechaHora >= :desde
+        AND a.fechaHora < :hasta
+    """
+    )
+    fun existeAccesoEnRango(
+        @Param("usuarioId") usuarioId: Long,
         @Param("desde") desde: LocalDateTime,
         @Param("hasta") hasta: LocalDateTime
+    ): Boolean
+
+    /** De una lista de usuarios, devuelve los IDs que tuvieron acceso en [desde, hasta). */
+    @Query(
+        """
+        SELECT DISTINCT a.usuario.id FROM Acceso a
+        WHERE a.usuario.id IN :ids
+        AND a.fechaHora >= :desde
+        AND a.fechaHora < :hasta
+    """
+    )
+    fun findUsuarioIdsConAccesoEnRango(
+        @Param("ids") ids: List<Long>,
+        @Param("desde") desde: LocalDateTime,
+        @Param("hasta") hasta: LocalDateTime
+    ): List<Long>
+
+    /** Accesos más recientes (usar con PageRequest.of(0, limit)). */
+    fun findAllByOrderByFechaHoraDesc(pageable: Pageable): List<Acceso>
+
+    /** Accesos de un usuario posteriores a una fecha, más recientes primero. */
+    fun findByUsuarioIdAndFechaHoraAfterOrderByFechaHoraDesc(
+        usuarioId: Long,
+        desde: LocalDateTime
     ): List<Acceso>
+
+    /** Cantidad de accesos posteriores a una fecha (estadísticas). */
+    fun countByFechaHoraAfter(desde: LocalDateTime): Long
+
+    /** Primer acceso de un invitado desde una fecha (para validar duplicado del día). */
+    fun findFirstByInvitadoDniAndFechaHoraGreaterThanEqual(
+        dni: String,
+        desde: LocalDateTime
+    ): Acceso?
 
 }

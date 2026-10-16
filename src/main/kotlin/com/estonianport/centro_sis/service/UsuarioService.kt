@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.service
 
+import com.estonianport.centro_sis.common.AppTime
 import com.estonianport.centro_sis.common.codeGeneratorUtil.CodeGeneratorUtil
 import com.estonianport.centro_sis.common.emailService.EmailService
 import com.estonianport.centro_sis.common.errors.ConflictException
@@ -9,6 +10,7 @@ import com.estonianport.centro_sis.dto.request.UsuarioRegistroRequestDto
 import com.estonianport.centro_sis.dto.request.UsuarioUpdatePerfilRequestDto
 import com.estonianport.centro_sis.dto.response.UsuarioResponseDto
 import com.estonianport.centro_sis.mapper.UsuarioMapper
+import com.estonianport.centro_sis.model.Acceso
 import com.estonianport.centro_sis.model.AdultoResponsable
 import com.estonianport.centro_sis.model.RolFactory
 import com.estonianport.centro_sis.model.RolProfesor
@@ -16,6 +18,7 @@ import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
+import com.estonianport.centro_sis.repository.AccesoRepository
 import com.estonianport.centro_sis.repository.RolRepository
 import com.estonianport.centro_sis.repository.UsuarioRepository
 import jakarta.transaction.Transactional
@@ -34,6 +37,7 @@ import java.time.LocalDateTime
 class UsuarioService(
     private val usuarioRepository: UsuarioRepository,
     private val rolRepository: RolRepository,
+    private val accesoRepository: AccesoRepository,
     private val emailService: EmailService,
     private val rolFactory: RolFactory
 ) {
@@ -51,11 +55,7 @@ class UsuarioService(
         usuarioRepository.getUsuarioByEmail(email)
             ?: throw NoSuchElementException("No se encontró un usuario con el email proporcionado")
 
-    @Cacheable(value = ["usuarios:lista"], key = "'activos-excepto-' + #userId")
-    fun getAllActivosExceptoDto(userId: Long): List<UsuarioResponseDto> =
-        usuarioRepository.getAllActivosExcepto(userId)
-            .map { UsuarioMapper.buildUsuarioResponseDto(it) }
-
+    @Transactional
     fun getAllActivosExceptoPaginado(
         userId: Long,
         page: Int,
@@ -91,7 +91,8 @@ class UsuarioService(
         return PageImpl(dtos, pageable, idsPage.totalElements)
     }
 
-    @Cacheable(value = ["usuarios:rol"], key = "#rolTipo.name()")
+    // Sin @Cacheable: antes se cacheaban entidades JPA (detached, con colecciones lazy
+    // y no Serializable). Si se quiere cachear, hacerlo sobre DTOs.
     fun getUsuariosPorRol(rolTipo: RolType): List<Usuario> =
         when (rolTipo) {
             RolType.PROFESOR      -> usuarioRepository.findProfesores()
@@ -266,16 +267,16 @@ class UsuarioService(
     fun solicitarRecuperarPassword(email: String) {
         val usuario = usuarioRepository.getUsuarioByEmail(email) ?: return
         if (usuario.estado == EstadoType.BAJA) return
-            val nuevaPassword = generarPassword()
-            usuario.password = encriptarPassword(nuevaPassword)
-            usuario.estado = EstadoType.PENDIENTE
-            usuario.ultimoIngresoAlSistema = null
-            save(usuario)
-            try {
-                emailService.enviarEmailRecuperarPassword(usuario, nuevaPassword)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+        val nuevaPassword = generarPassword()
+        usuario.password = encriptarPassword(nuevaPassword)
+        usuario.estado = EstadoType.PENDIENTE
+        usuario.ultimoIngresoAlSistema = null
+        save(usuario)
+        try {
+            emailService.enviarEmailRecuperarPassword(usuario, nuevaPassword)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     @Transactional
@@ -285,8 +286,20 @@ class UsuarioService(
     ])
     fun registrarAccesoManual(idUsuario: Long) {
         val usuario = getById(idUsuario)
-        usuario.registrarAcceso(TipoAcceso.MANUAL)
-        save(usuario)
+
+        // Validación por query (antes: usuario.registrarAcceso() cargaba todo el historial de accesos)
+        val inicioHoy = AppTime.hoy().atStartOfDay()
+        if (accesoRepository.existeAccesoEnRango(usuario.id, inicioHoy, inicioHoy.plusDays(1))) {
+            throw IllegalStateException("El usuario ya ha registrado un acceso hoy")
+        }
+
+        accesoRepository.save(
+            Acceso(
+                usuario = usuario,
+                fechaHora = AppTime.ahora(),
+                tipoAcceso = TipoAcceso.MANUAL
+            )
+        )
     }
 
     @Transactional
@@ -323,8 +336,7 @@ class UsuarioService(
     }
 
     fun verficarDniNoExiste(dni: String, id: Long) {
-        val usuario = usuarioRepository.findAll().find { it.dni == dni }
-        if (usuario != null && usuario.id != id) {
+        if (usuarioRepository.existsByDniAndIdNot(dni, id)) {
             throw ConflictException("Ya existe un usuario registrado con el DNI proporcionado")
         }
     }
@@ -343,10 +355,9 @@ class UsuarioService(
     fun generarPassword(): String =
         CodeGeneratorUtil.base26Only4Letters + CodeGeneratorUtil.base26Only4Letters
 
+    @Transactional
     fun actualizarFechaUltimoAcceso(email: String, fecha: LocalDateTime) {
-        val usuario = getUsuarioByEmail(email)
-        usuario.ultimoIngresoAlSistema = fecha
-        save(usuario)
+        usuarioRepository.updateUltimoIngresoByEmail(email, fecha)
     }
 
     fun existsByDni(dni: String): Boolean {

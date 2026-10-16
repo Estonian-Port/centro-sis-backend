@@ -39,6 +39,7 @@ class Usuario(
     var dni: String,
 
     @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @JsonIgnore
     var listaRol: MutableSet<Rol> = mutableSetOf(),
 
     @Enumerated(EnumType.STRING)
@@ -58,13 +59,14 @@ class Usuario(
         fetch = FetchType.LAZY,
         orphanRemoval = true
     )
-    @JsonManagedReference
+    @JsonIgnore
     val accesos: MutableList<Acceso> = mutableListOf()
 
 ) {
 
     @Column
     @JdbcTypeCode(SqlTypes.VARCHAR)
+    @JsonIgnore
     var password: String? = null
 
     @Column(nullable = false)

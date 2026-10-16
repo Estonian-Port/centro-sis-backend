@@ -24,6 +24,7 @@ import java.time.temporal.ChronoUnit
 @Service
 class PagoService(
     private val pagoRepository: PagoRepository,
+    private val pagoCursoRepository: PagoCursoRepository,
     private val usuarioRepository: UsuarioRepository,
     private val inscripcionRepository: InscripcionRepository,
     private val cursoRepository: CursoRepository,
@@ -145,7 +146,8 @@ class PagoService(
 
     @Transactional
     @Caching(evict = [
-        CacheEvict(value = ["cursos:alumno:summary"], key = "#alumnoId"),
+        CacheEvict(value = ["cursos:alumno:summary"], allEntries = true),
+        CacheEvict(value = ["cursos:mis-pagos"], allEntries = true)
     ])
     fun registrarPagoCurso(
         usuarioId: Long,
@@ -557,13 +559,8 @@ class PagoService(
         fechaHoraInicio: LocalDateTime,
         fechaHoraFin: LocalDateTime
     ): BigDecimal {
-        // Obtener todos los pagos del repositorio
-        val todosLosPagos = pagoRepository.findAll()
-
-        // Filtrar en memoria para PagoCurso de este curso
-        val pagosCurso = todosLosPagos
-            .filterIsInstance<PagoCurso>()
-            .filter { pago -> pago.inscripcion.curso.id == cursoId && pago.fechaBaja == null }
+        // Consultar solo los pagos activos del curso; evita cargar toda la tabla.
+        val pagosCurso = pagoCursoRepository.findActivosByCursoId(cursoId)
 
         var recaudacionTotal = BigDecimal.ZERO
 
