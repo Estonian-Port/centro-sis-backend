@@ -23,6 +23,7 @@ import com.estonianport.centro_sis.model.Curso
 import com.estonianport.centro_sis.model.Horario
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.TipoPago
+import com.estonianport.centro_sis.repository.AccesoRepository
 import com.estonianport.centro_sis.repository.CursoRepository
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
@@ -39,7 +40,8 @@ import java.time.LocalDate
 @Transactional(readOnly = true)
 class CursoService(
     private val usuarioService: UsuarioService,
-    private val cursoRepository: CursoRepository
+    private val cursoRepository: CursoRepository,
+    private val accesoRepository: AccesoRepository
 ) {
 
     fun countCursos(): Long = cursoRepository.countByFechaBajaIsNull()
@@ -317,9 +319,22 @@ class CursoService(
         val usuario = usuarioService.getById(usuarioId)
         val fechaAsistencia = fecha ?: AppTime.hoy()
 
-        val alumnosPresentesIds = curso.getInscripcionesActivas()
-            .map { it.alumno }
-            .filter { it.usuario.tuvoAccesoEnFecha(fechaAsistencia) }
+        // Una sola query para saber quién tuvo acceso ese día (antes: cargaba el
+        // historial completo de accesos de cada alumno -> N+1 pesado)
+        val alumnosActivos = curso.getInscripcionesActivas().map { it.alumno }
+        val usuariosIds = alumnosActivos.map { it.usuario.id }
+        val usuariosConAcceso: Set<Long> = if (usuariosIds.isEmpty()) {
+            emptySet()
+        } else {
+            accesoRepository.findUsuarioIdsConAccesoEnRango(
+                usuariosIds,
+                fechaAsistencia.atStartOfDay(),
+                fechaAsistencia.plusDays(1).atStartOfDay()
+            ).toSet()
+        }
+
+        val alumnosPresentesIds = alumnosActivos
+            .filter { it.usuario.id in usuariosConAcceso }
             .map { it.id }
             .toSet()
 

@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 
 @Entity
@@ -25,6 +26,7 @@ class AdultoResponsable(
     var relacion: String,
 
     @OneToOne(mappedBy = "adultoResponsable")
+    @JsonIgnore
     var alumnoMenor: Usuario? = null
 ) {
     fun nombreCompleto(): String = "$nombre $apellido"

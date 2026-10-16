@@ -4,16 +4,24 @@ import com.estonianport.centro_sis.model.Usuario
 import com.estonianport.centro_sis.model.enums.EstadoType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDateTime
 import java.util.*
 
 @Repository
 interface UsuarioRepository : CrudRepository<Usuario, Long> {
 
-    fun findOneByEmail(email: String): Usuario?
+    @Query("""
+    SELECT DISTINCT u FROM Usuario u
+    LEFT JOIN FETCH u.listaRol r
+    WHERE u.email = :email
+    AND (r IS NULL OR r.fechaBaja IS NULL)
+""")
+    fun findOneByEmail(@Param("email") email: String): Usuario?
 
     @Query("""
         SELECT DISTINCT u FROM Usuario u
@@ -34,23 +42,23 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     fun getAllActivosExcepto(@Param("userId") userId: Long): Set<Usuario>
 
     @Query("""
-        SELECT DISTINCT u FROM Usuario u
-        LEFT JOIN FETCH u.listaRol r
-        WHERE u.fechaBaja IS NULL
-        AND (r IS NULL OR r.fechaBaja IS NULL)
-        ORDER BY u.nombre ASC
-    """)
-    fun findAllActivos(): Set<Usuario>
-
-    fun getUsuarioByEmail(email: String): Usuario?
+    SELECT DISTINCT u FROM Usuario u
+    LEFT JOIN FETCH u.listaRol r
+    WHERE u.email = :email
+    AND (r IS NULL OR r.fechaBaja IS NULL)
+""")
+    fun getUsuarioByEmail(@Param("email") email: String): Usuario?
 
     fun existsByDni(dni: String): Boolean
+
+    fun existsByDniAndIdNot(dni: String, id: Long): Boolean
 
     // ─── Por rol ──────────────────────────────────────────────────────────────
 
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         INNER JOIN u.listaRol r
+        LEFT JOIN FETCH u.listaRol
         WHERE TYPE(r) = com.estonianport.centro_sis.model.RolProfesor
         AND r.fechaBaja IS NULL
         ORDER BY u.nombre ASC
@@ -60,6 +68,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         INNER JOIN u.listaRol r
+        LEFT JOIN FETCH u.listaRol
         WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAlumno
         AND r.fechaBaja IS NULL
         ORDER BY u.nombre ASC
@@ -69,6 +78,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         INNER JOIN u.listaRol r
+        LEFT JOIN FETCH u.listaRol
         WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAdmin
         AND r.fechaBaja IS NULL
         ORDER BY u.nombre ASC
@@ -78,6 +88,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         INNER JOIN u.listaRol r
+        LEFT JOIN FETCH u.listaRol
         WHERE TYPE(r) = com.estonianport.centro_sis.model.RolOficina
         AND r.fechaBaja IS NULL
         ORDER BY u.nombre ASC
@@ -87,18 +98,12 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         INNER JOIN u.listaRol r
+        LEFT JOIN FETCH u.listaRol
         WHERE TYPE(r) = com.estonianport.centro_sis.model.RolPorteria
         AND r.fechaBaja IS NULL
         ORDER BY u.nombre ASC
     """)
     fun findPorteria(): List<Usuario>
-
-    @Query("""
-        SELECT DISTINCT u FROM Usuario u
-        LEFT JOIN FETCH u.listaRol
-        WHERE u.id IN :ids
-    """)
-    fun findAllWithRolesByIds(@Param("ids") ids: List<Long>): List<Usuario>
 
     // ─── Búsqueda fulltext en DB ───────────────────────────────────────────────
 
@@ -200,4 +205,8 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
         AND (r IS NULL OR r.fechaBaja IS NULL)
     """)
     fun findWithRolesByIds(@Param("ids") ids: List<Long>): List<Usuario>
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Usuario u SET u.ultimoIngresoAlSistema = :fecha WHERE u.email = :email")
+    fun updateUltimoIngresoByEmail(@Param("email") email: String, @Param("fecha") fecha: LocalDateTime): Int
 }

@@ -1,5 +1,6 @@
 package com.estonianport.centro_sis.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import java.time.LocalDate
 
@@ -23,6 +24,7 @@ class ParteAsistencia(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "curso_id", nullable = false)
+    @JsonIgnore
     val curso: Curso,
 
     @Column(nullable = false)

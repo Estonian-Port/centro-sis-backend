@@ -6,6 +6,7 @@ import com.estonianport.centro_sis.model.enums.PagoType
 import com.estonianport.centro_sis.model.enums.EstadoCursoType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.TipoPago
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -32,6 +33,7 @@ abstract class Curso(
         joinColumns = [JoinColumn(name = "curso_id")],
         inverseJoinColumns = [JoinColumn(name = "profesor_id")]
     )
+    @JsonIgnore
     val profesores: MutableSet<RolProfesor> = mutableSetOf(),
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -61,6 +63,7 @@ abstract class Curso(
     var recargoAtraso: BigDecimal = BigDecimal.ONE,
 
     @OneToMany(mappedBy = "curso")
+    @JsonIgnore
     val inscripciones: MutableList<Inscripcion> = mutableListOf(),
 
     @Enumerated(EnumType.STRING)
@@ -77,6 +80,7 @@ abstract class Curso(
         fetch = FetchType.LAZY,
         orphanRemoval = true
     )
+    @JsonIgnore
     val partesDeAsistencia: MutableList<ParteAsistencia> = mutableListOf()
 ) {
 

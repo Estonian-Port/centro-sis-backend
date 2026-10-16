@@ -10,13 +10,16 @@ plugins {
 }
 
 group = "com.estonianport"
-version = "1.5.1"
+version = "1.6.0"
 description = "Centro – Student Information System (Backend)"
 
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+java.sourceCompatibility = JavaVersion.VERSION_17
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xjsr305=strict")
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 repositories {
