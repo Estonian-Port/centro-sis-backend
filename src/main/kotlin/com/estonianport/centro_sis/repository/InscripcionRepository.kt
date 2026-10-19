@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.repository
 
 import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.PagoCurso
+import com.estonianport.centro_sis.model.enums.EstadoPagoType
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
@@ -51,5 +52,16 @@ interface InscripcionRepository : CrudRepository<Inscripcion, Long> {
     """)
     fun findInscripcionesSummaryPorAlumnoId(
         @Param("alumnoId") alumnoId: Long
+    ): List<Inscripcion>
+
+    @Query("""
+    SELECT i FROM Inscripcion i JOIN FETCH i.curso
+    WHERE i.alumno.usuario.id = :usuarioId
+      AND i.fechaBaja IS NULL
+      AND i.estadoPago = :estado
+""")
+    fun findAtrasadasByUsuarioId(
+        @Param("usuarioId") usuarioId: Long,
+        @Param("estado") estado: EstadoPagoType = EstadoPagoType.ATRASADO
     ): List<Inscripcion>
 }

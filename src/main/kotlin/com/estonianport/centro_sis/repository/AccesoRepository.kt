@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Repository
@@ -175,4 +176,9 @@ interface AccesoRepository : JpaRepository<Acceso, Long> {
         desde: LocalDateTime
     ): Acceso?
 
+    @Query("SELECT COUNT(a) > 0 FROM Acceso a WHERE a.usuario.id = :usuarioId AND DATE(a.fechaHora) = :fecha")
+    fun existsByUsuarioIdAndFecha(
+        @Param("usuarioId") usuarioId: Long,
+        @Param("fecha") fecha: LocalDate
+    ): Boolean
 }

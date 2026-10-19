@@ -10,6 +10,7 @@ import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.service.AccesoService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -70,18 +71,14 @@ class AccesoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
     }
 
-    //Registrar acceso escaneando QR
-    @PostMapping("/registrar-qr/{registradoPorId}")
+    @PostMapping("/registrar-qr/{registradoPorId}") // TODO eliminar registradoPorId
+    @PreAuthorize("hasAnyAuthority('ADMINISTRADOR', 'PORTERIA')")
     fun registrarAccesoQR(
         @PathVariable registradoPorId: Long,
         @RequestBody request: RegistrarAccesoQRRequest
-    ): ResponseEntity<AccesoDTO> {
-        val acceso = accesoService.registrarAccesoQR(
-            usuarioId = request.usuarioId,
-            registradoPorId = registradoPorId
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).body(acceso)
-    }
+    ): ResponseEntity<AccesoDTO> =
+        ResponseEntity.status(HttpStatus.CREATED)
+            .body(accesoService.registrarAccesoQR(request.usuarioId))
 
     // Obtener accesos recientes
     @GetMapping("/recientes")

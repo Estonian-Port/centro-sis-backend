@@ -1,84 +1,85 @@
 package com.estonianport.centro_sis.service
 
 import com.estonianport.centro_sis.common.AppTime
+import com.estonianport.centro_sis.common.errors.ConflictException
 import com.estonianport.centro_sis.dto.AccesoDTO
 import com.estonianport.centro_sis.dto.AlertaPagosDTO
 import com.estonianport.centro_sis.dto.CursoAtrasoDTO
 import com.estonianport.centro_sis.dto.EstadisticasAccesoDTO
 import com.estonianport.centro_sis.dto.RegistrarAccesoDTO
 import com.estonianport.centro_sis.model.Acceso
-import com.estonianport.centro_sis.model.Usuario
-import com.estonianport.centro_sis.model.enums.EstadoPagoType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import com.estonianport.centro_sis.model.enums.TipoAcceso
 import com.estonianport.centro_sis.repository.AccesoRepository
+import com.estonianport.centro_sis.repository.InscripcionRepository
 import com.estonianport.centro_sis.repository.UsuarioRepository
+import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @Service
 class AccesoService(
     private val accesoRepository: AccesoRepository,
     private val usuarioRepository: UsuarioRepository,
+    private val inscripcionRepository: InscripcionRepository
 ) {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     // =============================================
     // Registrar acceso por QR
     // =============================================
 
     @Transactional
-    fun registrarAccesoQR(
-        usuarioId: Long,
-        registradoPorId: Long
-    ): AccesoDTO {
-        // Validar registrador tiene permisos
-        val registrador = usuarioRepository.findById(registradoPorId)
-            .orElseThrow { IllegalArgumentException("Usuario registrador no encontrado") }
+    fun registrarAccesoQR(usuarioId: Long): AccesoDTO {
+        val usuario = usuarioRepository.findAccesoViewById(usuarioId)
+            ?: throw NoSuchElementException("Usuario no encontrado")
 
-        require(
-            registrador.tieneRol(RolType.ADMINISTRADOR) ||
-                    registrador.tieneRol(RolType.PORTERIA)
-        ) {
-            "No tienes permisos para registrar accesos"
+        val nombre = "${usuario.nombre.orEmpty()} ${usuario.apellido.orEmpty()}".trim()
+        if (usuario.estado == EstadoType.BAJA) {
+            throw ConflictException("El usuario $nombre fue dado de baja")
         }
 
-        val usuario = usuarioRepository.findById(usuarioId)
-            .orElseThrow { IllegalArgumentException("Usuario no encontrado") }
+        val ahora = AppTime.ahora()                       // una sola lectura del reloj
+        val inicioHoy = ahora.toLocalDate().atStartOfDay()
 
-        require(usuario.estado != EstadoType.BAJA ) {
-            "El usuario ${usuario.nombreCompleto()} fue dado de baja"
-        }
-
-        val inicioHoy = AppTime.hoy().atStartOfDay()
         if (accesoRepository.existeAccesoEnRango(usuarioId, inicioHoy, inicioHoy.plusDays(1))) {
-            throw IllegalArgumentException("El usuario ${usuario.nombreCompleto()} ya registró un acceso hoy")
+            throw ConflictException("El usuario $nombre ya registró un acceso hoy")
         }
 
-        val acceso = Acceso(
-            usuario = usuario,
-            fechaHora = AppTime.ahora(),
-            tipoAcceso = TipoAcceso.QR  // Siempre QR
-        )
+        val acceso = try {
+            accesoRepository.saveAndFlush(
+                Acceso(
+                    usuario = usuarioRepository.getReferenceById(usuarioId),
+                    fechaHora = ahora,
+                    tipoAcceso = TipoAcceso.QR
+                )
+            )
+        } catch (e: DataIntegrityViolationException) {
+            throw ConflictException("El usuario $nombre ya registró un acceso hoy")
+        }
 
-        val accesoGuardado = accesoRepository.save(acceso)
-
-        val alertaPagos = verificarPagosAtrasados(usuario)
+        val alertaPagos = try {
+            armarAlertaPagos(usuarioId)
+        } catch (e: Exception) {
+            log.warn("No se pudo calcular alerta de pagos para usuario $usuarioId", e)
+            null
+        }
 
         return AccesoDTO(
-            id = accesoGuardado.id,
+            id = acceso.id,
             usuarioId = usuario.id,
             usuarioNombre = usuario.nombre,
             usuarioApellido = usuario.apellido,
             usuarioDni = usuario.dni,
-            fechaHora = accesoGuardado.fechaHora,
-            tipoAcceso = TipoAcceso.QR,  // Siempre QR
+            fechaHora = acceso.fechaHora,
+            tipoAcceso = TipoAcceso.QR,
             alertaPagos = alertaPagos
         )
     }
@@ -87,44 +88,18 @@ class AccesoService(
     // Verificar pagos atrasados
     // =============================================
 
-    private fun verificarPagosAtrasados(usuario: Usuario): AlertaPagosDTO? {
-        if (!usuario.tieneRol(RolType.ALUMNO)) {
-            return null
+    private fun armarAlertaPagos(usuarioId: Long): AlertaPagosDTO? {
+        val atrasadas = inscripcionRepository.findAtrasadasByUsuarioId(usuarioId)
+        if (atrasadas.isEmpty()) return null
+
+        val cursos = atrasadas.map {
+            CursoAtrasoDTO(it.curso.nombre, it.calcularCuotasAtrasadas(), it.calcularDeudaPendiente())
         }
-
-        // Solo verificar si tiene rol alumno
-        val rolAlumno = usuario.getRolAlumno()
-
-        // Obtener inscripciones activas con pagos atrasados
-        val cursosAtrasados = rolAlumno.inscripciones
-            .filter {
-                it.fechaBaja == null &&
-                        it.estadoPago == EstadoPagoType.ATRASADO
-            }
-            .map { inscripcion ->
-                CursoAtrasoDTO(
-                    cursoNombre = inscripcion.curso.nombre,
-                    cuotasAtrasadas = inscripcion.calcularCuotasAtrasadas(),
-                    deudaPendiente = inscripcion.calcularDeudaPendiente()
-                )
-            }
-
-        if (cursosAtrasados.isEmpty()) {
-            return null
-        }
-
-        val mensaje = when {
-            cursosAtrasados.size == 1 ->
-                "Tiene pagos atrasados en ${cursosAtrasados[0].cursoNombre}"
-
-            else ->
-                "Tiene pagos atrasados en ${cursosAtrasados.size} cursos"
-        }
-
         return AlertaPagosDTO(
             tieneAtrasos = true,
-            cursosAtrasados = cursosAtrasados,
-            mensaje = mensaje
+            cursosAtrasados = cursos,
+            mensaje = if (cursos.size == 1) "Tiene pagos atrasados en ${cursos[0].cursoNombre}"
+            else "Tiene pagos atrasados en ${cursos.size} cursos"
         )
     }
 

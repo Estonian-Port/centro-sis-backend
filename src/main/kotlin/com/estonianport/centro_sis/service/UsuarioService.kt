@@ -91,8 +91,6 @@ class UsuarioService(
         return PageImpl(dtos, pageable, idsPage.totalElements)
     }
 
-    // Sin @Cacheable: antes se cacheaban entidades JPA (detached, con colecciones lazy
-    // y no Serializable). Si se quiere cachear, hacerlo sobre DTOs.
     fun getUsuariosPorRol(rolTipo: RolType): List<Usuario> =
         when (rolTipo) {
             RolType.PROFESOR      -> usuarioRepository.findProfesores()
