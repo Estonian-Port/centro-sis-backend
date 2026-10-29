@@ -100,6 +100,7 @@ class UsuarioService(
             RolType.PORTERIA      -> usuarioRepository.findPorteria()
         }
 
+    @Transactional
     fun searchByRol(q: String, rolTipo: RolType, limit: Int = 20): List<Usuario> {
         val resultados = when (rolTipo) {
             RolType.ALUMNO   -> usuarioRepository.searchAlumnos(q)
@@ -110,6 +111,7 @@ class UsuarioService(
         return resultados.take(limit.coerceAtMost(50))
     }
 
+    @Transactional
     fun searchTodos(q: String, limit: Int = 20): List<Usuario> =
         usuarioRepository.searchTodos(q).take(limit.coerceAtMost(50))
 

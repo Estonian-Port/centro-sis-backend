@@ -49,7 +49,7 @@ class Usuario(
     @Column(nullable = false)
     var fechaNacimiento: LocalDate,
 
-    @OneToOne(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToOne(cascade = [CascadeType.ALL], fetch = FetchType.EAGER, orphanRemoval = true)
     @JoinColumn(name = "adulto_responsable_id", referencedColumnName = "id")
     var adultoResponsable: AdultoResponsable? = null,
 
@@ -95,10 +95,6 @@ class Usuario(
 
     fun esPrimerLogin(): Boolean {
         return estado == EstadoType.PENDIENTE
-    }
-
-    fun esMenorDeEdad(): Boolean {
-        return fechaNacimiento.plusYears(18).isAfter(AppTime.hoy())
     }
 
     fun nombreCompleto(): String = "$nombre $apellido"
@@ -155,104 +151,10 @@ class Usuario(
             ?: throw NoSuchElementException("El usuario no tiene el rol de profesor activo")
     }
 
-    fun getRolAdmin(): RolAdmin {
-        return listaRol
-            .filterIsInstance<RolAdmin>()
-            .firstOrNull { it.fechaBaja == null }
-            ?: throw NoSuchElementException("El usuario no tiene el rol de administrador activo")
-    }
-
-    fun getRolOficina(): RolOficina {
-        return listaRol
-            .filterIsInstance<RolOficina>()
-            .firstOrNull { it.fechaBaja == null }
-            ?: throw NoSuchElementException("El usuario no tiene el rol de oficina activo")
-    }
-
     fun getRolPorteria(): RolPorteria {
         return listaRol
             .filterIsInstance<RolPorteria>()
             .firstOrNull { it.fechaBaja == null }
             ?: throw NoSuchElementException("El usuario no tiene el rol de portería activo")
-    }
-
-    fun esPorteria(): Boolean {
-        return listaRol.any { it is RolPorteria && estado === EstadoType.ACTIVO }
-    }
-
-    fun darDeBaja(fecha: LocalDate = AppTime.hoy()) {
-        this.fechaBaja = fecha
-        this.estado = EstadoType.BAJA
-        listaRol.forEach { it.fechaBaja = fecha }
-    }
-
-    fun reactivar() {
-        require(estado == EstadoType.BAJA) {
-            "Solo se pueden reactivar usuarios dados de baja"
-        }
-        this.fechaBaja = null
-        this.estado = EstadoType.ACTIVO
-    }
-
-    fun asignarAdultoResponsable(adulto: AdultoResponsable) {
-        require(esMenorDeEdad()) {
-            "Solo se puede asignar adulto responsable a menores de edad"
-        }
-        this.adultoResponsable = adulto
-        adulto.alumnoMenor = this
-    }
-
-    fun quitarAdultoResponsable() {
-        this.adultoResponsable?.alumnoMenor = null
-        this.adultoResponsable = null
-    }
-
-    fun validarAcceso() {
-        val hoy = AppTime.hoy()
-        if (tuvoAccesoEnFecha(hoy)) {
-            throw IllegalStateException("El usuario ya ha registrado un acceso hoy")
-        }
-    }
-
-    fun registrarAcceso(
-        tipoAcceso: TipoAcceso,
-    ): Acceso {
-        validarAcceso()
-
-        val nuevoAcceso = Acceso(
-            usuario = this,
-            tipoAcceso = tipoAcceso,
-        )
-
-        accesos.add(nuevoAcceso)
-        return nuevoAcceso
-    }
-
-    fun tuvoAccesoEnFecha(fecha: LocalDate): Boolean {
-        return accesos.any { it.esDeFecha(fecha) }
-    }
-
-    fun getAccesosDelMes(mes: Int, anio: Int): List<Acceso> {
-        return accesos.filter {
-            it.fechaHora.monthValue == mes && it.fechaHora.year == anio
-        }
-    }
-
-    fun getUltimoAcceso(): Acceso? {
-        return accesos.maxByOrNull { it.fechaHora }
-    }
-
-    fun contarAccesosEnRango(desde: LocalDate, hasta: LocalDate): Int {
-        return accesos.count { acceso ->
-            val fecha = acceso.fechaHora.toLocalDate()
-            !fecha.isBefore(desde) && !fecha.isAfter(hasta)
-        }
-    }
-
-    fun actualizarEstadoSegunActividad(tieneCursosAsignados: Boolean) {
-        // Si es profesor, su estado depende de si tiene cursos
-        if (tieneRol(RolType.PROFESOR)) {
-            this.estado = if (tieneCursosAsignados) EstadoType.ACTIVO else EstadoType.INACTIVO
-        }
     }
 }

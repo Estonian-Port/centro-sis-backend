@@ -47,6 +47,7 @@ interface InscripcionRepository : CrudRepository<Inscripcion, Long> {
         JOIN FETCH i.alumno a
         JOIN FETCH a.usuario
         LEFT JOIN FETCH i.tipoPagoSeleccionado
+        LEFT JOIN FETCH i.pagos /* AÑADIR FETCH PARA QUE NO LANCE LAZY EXCEPTION EN EL MAPPER */
         WHERE a.usuario.id = :alumnoId
         AND i.fechaBaja IS NULL
     """)

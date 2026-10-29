@@ -162,7 +162,11 @@ class AccesoService(
             throw IllegalArgumentException("El usuario no tiene rol de portería")
         }
 
-        val turnoHoy = portero.getRolPorteria().inicioTurnoHoy()
+        val turnoHoy = accesoRepository.findUltimoTurnoHoy(
+            idPortero,
+            TipoAcceso.TURNO,
+            hoy
+        )
 
         return EstadisticasAccesoDTO(
             totalHoy = totalHoy,

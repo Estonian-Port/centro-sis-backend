@@ -24,10 +24,4 @@ class AdultoResponsable(
 
     @Column(nullable = false)
     var relacion: String,
-
-    @OneToOne(mappedBy = "adultoResponsable")
-    @JsonIgnore
-    var alumnoMenor: Usuario? = null
-) {
-    fun nombreCompleto(): String = "$nombre $apellido"
-}
+)
