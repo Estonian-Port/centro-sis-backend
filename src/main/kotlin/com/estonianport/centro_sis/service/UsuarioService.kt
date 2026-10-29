@@ -91,8 +91,6 @@ class UsuarioService(
         return PageImpl(dtos, pageable, idsPage.totalElements)
     }
 
-    // Sin @Cacheable: antes se cacheaban entidades JPA (detached, con colecciones lazy
-    // y no Serializable). Si se quiere cachear, hacerlo sobre DTOs.
     fun getUsuariosPorRol(rolTipo: RolType): List<Usuario> =
         when (rolTipo) {
             RolType.PROFESOR      -> usuarioRepository.findProfesores()
@@ -102,6 +100,7 @@ class UsuarioService(
             RolType.PORTERIA      -> usuarioRepository.findPorteria()
         }
 
+    @Transactional
     fun searchByRol(q: String, rolTipo: RolType, limit: Int = 20): List<Usuario> {
         val resultados = when (rolTipo) {
             RolType.ALUMNO   -> usuarioRepository.searchAlumnos(q)
@@ -112,6 +111,7 @@ class UsuarioService(
         return resultados.take(limit.coerceAtMost(50))
     }
 
+    @Transactional
     fun searchTodos(q: String, limit: Int = 20): List<Usuario> =
         usuarioRepository.searchTodos(q).take(limit.coerceAtMost(50))
 

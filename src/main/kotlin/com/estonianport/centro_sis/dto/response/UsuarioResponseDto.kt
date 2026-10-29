@@ -2,6 +2,7 @@ package com.estonianport.centro_sis.dto.response
 
 import com.estonianport.centro_sis.dto.request.AdultoResponsableDto
 import com.estonianport.centro_sis.model.Rol
+import com.estonianport.centro_sis.model.enums.EstadoType
 import com.estonianport.centro_sis.model.enums.RolType
 import java.io.Serializable
 
@@ -39,3 +40,10 @@ data class UsuarioDetailResponseDto(
     val cursosInscriptos: List<InscripcionAlumnoSummaryDto>,
     val cursosDictados: List<CursoProfesorSummaryDto>
 ) : Serializable
+
+data class UsuarioAccesoView(
+    val id: Long,
+    val nombre: String?,
+    val apellido: String?,
+    val dni: String,
+    val estado: EstadoType)

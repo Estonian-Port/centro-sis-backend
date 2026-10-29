@@ -110,13 +110,6 @@ class RolProfesor(
     fun obtenerPagosRecibidos(): List<PagoComision> {
         return pagosComisionRecibidos.filter { it.estaActivo() }
     }
-
-    // Balance del profesor (comisiones recibidas - alquileres pagados)
-    fun calcularBalance(): BigDecimal {
-        val totalRecibido = obtenerPagosRecibidos().sumOf { it.monto }
-        val totalPagado = obtenerPagosRealizados().sumOf { it.monto }
-        return totalRecibido - totalPagado
-    }
 }
 
 @Entity
@@ -136,24 +129,6 @@ class RolAlumno(
 
     override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean = false
 
-    fun inscribirEnCurso(inscripcion: Inscripcion) {
-        inscripciones.add(inscripcion)
-    }
-
-    fun getInscripcionPorCurso(curso: Curso): Inscripcion {
-        return inscripciones.find { it.curso.id == curso.id && it.fechaBaja == null }
-            ?: throw NoSuchElementException("El alumno no está inscrito en el curso ${curso.nombre}")
-    }
-
-    fun getInscripcionesActivas(): List<Inscripcion> {
-        return inscripciones.filter { it.fechaBaja == null }
-    }
-
-    fun calcularDeudaTotal(): BigDecimal {
-        return getInscripcionesActivas()
-            .map { it.calcularDeudaPendiente() }
-            .fold(BigDecimal.ZERO) { acc, deuda -> acc + deuda }
-    }
 }
 
 @Entity
@@ -172,21 +147,5 @@ class RolPorteria(
     override fun puedeRegistrarPago(inscripcion: Inscripcion): Boolean = false
 
     override fun puedeAsignarBeneficio(inscripcion: Inscripcion): Boolean = false
-
-    fun puedeRegistrarAccesos(): Boolean {
-        return usuario.estado == EstadoType.ACTIVO
-    }
-
-    fun puedeVerAccesosRecientes(): Boolean {
-        return usuario.estado == EstadoType.ACTIVO
-    }
-
-    fun inicioTurnoHoy(): Acceso? {
-        val hoy = LocalDate.now()
-        return usuario.accesos
-            .asSequence()
-            .filter { it.fechaHora.toLocalDate() == hoy && it.tipoAcceso == TipoAcceso.TURNO }
-            .maxByOrNull { it.fechaHora }
-    }
 
 }

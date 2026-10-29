@@ -1,12 +1,14 @@
 package com.estonianport.centro_sis.repository
 
 import com.estonianport.centro_sis.model.Acceso
+import com.estonianport.centro_sis.model.enums.TipoAcceso
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Repository
@@ -175,4 +177,17 @@ interface AccesoRepository : JpaRepository<Acceso, Long> {
         desde: LocalDateTime
     ): Acceso?
 
+    @Query("""
+    SELECT a FROM Acceso a 
+    WHERE a.usuario.id = :usuarioId 
+      AND a.tipoAcceso = :tipoAcceso 
+      AND a.fechaHora >= :desde 
+    ORDER BY a.fechaHora DESC 
+    LIMIT 1
+""")
+    fun findUltimoTurnoHoy(
+        @Param("usuarioId") usuarioId: Long,
+        @Param("tipoAcceso") tipoAcceso: TipoAcceso,
+        @Param("desde") desde: LocalDateTime
+    ): Acceso?
 }

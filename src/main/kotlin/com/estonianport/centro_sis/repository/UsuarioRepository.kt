@@ -1,9 +1,13 @@
 package com.estonianport.centro_sis.repository
 
+import com.estonianport.centro_sis.dto.response.UsuarioAccesoView
+import com.estonianport.centro_sis.model.Inscripcion
 import com.estonianport.centro_sis.model.Usuario
+import com.estonianport.centro_sis.model.enums.EstadoPagoType
 import com.estonianport.centro_sis.model.enums.EstadoType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -13,7 +17,7 @@ import java.time.LocalDateTime
 import java.util.*
 
 @Repository
-interface UsuarioRepository : CrudRepository<Usuario, Long> {
+interface UsuarioRepository : JpaRepository<Usuario, Long> {
 
     @Query("""
     SELECT DISTINCT u FROM Usuario u
@@ -110,8 +114,11 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         INNER JOIN u.listaRol r
+        LEFT JOIN FETCH u.listaRol rFetch
+        LEFT JOIN FETCH u.adultoResponsable ar
         WHERE TYPE(r) = com.estonianport.centro_sis.model.RolAlumno
         AND r.fechaBaja IS NULL
+        AND (rFetch IS NULL OR rFetch.fechaBaja IS NULL)
         AND u.estado IN ('ACTIVO', 'INACTIVO')
         AND (
             LOWER(u.nombre)   LIKE LOWER(CONCAT('%', :q, '%')) OR
@@ -126,8 +133,11 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         INNER JOIN u.listaRol r
+        LEFT JOIN FETCH u.listaRol rFetch
+        LEFT JOIN FETCH u.adultoResponsable ar
         WHERE TYPE(r) = com.estonianport.centro_sis.model.RolProfesor
         AND r.fechaBaja IS NULL
+        AND (rFetch IS NULL OR rFetch.fechaBaja IS NULL)
         AND u.estado IN ('ACTIVO', 'INACTIVO')
         AND (
             LOWER(u.nombre)   LIKE LOWER(CONCAT('%', :q, '%')) OR
@@ -142,6 +152,7 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Query("""
         SELECT DISTINCT u FROM Usuario u
         LEFT JOIN FETCH u.listaRol r
+        LEFT JOIN FETCH u.adultoResponsable ar
         WHERE u.fechaBaja IS NULL
         AND u.estado IN ('ACTIVO', 'INACTIVO')
         AND (r IS NULL OR r.fechaBaja IS NULL)
@@ -209,4 +220,12 @@ interface UsuarioRepository : CrudRepository<Usuario, Long> {
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Usuario u SET u.ultimoIngresoAlSistema = :fecha WHERE u.email = :email")
     fun updateUltimoIngresoByEmail(@Param("email") email: String, @Param("fecha") fecha: LocalDateTime): Int
+
+    @Query("""
+    SELECT u.id AS id, u.nombre AS nombre, u.apellido AS apellido, u.dni AS dni, u.estado AS estado
+    FROM Usuario u WHERE u.id = :id
+""")
+    fun findAccesoViewById(@Param("id") id: Long): UsuarioAccesoView?
+
+
 }

@@ -65,7 +65,6 @@ class InscripcionService {
             beneficio = inscripcion.beneficio,
         )
 
-        alumno.inscribirEnCurso(nuevaInscripcion)
         return inscripcionRepository.save(nuevaInscripcion)
     }
 
